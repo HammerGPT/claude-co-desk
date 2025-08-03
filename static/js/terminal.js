@@ -116,6 +116,10 @@ class Terminal {
             windowsPty: false,
             // 启用真彩色和完整ANSI转义序列支持
             experimentalCharAtlas: 'dynamic',
+            // 增强ANSI处理
+            drawBoldTextInBrightColors: true,
+            screenReaderMode: false,
+            smoothScrollDuration: 0,
             // 完整的ANSI颜色主题配置
             theme: {
                 background: '#000000',
@@ -248,10 +252,14 @@ class Terminal {
             return;
         }
 
-        // 终端输出处理
+        // 终端输出处理 - 添加前端过滤
         window.shellWsManager.onMessage('output', (data) => {
             if (this.terminal && data.data) {
-                this.terminal.write(data.data);
+                // 前端最后一层过滤
+                const filteredData = this._filterTerminalOutput(data.data);
+                if (filteredData) {
+                    this.terminal.write(filteredData);
+                }
             }
         });
 
@@ -563,6 +571,25 @@ class Terminal {
             }
             titleElement.textContent = title;
         }
+    }
+
+    /**
+     * 前端输出过滤器 - 简化版，只处理明显错误
+     */
+    _filterTerminalOutput(rawData) {
+        if (!rawData || typeof rawData !== 'string') {
+            return rawData;
+        }
+
+        let filtered = rawData;
+        
+        // 只清理明显的乱码字符，保留所有ANSI序列
+        if (filtered.includes('��')) {
+            filtered = filtered.replace(/��/g, '');
+            console.debug('🧹 前端清理乱码字符');
+        }
+        
+        return filtered;
     }
 
     /**
