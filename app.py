@@ -203,6 +203,9 @@ class PTYShellHandler:
                 'TERM': 'xterm-256color',       # 设置终端类型
                 'COLORTERM': 'truecolor',       # 启用真彩色
                 'FORCE_COLOR': '3',             # 强制彩色输出
+                'NO_COLOR': '',                 # 确保不禁用颜色
+                'CLICOLOR': '1',                # 启用CLI颜色
+                'CLICOLOR_FORCE': '1',          # 强制CLI颜色输出
                 'COLUMNS': str(cols),           # 终端宽度（实际值）
                 'LINES': str(rows),             # 终端高度（实际值）
                 'LANG': 'en_US.UTF-8',          # 设置UTF-8编码
@@ -326,8 +329,8 @@ class PTYShellHandler:
                         read_count += 1
                         raw_output = data.decode('utf-8', errors='replace')
                         
-                        # 暂时禁用复杂的输出处理，直接使用原始输出
-                        processed_output = raw_output
+                        # 启用简化的输出处理，保留ANSI颜色序列
+                        processed_output = self._simple_output_filter(raw_output)
                         
                         # 调试日志
                         if processed_output:
@@ -398,78 +401,104 @@ class PTYShellHandler:
         """优化ANSI转义序列，合并重复操作"""
         import re
         
-        # 常见的ANSI转义序列模式
-        ansi_patterns = {
-            'clear_screen': r'\x1b\[2J',           # 清屏
-            'clear_line': r'\x1b\[2K',             # 清除当前行
-            'cursor_home': r'\x1b\[H',             # 光标回到家位置
-            'cursor_up': r'\x1b\[(\d+)?A',         # 光标向上移动
-            'cursor_down': r'\x1b\[(\d+)?B',       # 光标向下移动
-            'cursor_right': r'\x1b\[(\d+)?C',      # 光标向右移动
-            'cursor_left': r'\x1b\[(\d+)?D',       # 光标向左移动
-            'cursor_position': r'\x1b\[(\d+);(\d+)H',  # 设置光标位置
-            'erase_display': r'\x1b\[(\d+)?J',     # 擦除显示
-            'erase_line': r'\x1b\[(\d+)?K',        # 擦除行
-            'save_cursor': r'\x1b\[s',             # 保存光标位置
-            'restore_cursor': r'\x1b\[u',          # 恢复光标位置
-        }
+        # Claude CLI特定的ANSI序列优化
+        original_len = len(text)
         
-        # 检测重复的清屏操作
-        clear_screen_matches = list(re.finditer(ansi_patterns['clear_screen'], text))
-        if len(clear_screen_matches) > 1:
+        # 1. 处理重复的行清除序列（Claude CLI经常使用）
+        # \x1b[2K 清除当前行, \r 回车符
+        text = re.sub(r'(\x1b\[2K\r?){2,}', '\x1b[2K\r', text)
+        
+        # 2. 处理重复的光标移动序列  
+        # 合并连续的相同光标移动
+        text = re.sub(r'(\x1b\[A){2,}', '\x1b[A', text)  # 向上
+        text = re.sub(r'(\x1b\[B){2,}', '\x1b[B', text)  # 向下  
+        text = re.sub(r'(\x1b\[C){2,}', '\x1b[C', text)  # 向右
+        text = re.sub(r'(\x1b\[D){2,}', '\x1b[D', text)  # 向左
+        
+        # 3. 处理重复的清屏操作
+        clear_screen_count = text.count('\x1b[2J')
+        if clear_screen_count > 1:
             # 只保留最后一个清屏操作
-            last_clear = clear_screen_matches[-1]
-            # 移除之前的清屏操作
-            for match in clear_screen_matches[:-1]:
-                text = text[:match.start()] + text[match.end():]
-                # 需要重新计算位置
-                offset = match.end() - match.start()
-                last_clear = re.search(ansi_patterns['clear_screen'], text)
-            
-            logger.debug(f"🧹 合并了{len(clear_screen_matches)-1}个重复的清屏操作")
+            text = re.sub(r'\x1b\[2J.*?(?=\x1b\[2J)', '', text)
+            logger.debug(f"🧹 合并了{clear_screen_count-1}个重复的清屏操作")
         
-        # 检测重复的光标移动
-        cursor_moves = re.findall(r'\x1b\[[\d;]*[ABCD]', text)
-        if len(cursor_moves) > 3:  # 如果有过多的光标移动
-            # 简化连续的光标移动操作
-            simplified = re.sub(r'(\x1b\[[\d;]*[ABCD]){3,}', lambda m: m.group(0)[-10:], text)
-            if len(simplified) < len(text):
-                logger.debug(f"🧹 简化了光标移动序列: {len(text)} -> {len(simplified)}")
-                text = simplified
+        # 4. 处理Claude CLI的光标位置重置模式
+        # 经常出现的模式: \x1b[2K\r + 内容 + \r
+        text = re.sub(r'\x1b\[2K\r([^\r\n]*)\r(?=\x1b\[2K)', r'\x1b[2K\r\1', text)
         
-        # 检测重复的行清除操作
-        clear_line_pattern = r'\x1b\[2K\r?'
-        clear_line_matches = list(re.finditer(clear_line_pattern, text))
-        if len(clear_line_matches) > 2:
-            # 合并连续的行清除操作
-            consecutive_groups = []
-            current_group = [clear_line_matches[0]]
-            
-            for i in range(1, len(clear_line_matches)):
-                current_match = clear_line_matches[i]
-                prev_match = clear_line_matches[i-1]
-                
-                # 如果两个匹配之间只有少量字符，认为是连续的
-                gap = text[prev_match.end():current_match.start()]
-                if len(gap.strip()) < 5:  # 少于5个非空白字符
-                    current_group.append(current_match)
-                else:
-                    consecutive_groups.append(current_group)
-                    current_group = [current_match]
-            
-            consecutive_groups.append(current_group)
-            
-            # 对每个连续组，只保留最后一个
-            offset = 0
-            for group in consecutive_groups:
-                if len(group) > 1:
-                    for match in group[:-1]:
-                        adjusted_start = match.start() - offset
-                        adjusted_end = match.end() - offset
-                        text = text[:adjusted_start] + text[adjusted_end:]
-                        offset += adjusted_end - adjusted_start
+        # 5. 处理过多的回车符和换行符组合
+        # 将多个\r\n或\n\r组合简化
+        text = re.sub(r'(\r\n|\n\r){2,}', '\r\n', text)
+        text = re.sub(r'\r{2,}', '\r', text)
+        
+        # 6. 清理Claude CLI常见的状态覆盖模式
+        # 检测并优化 "清行 + 写内容 + 回车 + 清行" 的重复模式
+        status_override_pattern = r'\x1b\[2K\r([^\r\n]+)\r\x1b\[2K\r'
+        matches = list(re.finditer(status_override_pattern, text))
+        if len(matches) > 1:
+            # 如果有连续的状态覆盖，只保留最后的状态
+            for match in matches[:-1]:
+                # 检查是否为相似的状态行（如同一类型的进度）
+                content = match.group(1)
+                if any(keyword in content for keyword in ['Computing', 'Processing', 'Thinking', '⏺']):
+                    # 移除这个中间状态
+                    text = text[:match.start()] + text[match.end():]
+                    # 重新搜索匹配项（因为位置已改变）
+                    matches = list(re.finditer(status_override_pattern, text))
+                    break
+        
+        # 7. 优化颜色序列
+        # 合并连续的相同颜色设置
+        text = re.sub(r'(\x1b\[\d+m)\1+', r'\1', text)
+        
+        # 8. 清理残余的控制字符
+        # 移除一些Claude CLI可能产生的多余控制字符
+        text = re.sub(r'\x1b\[0;0H', '', text)  # 无用的光标定位
+        text = re.sub(r'\x1b\[999;999H', '', text)  # 异常的光标定位
+        
+        # 记录优化效果
+        if len(text) < original_len:
+            reduction = original_len - len(text)
+            logger.debug(f"🔧 ANSI序列优化: {original_len} -> {len(text)} 字符 (减少{reduction})")
         
         return text
+    
+    def _simple_output_filter(self, raw_output: str) -> str:
+        """简化的输出过滤器，只处理关键重复问题，保留所有ANSI颜色序列"""
+        import re
+        
+        # 只处理最基本的重复行去重，保留所有颜色和格式
+        lines = raw_output.split('\n')
+        filtered_lines = []
+        last_clean_line = ""
+        consecutive_count = 0
+        
+        for line in lines:
+            # 移除ANSI序列后的纯文本用于比较重复
+            clean_line = re.sub(r'\x1b\[[0-9;]*[a-zA-Z]', '', line).strip()
+            
+            # 检测连续重复的相同内容行
+            if clean_line == last_clean_line and clean_line:
+                consecutive_count += 1
+                # 允许重复2次，超过则跳过（针对Claude CLI的重复状态行）
+                if consecutive_count > 2 and any(marker in clean_line for marker in ['⏺', '✻', '·', 'Computing', 'Thinking']):
+                    continue
+            else:
+                consecutive_count = 0
+                last_clean_line = clean_line
+            
+            # 简单的乱码字符清理
+            if '��' in line:
+                line = line.replace('��', '')
+            
+            filtered_lines.append(line)
+        
+        result = '\n'.join(filtered_lines)
+        
+        # 简单的连续空行限制
+        result = re.sub(r'\n{4,}', '\n\n\n', result)
+        
+        return result
     
     def _process_terminal_output(self, raw_output: str) -> str:
         """处理终端输出，去除重复和优化ANSI序列"""
@@ -481,70 +510,110 @@ class PTYShellHandler:
         # 将输出添加到缓冲区
         self.output_buffer += optimized_output
         
-        # 分析ANSI转义序列
+        # 分析并处理行
         processed_chunks = []
         current_buffer = self.output_buffer
         
-        # 检测常见的Claude CLI重复模式
-        claude_task_pattern = r'⏺\s+([^⏺\n]+(?:\n(?!\s*⏺)[^\n]*)*)'
-        claude_thinking_pattern = r'✻\s+Thinking[^\n]*'
-        claude_progress_pattern = r'·\s+Processing[^\n]*'
+        # Claude CLI特定的重复模式检测
+        claude_patterns = {
+            'task': r'^⏺\s+',           # 任务状态行
+            'thinking': r'^✻\s+Computing|^✻\s+Thinking',   # 思考状态行  
+            'progress': r'^·\s+Processing',  # 处理进度行
+            'spinner': r'^.+\s+Computing.*\(',  # 旋转状态指示器（简化模式）
+        }
         
         # 处理完整的行
         lines = current_buffer.split('\n')
         self.output_buffer = lines[-1] if not current_buffer.endswith('\n') else ""
         
         for i, line in enumerate(lines[:-1] if not current_buffer.endswith('\n') else lines):
-            # 检测Claude CLI任务行的重复
-            if re.match(r'⏺\s+', line):
-                # 这是一个任务行，检查是否与上一行相同
-                clean_line = re.sub(r'\x1b\[[0-9;]*[mK]', '', line).strip()
-                clean_last = re.sub(r'\x1b\[[0-9;]*[mK]', '', self.last_output_line).strip()
+            # 清理ANSI转义序列后的纯文本用于比较
+            clean_line = re.sub(r'\x1b\[[0-9;]*[a-zA-Z]', '', line).strip()
+            
+            # 检测Claude CLI特定的重复模式
+            is_claude_status = False
+            pattern_type = None
+            
+            for pattern_name, pattern in claude_patterns.items():
+                if re.match(pattern, clean_line):
+                    is_claude_status = True
+                    pattern_type = pattern_name
+                    break
+            
+            if is_claude_status:
+                # 检查是否与最近的相同类型行重复
+                recent_key = f"_recent_{pattern_type}_lines"
+                if not hasattr(self, recent_key):
+                    setattr(self, recent_key, [])
                 
-                if clean_line == clean_last:
-                    # 重复的任务行，跳过
-                    self.consecutive_same_lines += 1
-                    if self.consecutive_same_lines > 2:  # 允许少量重复，超过2次才过滤
+                recent_lines = getattr(self, recent_key)
+                
+                # 提取核心内容（去除变化的部分如时间、token数等）
+                core_content = clean_line
+                if pattern_type in ['thinking', 'spinner']:
+                    # 去除括号内的时间和token信息
+                    core_content = re.sub(r'\([^)]*\)', '', core_content).strip()
+                
+                # 检查是否为重复内容
+                if core_content in recent_lines:
+                    # 限制连续重复次数
+                    if hasattr(self, f'_{pattern_type}_repeat_count'):
+                        repeat_count = getattr(self, f'_{pattern_type}_repeat_count') + 1
+                    else:
+                        repeat_count = 1
+                    
+                    setattr(self, f'_{pattern_type}_repeat_count', repeat_count)
+                    
+                    # 超过2次重复则跳过
+                    if repeat_count > 2:
                         continue
                 else:
-                    self.consecutive_same_lines = 0
-                    self.last_output_line = line
+                    # 新内容，重置计数器
+                    setattr(self, f'_{pattern_type}_repeat_count', 0)
+                    recent_lines.append(core_content)
+                    
+                    # 保持最近5条记录
+                    if len(recent_lines) > 5:
+                        recent_lines.pop(0)
             
-            # 检测进度更新行
-            elif re.match(r'·\s+Processing|✻\s+Thinking', line):
-                # 进度行，检查是否需要去重
-                clean_line = re.sub(r'\([^)]*\)', '', line)  # 移除括号内容（如时间）
-                clean_line = re.sub(r'\x1b\[[0-9;]*[mK]', '', clean_line).strip()
+            # 检测过多的空行
+            elif clean_line == "":
+                if hasattr(self, '_consecutive_empty_count'):
+                    self._consecutive_empty_count += 1
+                else:
+                    self._consecutive_empty_count = 1
                 
-                if clean_line in getattr(self, '_recent_progress_lines', set()):
-                    continue  # 跳过重复的进度行
-                
-                # 记录最近的进度行（最多保持5个）
-                if not hasattr(self, '_recent_progress_lines'):
-                    self._recent_progress_lines = set()
-                if len(self._recent_progress_lines) > 5:
-                    self._recent_progress_lines.clear()
-                self._recent_progress_lines.add(clean_line)
-            
-            # 检测空行的重复
-            elif line.strip() == "":
-                if hasattr(self, '_last_was_empty') and self._last_was_empty:
-                    continue  # 跳过连续的空行
-                self._last_was_empty = True
+                # 超过2个连续空行则跳过
+                if self._consecutive_empty_count > 2:
+                    continue
             else:
-                self._last_was_empty = False
+                # 非空行，重置空行计数
+                self._consecutive_empty_count = 0
+            
+            # 清理明显的乱码字符
+            if '��' in line:
+                line = line.replace('��', '')
+                logger.debug("🧹 清理乱码字符")
             
             processed_chunks.append(line)
         
-        # 如果有未完成的缓冲区，也要处理
-        if current_buffer.endswith('\n'):
-            processed_chunks.append("")
-        
+        # 重新组装结果
         result = '\n'.join(processed_chunks) if processed_chunks else ""
         
+        # 添加未完成的缓冲区
+        if self.output_buffer and not current_buffer.endswith('\n'):
+            if result:
+                result = result + '\n' + self.output_buffer
+            else:
+                result = self.output_buffer
+            self.output_buffer = ""
+        
         # 记录过滤统计
-        if len(result) < len(raw_output):
-            logger.debug(f"🧹 输出过滤: {len(raw_output)} -> {len(result)} 字符 (减少{len(raw_output)-len(result)})")
+        original_len = len(raw_output)
+        result_len = len(result)
+        if result_len < original_len:
+            reduction = original_len - result_len
+            logger.debug(f"🧹 输出过滤: {original_len} -> {result_len} 字符 (减少{reduction})")
         
         return result
     
