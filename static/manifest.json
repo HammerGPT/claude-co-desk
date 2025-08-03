@@ -1,0 +1,53 @@
+{
+  "name": "Heliki OS",
+  "short_name": "Heliki OS",
+  "description": "基于Claude Code的系统级AI操作系统",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#3b82f6",
+  "orientation": "portrait-primary",
+  "scope": "/",
+  "lang": "zh-CN",
+  "icons": [
+    {
+      "src": "/static/assets/icons/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/static/assets/icons/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["productivity", "developer", "utilities"],
+  "shortcuts": [
+    {
+      "name": "新建对话",
+      "short_name": "新对话",
+      "description": "开始新的Claude对话",
+      "url": "/?tab=chat",
+      "icons": [
+        {
+          "src": "/static/assets/icons/icon-96x96.png",
+          "sizes": "96x96"
+        }
+      ]
+    },
+    {
+      "name": "终端",
+      "short_name": "终端",
+      "description": "打开Claude终端",
+      "url": "/?tab=terminal",
+      "icons": [
+        {
+          "src": "/static/assets/icons/icon-96x96.png",
+          "sizes": "96x96"
+        }
+      ]
+    }
+  ]
+}

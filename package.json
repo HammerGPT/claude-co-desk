@@ -1,0 +1,26 @@
+{
+  "name": "heliki-os",
+  "version": "1.0.0",
+  "description": "基于Claude Code构建的系统级AI操作系统",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": ["claude", "ai", "terminal", "os"],
+  "author": "Heliki OS Team",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2",
+    "ws": "^8.14.2",
+    "node-pty": "^1.0.0",
+    "cors": "^2.8.5",
+    "mime-types": "^2.1.35",
+    "chokidar": "^3.5.3"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  }
+}
