@@ -1,0 +1,480 @@
+/**
+ * 增强组件样式 - 支持项目会话层级结构
+ * 移植自claudecodeui响应式设计
+ */
+
+/* 搜索容器 */
+.search-container {
+  padding: 1rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.search-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.search-icon {
+  position: absolute;
+  left: 0.75rem;
+  color: var(--text-muted);
+  z-index: 1;
+}
+
+.search-input {
+  width: 100%;
+  padding: 0.5rem 0.75rem 0.5rem 2.5rem;
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.875rem;
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+.search-input:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px var(--primary-light);
+}
+
+.search-clear {
+  position: absolute;
+  right: 0.5rem;
+  padding: 0.25rem;
+  background: none;
+  border: none;
+  border-radius: 0.25rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.search-clear:hover {
+  background: var(--surface-hover);
+  color: var(--text);
+}
+
+.search-clear.hidden {
+  display: none;
+}
+
+/* 增强的项目项 */
+.project-item {
+  margin-bottom: 0.5rem;
+  border-radius: 0.75rem;
+  overflow: hidden;
+  transition: all 0.2s ease;
+}
+
+.project-item.starred {
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  border: 1px solid #f59e0b;
+}
+
+.project-item.starred:dark {
+  background: linear-gradient(135deg, #451a03 0%, #78350f 100%);
+  border: 1px solid #92400e;
+}
+
+.project-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  cursor: pointer;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  transition: all 0.2s ease;
+}
+
+.project-header:hover {
+  background: var(--surface-hover);
+  border-color: var(--primary-light);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.project-item.active .project-header {
+  background: var(--primary-light);
+  border-color: var(--primary);
+  color: var(--primary-text);
+}
+
+.project-content {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.project-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 0.5rem;
+  background: var(--primary-light);
+  color: var(--primary);
+  flex-shrink: 0;
+}
+
+.project-icon .folder-open {
+  color: var(--primary);
+}
+
+.project-icon .folder {
+  color: var(--text-muted);
+}
+
+.project-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.project-name {
+  font-weight: 600;
+  font-size: 0.875rem;
+  color: var(--text);
+  line-height: 1.4;
+  margin-bottom: 0.125rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.project-meta {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  line-height: 1.3;
+}
+
+.project-path {
+  opacity: 0.7;
+}
+
+.project-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  flex-shrink: 0;
+}
+
+.star-btn, .expand-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border: none;
+  border-radius: 0.375rem;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.star-btn:hover, .expand-btn:hover {
+  background: var(--surface-hover);
+  color: var(--text);
+}
+
+.star-btn.starred {
+  color: #f59e0b;
+}
+
+.star-btn.starred:hover {
+  color: #d97706;
+}
+
+/* 会话列表 */
+.sessions-list {
+  margin-top: 0.5rem;
+  padding-left: 1rem;
+  border-left: 2px solid var(--border);
+  margin-left: 1rem;
+}
+
+.session-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  margin-bottom: 0.25rem;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.session-item:hover {
+  background: var(--surface-hover);
+}
+
+.session-item.active {
+  background: var(--primary-light);
+  color: var(--primary-text);
+}
+
+.session-item.recently-active::before {
+  content: '';
+  position: absolute;
+  left: -1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 0.5rem;
+  height: 0.5rem;
+  background: #10b981;
+  border-radius: 50%;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.session-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 0.375rem;
+  background: var(--surface);
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.session-item.active .session-icon {
+  background: var(--primary);
+  color: white;
+}
+
+.session-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.session-summary {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--text);
+  line-height: 1.3;
+  margin-bottom: 0.125rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.session-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+.message-count {
+  background: var(--primary-light);
+  color: var(--primary);
+  padding: 0.125rem 0.375rem;
+  border-radius: 0.75rem;
+  font-weight: 500;
+  font-size: 0.65rem;
+}
+
+.session-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.session-item:hover .session-actions {
+  opacity: 1;
+}
+
+.delete-session-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.25rem;
+  height: 1.25rem;
+  border: none;
+  border-radius: 0.25rem;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.delete-session-btn:hover {
+  background: #fecaca;
+  color: #dc2626;
+}
+
+/* 按钮样式 */
+.load-more-btn, .new-session-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  margin-top: 0.5rem;
+  border: 1px dashed var(--border);
+  border-radius: 0.5rem;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.load-more-btn:hover, .new-session-btn:hover {
+  background: var(--surface-hover);
+  border-color: var(--primary);
+  color: var(--text);
+}
+
+.new-session-btn {
+  border-style: solid;
+  background: var(--primary-light);
+  color: var(--primary);
+  font-weight: 500;
+}
+
+.new-session-btn:hover {
+  background: var(--primary);
+  color: white;
+}
+
+.load-more-btn.loading {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.load-more-btn .spinner {
+  width: 1rem;
+  height: 1rem;
+  border: 2px solid var(--border);
+  border-top: 2px solid var(--primary);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* 空状态 */
+.no-sessions {
+  text-align: center;
+  padding: 1rem;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .search-container {
+    padding: 0.75rem;
+  }
+  
+  .project-header {
+    padding: 1rem;
+  }
+  
+  .project-name {
+    font-size: 1rem;
+  }
+  
+  .project-meta {
+    font-size: 0.8rem;
+  }
+  
+  .sessions-list {
+    margin-left: 0.5rem;
+    padding-left: 0.75rem;
+  }
+  
+  .session-item {
+    padding: 0.75rem;
+    margin-bottom: 0.5rem;
+  }
+  
+  .session-summary {
+    font-size: 0.9rem;
+  }
+  
+  .session-meta {
+    font-size: 0.8rem;
+  }
+  
+  .session-actions {
+    opacity: 1; /* 移动端总是显示操作按钮 */
+  }
+  
+  .load-more-btn, .new-session-btn {
+    padding: 0.75rem;
+    font-size: 0.9rem;
+  }
+}
+
+/* 暗色主题适配 */
+@media (prefers-color-scheme: dark) {
+  .project-item.starred {
+    background: linear-gradient(135deg, #451a03 0%, #78350f 100%);
+    border: 1px solid #92400e;
+  }
+  
+  .delete-session-btn:hover {
+    background: #7f1d1d;
+    color: #fca5a5;
+  }
+}
+
+/* 焦点可访问性 */
+.search-input:focus,
+.project-header:focus,
+.session-item:focus,
+.star-btn:focus,
+.expand-btn:focus,
+.delete-session-btn:focus,
+.load-more-btn:focus,
+.new-session-btn:focus {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+/* 触摸设备优化 */
+@media (hover: none) and (pointer: coarse) {
+  .project-header {
+    padding: 1rem;
+  }
+  
+  .session-item {
+    padding: 0.875rem;
+  }
+  
+  .star-btn, .expand-btn {
+    width: 2rem;
+    height: 2rem;
+  }
+  
+  .delete-session-btn {
+    width: 1.5rem;
+    height: 1.5rem;
+  }
+}
