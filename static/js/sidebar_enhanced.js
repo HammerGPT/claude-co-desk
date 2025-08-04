@@ -12,7 +12,6 @@ class EnhancedSidebar {
         this.loadingSessions = new Set();
         this.additionalSessions = {}; // 分页加载的额外会话
         this.isLoading = false;
-        this.starredProjects = this.loadStarredProjects();
         this.currentTime = new Date();
         this.searchFilter = '';
         
@@ -134,42 +133,6 @@ class EnhancedSidebar {
         }, 60000); // 每分钟更新一次
     }
 
-    /**
-     * 加载星标项目
-     */
-    loadStarredProjects() {
-        try {
-            const saved = localStorage.getItem('starredProjects');
-            return saved ? new Set(JSON.parse(saved)) : new Set();
-        } catch (error) {
-            console.error('加载星标项目出错:', error);
-            return new Set();
-        }
-    }
-
-    /**
-     * 保存星标项目
-     */
-    saveStarredProjects() {
-        try {
-            localStorage.setItem('starredProjects', JSON.stringify([...this.starredProjects]));
-        } catch (error) {
-            console.error('保存星标项目出错:', error);
-        }
-    }
-
-    /**
-     * 切换项目星标状态
-     */
-    toggleStarProject(projectName) {
-        if (this.starredProjects.has(projectName)) {
-            this.starredProjects.delete(projectName);
-        } else {
-            this.starredProjects.add(projectName);
-        }
-        this.saveStarredProjects();
-        this.renderProjects();
-    }
 
     /**
      * 加载项目列表
@@ -283,19 +246,12 @@ class EnhancedSidebar {
     }
 
     /**
-     * 排序项目（星标优先，然后按名称）
+     * 排序项目（按名称）
      */
     getSortedProjects() {
         const filtered = this.getFilteredProjects();
         return filtered.sort((a, b) => {
-            const aStarred = this.starredProjects.has(a.name);
-            const bStarred = this.starredProjects.has(b.name);
-            
-            // 星标项目优先
-            if (aStarred && !bStarred) return -1;
-            if (!aStarred && bStarred) return 1;
-            
-            // 相同星标状态下按显示名称排序
+            // 按显示名称排序
             const nameA = a.displayName || a.name;
             const nameB = b.displayName || b.name;
             return nameA.localeCompare(nameB);
@@ -348,13 +304,9 @@ class EnhancedSidebar {
         
         const isExpanded = this.expandedProjects.has(project.name);
         const isSelected = this.selectedProject?.name === project.name;
-        const isStarred = this.starredProjects.has(project.name);
         
         if (isSelected) {
             projectEl.classList.add('active');
-        }
-        if (isStarred) {
-            projectEl.classList.add('starred');
         }
 
         const allSessions = this.getAllSessions(project);
@@ -374,21 +326,10 @@ class EnhancedSidebar {
                         <div class="project-name">${this.escapeHtml(project.displayName || project.name)}</div>
                         <div class="project-meta">
                             ${hasMore && sessionCount >= 5 ? `${sessionCount}+` : sessionCount} 个会话
-                            ${project.fullPath !== project.displayName ? 
-                                `<span class="project-path">• ${project.fullPath.length > 25 ? '...' + project.fullPath.slice(-22) : project.fullPath}</span>` : 
-                                ''
-                            }
                         </div>
                     </div>
                 </div>
                 <div class="project-actions">
-                    <button class="star-btn ${isStarred ? 'starred' : ''}" 
-                            onclick="event.stopPropagation(); enhancedSidebar.toggleStarProject('${project.name}')" 
-                            title="${isStarred ? '取消收藏' : '收藏项目'}">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="${isStarred ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2">
-                            <polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26"></polygon>
-                        </svg>
-                    </button>
                     <button class="expand-btn" title="${isExpanded ? '折叠' : '展开'}">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <polyline points="${isExpanded ? '18,15 12,9 6,15' : '9,18 15,12 9,6'}"></polyline>
@@ -622,11 +563,26 @@ class EnhancedSidebar {
             window.chatInterface.setSelectedProject(project);
         }
 
+        // 更新文件页面标题显示项目路径
+        this.updateFilePageTitle(project);
+
         // 触发自定义事件
         const event = new CustomEvent('projectSelected', { 
             detail: { project } 
         });
         document.dispatchEvent(event);
+    }
+
+    /**
+     * 更新文件页面标题显示项目路径
+     */
+    updateFilePageTitle(project) {
+        const filesHeader = document.querySelector('#files-panel .files-header h3');
+        if (filesHeader && project) {
+            filesHeader.innerHTML = `项目文件 <span class="project-path-display">${this.escapeHtml(project.path || project.fullPath)}</span>`;
+        } else if (filesHeader) {
+            filesHeader.textContent = '项目文件';
+        }
     }
 
     /**
@@ -636,6 +592,14 @@ class EnhancedSidebar {
         // 通知聊天界面
         if (window.chatInterface) {
             window.chatInterface.setSelectedSession(project, session);
+        }
+
+        // 更新文件页面标题显示项目路径
+        this.updateFilePageTitle(project);
+
+        // 通知FileTree组件更新文件列表
+        if (window.fileTree) {
+            window.fileTree.setSelectedProject(project);
         }
 
         // 触发自定义事件

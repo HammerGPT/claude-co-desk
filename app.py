@@ -327,7 +327,15 @@ class PTYShellHandler:
                             continue
                         
                         read_count += 1
-                        raw_output = data.decode('utf-8', errors='replace')
+                        # 改进UTF-8解码，避免中文字符乱码
+                        try:
+                            raw_output = data.decode('utf-8', errors='strict')
+                        except UnicodeDecodeError:
+                            # 如果strict解码失败，尝试其他编码
+                            try:
+                                raw_output = data.decode('utf-8', errors='ignore')
+                            except:
+                                raw_output = data.decode('utf-8', errors='replace')
                         
                         # 启用简化的输出处理，保留ANSI颜色序列
                         processed_output = self._simple_output_filter(raw_output)
@@ -467,15 +475,25 @@ class PTYShellHandler:
         """简化的输出过滤器，只处理关键重复问题，保留所有ANSI颜色序列"""
         import re
         
-        # 只处理最基本的重复行去重，保留所有颜色和格式
+        # 改进的行级过滤，处理重复行和空行
         lines = raw_output.split('\n')
         filtered_lines = []
         last_clean_line = ""
         consecutive_count = 0
+        consecutive_empty_count = 0
         
         for line in lines:
             # 移除ANSI序列后的纯文本用于比较重复
             clean_line = re.sub(r'\x1b\[[0-9;]*[a-zA-Z]', '', line).strip()
+            
+            # 处理空行
+            if clean_line == "":
+                consecutive_empty_count += 1
+                # 限制连续空行数量（任务执行过程中经常产生多余空行）
+                if consecutive_empty_count > 2:
+                    continue
+            else:
+                consecutive_empty_count = 0
             
             # 检测连续重复的相同内容行
             if clean_line == last_clean_line and clean_line:
@@ -487,16 +505,12 @@ class PTYShellHandler:
                 consecutive_count = 0
                 last_clean_line = clean_line
             
-            # 简单的乱码字符清理
-            if '��' in line:
-                line = line.replace('��', '')
-            
             filtered_lines.append(line)
         
         result = '\n'.join(filtered_lines)
         
-        # 简单的连续空行限制
-        result = re.sub(r'\n{4,}', '\n\n\n', result)
+        # 最终的连续空行清理（处理可能遗漏的空行）
+        result = re.sub(r'\n{3,}', '\n\n', result)
         
         return result
     
@@ -1050,6 +1064,35 @@ async def read_file(file_path: str, project_path: str):
                 content={"error": "无法读取二进制文件"}
             )
         
+        # 检查文件大小（10MB限制）
+        file_size = file_path.stat().st_size
+        MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
+        
+        if file_size > MAX_FILE_SIZE:
+            # 格式化文件大小显示
+            def format_file_size(bytes_size):
+                if bytes_size < 1024:
+                    return f"{bytes_size} B"
+                elif bytes_size < 1024 * 1024:
+                    return f"{bytes_size / 1024:.1f} KB"
+                elif bytes_size < 1024 * 1024 * 1024:
+                    return f"{bytes_size / (1024 * 1024):.1f} MB"
+                else:
+                    return f"{bytes_size / (1024 * 1024 * 1024):.1f} GB"
+            
+            return JSONResponse(
+                status_code=413,  # Payload Too Large
+                content={
+                    "error": "文件过大，会导致崩溃",
+                    "fileSize": file_size,
+                    "fileSizeFormatted": format_file_size(file_size),
+                    "maxSize": MAX_FILE_SIZE,
+                    "maxSizeFormatted": format_file_size(MAX_FILE_SIZE),
+                    "canOpenWithSystem": True,
+                    "filePath": str(file_path)
+                }
+            )
+        
         # 读取文件内容
         async with aiofiles.open(file_path, 'r', encoding='utf-8') as f:
             content = await f.read()
@@ -1057,7 +1100,7 @@ async def read_file(file_path: str, project_path: str):
         return JSONResponse(content={
             "content": content,
             "path": str(file_path),
-            "size": file_path.stat().st_size,
+            "size": file_size,
             "modified": file_path.stat().st_mtime
         })
         
@@ -1066,6 +1109,70 @@ async def read_file(file_path: str, project_path: str):
         return JSONResponse(
             status_code=500,
             content={"error": "读取文件失败", "details": str(e)}
+        )
+
+@app.post("/api/files/open-system")
+async def open_file_with_system(request: Request):
+    """用系统默认应用打开文件API"""
+    try:
+        data = await request.json()
+        file_path = data.get('filePath', '')
+        project_path = data.get('projectPath', '')
+        
+        if not file_path or not project_path:
+            return JSONResponse(
+                status_code=400,
+                content={"error": "文件路径和项目路径不能为空"}
+            )
+        
+        # 安全检查：确保文件在项目目录内
+        project_path = Path(project_path).resolve()
+        file_path = Path(file_path).resolve()
+        
+        if not str(file_path).startswith(str(project_path)):
+            return JSONResponse(
+                status_code=403,
+                content={"error": "访问被拒绝：文件不在项目目录内"}
+            )
+        
+        if not file_path.exists():
+            return JSONResponse(
+                status_code=404,
+                content={"error": "文件不存在"}
+            )
+        
+        # 根据操作系统使用不同的命令打开文件
+        import platform
+        import subprocess
+        
+        system = platform.system()
+        try:
+            if system == "Darwin":  # macOS
+                subprocess.run(["open", str(file_path)], check=True)
+            elif system == "Windows":  # Windows
+                subprocess.run(["start", str(file_path)], shell=True, check=True)
+            else:  # Linux和其他Unix系统
+                subprocess.run(["xdg-open", str(file_path)], check=True)
+            
+            logger.info(f"成功用系统应用打开文件: {file_path}")
+            return JSONResponse(content={
+                "success": True,
+                "message": f"已用系统默认应用打开文件",
+                "filePath": str(file_path)
+            })
+            
+        except subprocess.CalledProcessError as e:
+            logger.error(f"打开文件失败: {e}")
+            return JSONResponse(
+                status_code=500,
+                content={"error": "无法打开文件", "details": str(e)}
+            )
+            
+    except Exception as e:
+        logger.error(f"打开文件 {file_path} 时出错: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"error": "打开文件失败", "details": str(e)}
         )
 
 @app.post("/api/files/write")

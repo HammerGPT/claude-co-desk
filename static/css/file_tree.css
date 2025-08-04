@@ -470,3 +470,237 @@
     border-width: 2px;
   }
 }
+
+/* 大文件提示对话框 */
+.large-file-dialog-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.large-file-dialog-backdrop {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+}
+
+.large-file-dialog-container {
+  position: relative;
+  width: 100%;
+  max-width: 480px;
+  background: white;
+  border-radius: 1rem;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  overflow: hidden;
+  animation: dialogSlideIn 0.3s ease-out;
+}
+
+.large-file-dialog-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 2rem 2rem 1rem;
+  text-align: center;
+}
+
+.large-file-dialog-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 4rem;
+  height: 4rem;
+  background: var(--warning-bg, #fef3c7);
+  color: var(--warning, #d97706);
+  border-radius: 50%;
+  margin-bottom: 1rem;
+}
+
+.large-file-dialog-header h3 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.large-file-dialog-content {
+  padding: 0 2rem 1.5rem;
+}
+
+.large-file-dialog-content p {
+  margin: 0 0 0.75rem 0;
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+
+.large-file-dialog-content p:last-of-type {
+  margin-bottom: 1.5rem;
+}
+
+.large-file-dialog-content strong {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.warning-message {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 1rem;
+  background: var(--warning-bg, #fef3c7);
+  border: 1px solid var(--warning-border, #fcd34d);
+  border-radius: 0.5rem;
+  margin-top: 1rem;
+}
+
+.warning-message svg {
+  color: var(--warning, #d97706);
+  flex-shrink: 0;
+  margin-top: 0.125rem;
+}
+
+.warning-message span {
+  font-size: 0.875rem;
+  color: var(--warning-text, #92400e);
+  line-height: 1.4;
+}
+
+.large-file-dialog-actions {
+  display: flex;
+  gap: 0.75rem;
+  padding: 1.5rem 2rem 2rem;
+}
+
+.large-file-dialog-actions .btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  border-radius: 0.5rem;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.large-file-dialog-actions .btn-primary {
+  background: #2563eb;
+  color: white;
+  border-color: #2563eb;
+}
+
+.large-file-dialog-actions .btn-primary:hover {
+  background: var(--primary-hover, #2563eb);
+  border-color: var(--primary-hover, #2563eb);
+}
+
+.large-file-dialog-actions .btn-secondary {
+  background: var(--surface);
+  color: var(--text-muted);
+  border-color: var(--border);
+}
+
+.large-file-dialog-actions .btn-secondary:hover {
+  background: var(--surface-hover);
+  color: var(--text);
+}
+
+/* 成功提示 */
+.success-toast {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  background: var(--success-bg, #dcfce7);
+  color: var(--success-text, #166534);
+  border: 1px solid var(--success-border, #bbf7d0);
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  z-index: 1001;
+  animation: toastSlideIn 0.3s ease-out, toastFadeOut 0.3s ease-in 2.7s;
+}
+
+/* 动画 */
+@keyframes dialogSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-1rem) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes toastSlideIn {
+  from {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes toastFadeOut {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+}
+
+/* 响应式设计 - 大文件对话框 */
+@media (max-width: 640px) {
+  .large-file-dialog-container {
+    max-width: none;
+    width: calc(100% - 2rem);
+    margin: 1rem;
+  }
+  
+  .large-file-dialog-header {
+    padding: 1.5rem 1.5rem 1rem;
+  }
+  
+  .large-file-dialog-content {
+    padding: 0 1.5rem 1rem;
+  }
+  
+  .large-file-dialog-actions {
+    padding: 1rem 1.5rem 1.5rem;
+    flex-direction: column;
+  }
+  
+  .success-toast {
+    left: 1rem;
+    right: 1rem;
+    text-align: center;
+  }
+}
+
+/* 减少动画 */
+@media (prefers-reduced-motion: reduce) {
+  .large-file-dialog-container,
+  .success-toast {
+    animation: none;
+  }
+}
