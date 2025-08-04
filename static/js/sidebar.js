@@ -135,22 +135,26 @@ class Sidebar {
             projectEl.classList.add('active');
         }
 
+        // 使用新的样式结构
         projectEl.innerHTML = `
-            <div class="project-content">
-                <div class="project-name">${this.escapeHtml(project.display_name || project.name)}</div>
-                <div class="project-path">${this.escapeHtml(project.path)}</div>
-                ${project.sessions && project.sessions.length > 0 ? 
-                    `<div class="project-sessions">${project.sessions.length} 个会话</div>` : 
-                    ''
-                }
-            </div>
-            <div class="project-actions">
-                <button class="project-action-btn" onclick="event.stopPropagation(); sidebar.showProjectMenu('${project.name}')" title="更多操作">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"/>
+            <div class="project-header">
+                <div class="project-icon">
+                    <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/>
                     </svg>
-                </button>
+                </div>
+                <div class="project-info">
+                    <div class="project-name">${this.escapeHtml(project.display_name || project.name)}</div>
+                </div>
+                <div class="project-actions">
+                    <button class="project-menu-btn" onclick="event.stopPropagation(); sidebar.showProjectMenu('${project.name}')" title="更多操作">
+                        <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"/>
+                        </svg>
+                    </button>
+                </div>
             </div>
+            ${project.sessions && project.sessions.length > 0 ? this.createSessionsList(project.sessions) : ''}
         `;
 
         // 添加点击事件
@@ -159,6 +163,55 @@ class Sidebar {
         });
 
         return projectEl;
+    }
+
+    /**
+     * 创建会话列表
+     */
+    createSessionsList(sessions) {
+        if (!sessions || sessions.length === 0) return '';
+        
+        const sessionsHtml = sessions.slice(0, 3).map(session => `
+            <div class="session-item" data-session="${session.id}">
+                <div class="session-icon">
+                    <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
+                    </svg>
+                </div>
+                <div class="session-content">
+                    <div class="session-title">${this.escapeHtml(session.summary || session.id.substring(0, 8))}</div>
+                    <div class="session-time">${this.formatTimeAgo(session.lastActivity)}</div>
+                </div>
+            </div>
+        `).join('');
+
+        return `
+            <div class="sessions-list">
+                ${sessionsHtml}
+                ${sessions.length > 3 ? `<div class="session-item show-more">查看全部 ${sessions.length} 个会话</div>` : ''}
+            </div>
+        `;
+    }
+
+    /**
+     * 格式化时间显示
+     */
+    formatTimeAgo(dateString) {
+        if (!dateString) return '未知时间';
+        
+        const now = new Date();
+        const date = new Date(dateString);
+        const diffMs = now - date;
+        const diffSeconds = Math.floor(diffMs / 1000);
+        const diffMinutes = Math.floor(diffSeconds / 60);
+        const diffHours = Math.floor(diffMinutes / 60);
+        const diffDays = Math.floor(diffHours / 24);
+
+        if (diffSeconds < 60) return '刚刚';
+        if (diffMinutes < 60) return `${diffMinutes}分钟前`;
+        if (diffHours < 24) return `${diffHours}小时前`;
+        if (diffDays < 7) return `${diffDays}天前`;
+        return date.toLocaleDateString();
     }
 
     /**
@@ -196,11 +249,26 @@ class Sidebar {
             window.chatInterface.setSelectedProject(project);
         }
 
+        // 更新文件页面标题
+        this.updateFilePageTitle(project);
+
         // 触发自定义事件
         const event = new CustomEvent('projectSelected', { 
             detail: { project } 
         });
         document.dispatchEvent(event);
+    }
+
+    /**
+     * 更新文件页面标题显示项目路径
+     */
+    updateFilePageTitle(project) {
+        const filesHeader = document.querySelector('#files-panel .files-header h3');
+        if (filesHeader && project) {
+            filesHeader.innerHTML = `项目文件 <span class="project-path-display">${this.escapeHtml(project.path)}</span>`;
+        } else if (filesHeader) {
+            filesHeader.textContent = '项目文件';
+        }
     }
 
     /**

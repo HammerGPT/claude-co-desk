@@ -135,6 +135,18 @@ class FileTree {
     }
 
     /**
+     * 切换视图模式
+     */
+    changeViewMode(mode) {
+        if (['simple', 'detailed', 'compact'].includes(mode)) {
+            this.viewMode = mode;
+            localStorage.setItem('file-tree-view-mode', mode);
+            this.updateViewModeButtons();
+            this.renderFiles();
+        }
+    }
+
+    /**
      * 设置选中的项目
      */
     setSelectedProject(project) {
@@ -192,32 +204,45 @@ class FileTree {
         if (!this.container) return;
 
         if (this.files.length === 0) {
+            // 清空header和files，显示空状态
             this.container.innerHTML = `
-                <div class="empty-state">
-                    <div class="empty-icon">
-                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
-                        </svg>
+                <div id="file-tree-files" class="file-tree-files">
+                    <div class="empty-state">
+                        <div class="empty-icon">
+                            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+                            </svg>
+                        </div>
+                        <h4>未找到文件</h4>
+                        <p>检查项目路径是否可访问</p>
                     </div>
-                    <h4>未找到文件</h4>
-                    <p>检查项目路径是否可访问</p>
                 </div>
             `;
             return;
         }
 
-        // 根据视图模式渲染
-        let content = '';
+        // 根据视图模式分别渲染header和内容
+        let headerContent = '';
+        let filesContent = '';
         
         if (this.viewMode === 'detailed') {
-            content = this.renderDetailedHeader() + this.renderDetailedView(this.files);
+            headerContent = this.renderDetailedHeader();
+            filesContent = this.renderDetailedView(this.files);
         } else if (this.viewMode === 'compact') {
-            content = this.renderCompactView(this.files);
+            headerContent = '';
+            filesContent = this.renderCompactView(this.files);
         } else {
-            content = this.renderSimpleView(this.files);
+            headerContent = '';
+            filesContent = this.renderSimpleView(this.files);
         }
 
-        this.container.innerHTML = content;
+        // 分别插入header和files内容
+        this.container.innerHTML = `
+            ${headerContent}
+            <div id="file-tree-files" class="file-tree-files">
+                ${filesContent}
+            </div>
+        `;
     }
 
     /**
@@ -465,6 +490,13 @@ class FileTree {
             
             if (!response.ok) {
                 const error = await response.json();
+                
+                // 检查是否为文件过大错误
+                if (response.status === 413 && error.canOpenWithSystem) {
+                    this.showLargeFileDialog(error, filePath);
+                    return;
+                }
+                
                 alert(error.error || '读取文件失败');
                 return;
             }
@@ -479,9 +511,133 @@ class FileTree {
     }
 
     /**
+     * 显示大文件提示对话框
+     */
+    showLargeFileDialog(error, filePath) {
+        const filename = filePath.split('/').pop();
+        
+        // 创建大文件提示对话框
+        const modal = document.createElement('div');
+        modal.className = 'large-file-dialog-modal';
+        modal.innerHTML = `
+            <div class="large-file-dialog-backdrop" onclick="fileTree.closeLargeFileDialog()"></div>
+            <div class="large-file-dialog-container">
+                <div class="large-file-dialog-header">
+                    <div class="large-file-dialog-icon">
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z"></path>
+                            <path d="M12 8l-4 4 4 4M16 8l-4 4 4 4"></path>
+                        </svg>
+                    </div>
+                    <h3>文件过大</h3>
+                </div>
+                <div class="large-file-dialog-content">
+                    <p class="file-info">
+                        <strong>文件：</strong>${this.escapeHtml(filename)}
+                    </p>
+                    <p class="file-size-info">
+                        <strong>文件大小：</strong>${error.fileSizeFormatted}
+                    </p>
+                    <p class="size-limit-info">
+                        <strong>编辑器限制：</strong>${error.maxSizeFormatted}
+                    </p>
+                    <div class="warning-message">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"></path>
+                            <path d="M12 9v4"></path>
+                            <path d="m12 17 .01 0"></path>
+                        </svg>
+                        <span>在编辑器中打开此文件可能会导致崩溃。建议使用系统默认应用打开。</span>
+                    </div>
+                </div>
+                <div class="large-file-dialog-actions">
+                    <button class="btn btn-primary" onclick="fileTree.openWithSystemApp('${this.escapeHtml(filePath)}')">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="m9 18 6-6-6-6"></path>
+                        </svg>
+                        用系统应用打开
+                    </button>
+                    <button class="btn btn-secondary" onclick="fileTree.closeLargeFileDialog()">取消</button>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(modal);
+    }
+
+    /**
+     * 关闭大文件提示对话框
+     */
+    closeLargeFileDialog() {
+        const modal = document.querySelector('.large-file-dialog-modal');
+        if (modal) {
+            modal.remove();
+        }
+    }
+
+    /**
+     * 用系统应用打开文件
+     */
+    async openWithSystemApp(filePath) {
+        try {
+            const response = await fetch('/api/files/open-system', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    filePath: filePath,
+                    projectPath: this.selectedProject.path
+                })
+            });
+
+            const result = await response.json();
+            
+            if (response.ok) {
+                console.log('文件已用系统应用打开:', result.message);
+                this.closeLargeFileDialog();
+                
+                // 显示成功提示（可选）
+                this.showSuccessMessage('文件已用系统应用打开');
+            } else {
+                console.error('打开文件失败:', result.error);
+                alert(result.error || '无法打开文件');
+            }
+        } catch (error) {
+            console.error('打开文件错误:', error);
+            alert('网络错误，无法打开文件');
+        }
+    }
+
+    /**
+     * 显示成功消息
+     */
+    showSuccessMessage(message) {
+        const toast = document.createElement('div');
+        toast.className = 'success-toast';
+        toast.textContent = message;
+        document.body.appendChild(toast);
+        
+        // 3秒后自动移除
+        setTimeout(() => {
+            if (toast.parentNode) {
+                toast.parentNode.removeChild(toast);
+            }
+        }, 3000);
+    }
+
+    /**
      * 显示文件编辑器
      */
     showFileEditor(fileData) {
+        const filename = fileData.path.split('/').pop();
+        const language = window.syntaxHighlighter ? 
+            window.syntaxHighlighter.getLanguageFromExtension(filename) : 'text';
+        const displayName = window.syntaxHighlighter ? 
+            window.syntaxHighlighter.getLanguageDisplayName(language) : '文本文件';
+        const fileIcon = window.syntaxHighlighter ? 
+            window.syntaxHighlighter.getFileTypeIcon(filename) : '📄';
+
         // 创建编辑器模态框
         const modal = document.createElement('div');
         modal.className = 'file-editor-modal';
@@ -490,7 +646,10 @@ class FileTree {
             <div class="file-editor-container">
                 <div class="file-editor-header">
                     <div class="file-editor-title">
-                        <span class="file-name">${this.escapeHtml(fileData.path.split('/').pop())}</span>
+                        <span class="file-name">
+                            ${fileIcon} ${this.escapeHtml(filename)}
+                            <span class="file-type-badge">${displayName}</span>
+                        </span>
                         <span class="file-path">${this.escapeHtml(fileData.path)}</span>
                     </div>
                     <div class="file-editor-actions">
@@ -499,7 +658,7 @@ class FileTree {
                     </div>
                 </div>
                 <div class="file-editor-content">
-                    <textarea class="file-editor-textarea" placeholder="文件内容...">${this.escapeHtml(fileData.content)}</textarea>
+                    <textarea class="file-editor-textarea" placeholder="文件内容..." data-language="${language}">${this.escapeHtml(fileData.content)}</textarea>
                 </div>
             </div>
         `;
@@ -507,8 +666,20 @@ class FileTree {
         document.body.appendChild(modal);
         this.selectedFile = fileData;
         
-        // 聚焦到编辑器
+        // 获取编辑器元素
         const textarea = modal.querySelector('.file-editor-textarea');
+        
+        // 应用语法高亮
+        if (window.syntaxHighlighter && language !== 'text') {
+            // 给容器添加语法高亮类
+            const content = modal.querySelector('.file-editor-content');
+            content.classList.add('syntax-highlighted');
+            
+            // 为textarea添加语法高亮增强
+            this.syntaxHighlightInstance = window.syntaxHighlighter.enhanceTextarea(textarea, filename);
+        }
+        
+        // 聚焦到编辑器
         textarea.focus();
     }
 
@@ -553,6 +724,12 @@ class FileTree {
      * 关闭编辑器
      */
     closeEditor() {
+        // 清理语法高亮实例
+        if (this.syntaxHighlightInstance && this.syntaxHighlightInstance.destroy) {
+            this.syntaxHighlightInstance.destroy();
+            this.syntaxHighlightInstance = null;
+        }
+        
         const modal = document.querySelector('.file-editor-modal');
         if (modal) {
             modal.remove();

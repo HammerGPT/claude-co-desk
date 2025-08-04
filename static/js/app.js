@@ -204,7 +204,10 @@ class App {
      * 切换标签
      */
     switchTab(tabName) {
-        console.log('切换标签:', tabName);
+        console.log(`🔍 [APP DEBUG] 切换标签: ${this.activeTab} -> ${tabName}`, {
+            terminalBufferLength: window.terminal?.terminal?.buffer?.active?.length || 0,
+            timestamp: new Date().toISOString()
+        });
         
         this.activeTab = tabName;
         
@@ -232,6 +235,11 @@ class App {
                 this.handleTerminalTabActivation();
                 break;
         }
+        
+        console.log(`🔍 [APP DEBUG] 标签切换完成: ${tabName}`, {
+            terminalBufferLength: window.terminal?.terminal?.buffer?.active?.length || 0,
+            timestamp: new Date().toISOString()
+        });
     }
 
     /**
@@ -246,46 +254,33 @@ class App {
      * 处理终端标签激活
      */
     handleTerminalTabActivation() {
-        // 终端标签激活时的逻辑
-        if (window.terminal) {
-            window.terminal.onActivate();
-        }
+        // 终端标签激活时不进行任何操作，避免内容丢失
+        // 移除对window.terminal.onActivate()的调用
+        console.log(`🔍 [APP DEBUG] 终端标签激活，保持当前状态`, {
+            terminalBufferLength: window.terminal?.terminal?.buffer?.active?.length || 0,
+            isConnected: window.terminal?.isConnected,
+            timestamp: new Date().toISOString()
+        });
     }
 
     /**
      * 加载文件树
      */
     async loadFileTree() {
-        const fileTree = document.getElementById('file-tree');
-        if (!fileTree) return;
+        const selectedProject = window.enhancedSidebar?.getSelectedProject();
         
-        const selectedProject = window.sidebar?.getSelectedProject();
         if (!selectedProject) {
-            fileTree.innerHTML = '<p class="empty-message">请先选择一个项目</p>';
+            // 如果没有选中项目，显示提示
+            const fileTreeFiles = document.getElementById('file-tree-files');
+            if (fileTreeFiles) {
+                fileTreeFiles.innerHTML = '<p class="empty-message">请先选择一个项目</p>';
+            }
             return;
         }
         
-        fileTree.innerHTML = '<p class="loading-message">正在加载文件...</p>';
-        
-        try {
-            // 这里可以实现文件树加载逻辑
-            // 暂时显示占位内容
-            setTimeout(() => {
-                fileTree.innerHTML = `
-                    <div class="file-item">
-                        <svg class="file-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-5l-2-2H5a2 2 0 00-2 2z"/>
-                        </svg>
-                        <span class="file-name">${selectedProject.display_name}</span>
-                    </div>
-                    <div style="margin-left: 24px; margin-top: 8px; color: hsl(var(--muted-foreground)); font-size: 14px;">
-                        文件树功能正在开发中...
-                    </div>
-                `;
-            }, 500);
-        } catch (error) {
-            console.error('加载文件树失败:', error);
-            fileTree.innerHTML = '<p class="error-message">❌ 加载文件失败</p>';
+        // 使用FileTree类加载文件
+        if (window.fileTree) {
+            window.fileTree.setSelectedProject(selectedProject);
         }
     }
 
@@ -298,7 +293,7 @@ class App {
         
         if (isMobile) {
             // 移动端处理
-            window.sidebar?.hideMobileSidebar();
+            window.enhancedSidebar?.hideMobileSidebar();
         }
     }
 
@@ -338,7 +333,7 @@ class App {
             isLoading: this.isLoading,
             activeTab: this.activeTab,
             environmentStatus: this.environmentStatus,
-            selectedProject: window.sidebar?.getSelectedProject()
+            selectedProject: window.enhancedSidebar?.getSelectedProject()
         };
     }
 }

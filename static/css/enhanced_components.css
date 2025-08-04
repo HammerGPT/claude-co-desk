@@ -212,12 +212,13 @@
 }
 
 .session-item:hover {
-  background: var(--surface-hover);
+  background: hsl(var(--accent) / 0.6);
 }
 
 .session-item.active {
-  background: var(--primary-light);
-  color: var(--primary-text);
+  background: hsl(var(--primary) / 0.15);
+  color: hsl(var(--foreground));
+  border: 1px solid hsl(var(--primary) / 0.3);
 }
 
 .session-item.recently-active::before {
@@ -255,8 +256,8 @@
 }
 
 .session-item.active .session-icon {
-  background: var(--primary);
-  color: white;
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
 }
 
 .session-content {
@@ -342,21 +343,23 @@
 }
 
 .load-more-btn:hover, .new-session-btn:hover {
-  background: var(--surface-hover);
-  border-color: var(--primary);
-  color: var(--text);
+  background: hsl(var(--accent));
+  border-color: hsl(var(--primary));
+  color: hsl(var(--accent-foreground));
 }
 
 .new-session-btn {
   border-style: solid;
-  background: var(--primary-light);
-  color: var(--primary);
+  background: hsl(var(--primary) / 0.1);
+  color: hsl(var(--primary));
   font-weight: 500;
+  border-color: hsl(var(--primary) / 0.3);
 }
 
 .new-session-btn:hover {
-  background: var(--primary);
-  color: white;
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  border-color: hsl(var(--primary));
 }
 
 .load-more-btn.loading {

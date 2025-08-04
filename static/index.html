@@ -27,6 +27,10 @@
     <!-- xterm.js 样式和脚本 -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.css" />
     
+    <!-- Prism.js 语法高亮 -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/themes/prism-tomorrow.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/plugins/line-numbers/prism-line-numbers.css" />
+    
     <!-- 样式文件 -->
     <link rel="stylesheet" href="/static/css/main.css">
     <link rel="stylesheet" href="/static/css/components.css">
@@ -182,7 +186,9 @@
                                     <h3>项目文件</h3>
                                 </div>
                                 <div id="file-tree" class="file-tree">
-                                    <!-- 动态填充文件树 -->
+                                    <div id="file-tree-files" class="file-tree-files">
+                                        <!-- 动态填充文件树 -->
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -217,8 +223,14 @@
     <script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xterm-addon-web-links@0.9.0/lib/xterm-addon-web-links.js"></script>
     
+    <!-- Prism.js 脚本 -->
+    <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-core.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/plugins/line-numbers/prism-line-numbers.min.js"></script>
+    
     <!-- JavaScript文件 -->
     <script src="/static/js/websocket.js"></script>
+    <script src="/static/js/syntax_highlighter.js"></script>
     <script src="/static/js/sidebar_enhanced.js"></script>
     <script src="/static/js/file_tree.js"></script>
     <script src="/static/js/chat.js"></script>
