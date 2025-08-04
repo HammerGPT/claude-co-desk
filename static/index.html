@@ -35,7 +35,7 @@
     <link rel="stylesheet" href="/static/css/main.css">
     <link rel="stylesheet" href="/static/css/components.css">
     <link rel="stylesheet" href="/static/css/enhanced_components.css">
-    <link rel="stylesheet" href="/static/css/file_tree.css">
+    <link rel="stylesheet" href="/static/css/session_mode.css">
 </head>
 <body>
     <!-- 主应用容器 - 移植自App.jsx -->
@@ -130,86 +130,94 @@
                     </div>
                 </div>
                 
-                <!-- 主内容区 - 移植自MainContent.jsx -->
+                <!-- 主内容区 - 会话页签模式 -->
                 <div id="main-content" class="main-content">
-                    <!-- 标签栏 -->
-                    <div class="tab-bar">
-                        <button id="chat-tab" class="tab-btn active" data-tab="chat">
-                            <svg class="tab-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
-                            </svg>
-                            聊天
-                        </button>
-                        <button id="files-tab" class="tab-btn" data-tab="files">
-                            <svg class="tab-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-5l-2-2H5a2 2 0 00-2 2z"/>
-                            </svg>
-                            文件
-                        </button>
-                        <button id="terminal-tab" class="tab-btn" data-tab="terminal">
-                            <svg class="tab-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3"/>
-                            </svg>
-                            终端
-                        </button>
+                    <!-- 动态会话页签栏 -->
+                    <div class="session-tab-bar">
+                        <div id="session-tabs" class="session-tabs">
+                            <!-- 动态创建会话页签 -->
+                        </div>
                     </div>
                     
-                    <!-- 内容面板 -->
-                    <div id="content-panels" class="content-panels">
-                        <!-- 聊天面板 - 移植自ChatInterface.jsx -->
-                        <div id="chat-panel" class="content-panel active">
-                            <div class="chat-container">
-                                <div id="chat-messages" class="chat-messages">
-                                    <!-- 动态填充聊天消息 -->
-                                </div>
-                                <div class="chat-input-container">
-                                    <div class="chat-input-wrapper">
-                                        <textarea 
-                                            id="chat-input" 
-                                            class="chat-input" 
-                                            placeholder="输入消息...按 Enter 发送"
-                                            rows="1"></textarea>
-                                        <button id="send-btn" class="send-btn">
-                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
+                    <!-- 会话内容区域 -->
+                    <div id="session-content" class="session-main-content">
+                        <!-- 当前会话的终端界面 -->
+                        <div id="current-session" class="current-session">
+                            <div class="session-terminal-container">
+                                <div class="session-header">
+                                    <div class="session-info">
+                                        <span id="current-project" class="current-project">未选择项目</span>
+                                        <span id="current-session-name" class="current-session-name"></span>
+                                    </div>
+                                    <div class="session-actions">
+                                        <button id="files-drawer-btn" class="action-btn" title="文件">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-5l-2-2H5a2 2 0 00-2 2z"/>
+                                            </svg>
+                                        </button>
+                                        <button id="session-settings" class="action-btn" title="设置">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
                                             </svg>
                                         </button>
                                     </div>
                                 </div>
-                            </div>
-                        </div>
-                        
-                        <!-- 文件面板 -->
-                        <div id="files-panel" class="content-panel">
-                            <div class="files-container">
-                                <div class="files-header">
-                                    <h3>项目文件</h3>
-                                </div>
-                                <div id="file-tree" class="file-tree">
-                                    <div id="file-tree-files" class="file-tree-files">
-                                        <!-- 动态填充文件树 -->
+                                <div id="session-terminal-wrapper" class="session-terminal-wrapper">
+                                    <div class="empty-terminal-state">
+                                        <p>请选择一个项目会话开始工作</p>
                                     </div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- 终端面板 - 使用xterm.js -->
-                        <div id="terminal-panel" class="content-panel">
-                            <div class="terminal-container">
-                                <div class="terminal-header">
-                                    <h3>Claude 终端</h3>
-                                    <div class="terminal-actions">
-                                        <button id="terminal-connect" class="btn btn-sm btn-primary">连接</button>
-                                        <button id="terminal-clear" class="btn btn-sm btn-secondary">清除</button>
-                                        <button id="terminal-restart" class="btn btn-sm btn-warning">重启</button>
-                                    </div>
-                                </div>
-                                <div id="terminal-wrapper" class="terminal-wrapper">
-                                    <!-- xterm.js 终端将挂载到这里 -->
                                 </div>
                             </div>
                         </div>
                     </div>
+                </div>
+                
+                <!-- 文件抽屉 -->
+                <div id="files-drawer" class="files-drawer">
+                    <div class="files-drawer-header">
+                        <h3 id="files-drawer-title">项目文件</h3>
+                        <button id="files-drawer-close" class="files-drawer-close">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <div id="files-drawer-content" class="files-drawer-content">
+                        <!-- 动态填充文件树 -->
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 项目连接确认对话框 -->
+        <div id="project-connect-modal" class="modal-overlay">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>连接到项目</h3>
+                    <button id="project-connect-close" class="modal-close">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="project-info">
+                        <div class="project-name">
+                            <strong id="connect-project-name"></strong>
+                        </div>
+                        <div class="project-path">
+                            <span id="connect-project-path"></span>
+                        </div>
+                    </div>
+                    <div class="session-config">
+                        <label for="session-name-input">会话名称:</label>
+                        <input type="text" id="session-name-input" class="session-name-input" placeholder="新建会话">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button id="project-connect-cancel" class="btn btn-secondary">取消</button>
+                    <button id="project-connect-confirm" class="btn btn-primary">连接</button>
                 </div>
             </div>
         </div>
@@ -232,9 +240,9 @@
     <script src="/static/js/websocket.js"></script>
     <script src="/static/js/syntax_highlighter.js"></script>
     <script src="/static/js/sidebar_enhanced.js"></script>
-    <script src="/static/js/file_tree.js"></script>
+    <script src="/static/js/files_drawer.js"></script>
+    <script src="/static/js/session_terminal.js"></script>
     <script src="/static/js/chat.js"></script>
-    <script src="/static/js/terminal.js"></script>
     <script src="/static/js/app.js"></script>
 </body>
 </html>

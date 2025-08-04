@@ -11,6 +11,8 @@ class EnhancedSidebar {
         this.expandedProjects = new Set();
         this.loadingSessions = new Set();
         this.additionalSessions = {}; // 分页加载的额外会话
+        this.activeSessions = new Map(); // sessionId -> {project, sessionName, tabElement}
+        this.activeSessionId = null;
         this.isLoading = false;
         this.currentTime = new Date();
         this.searchFilter = '';
@@ -32,6 +34,16 @@ class EnhancedSidebar {
         this.sidebarOverlay = document.getElementById('sidebar-overlay');
         this.mobileMenuBtn = document.getElementById('mobile-menu-btn');
         this.searchInput = this.createSearchInput();
+        
+        // 新增元素
+        this.sessionTabs = document.getElementById('session-tabs');
+        this.projectConnectModal = document.getElementById('project-connect-modal');
+        this.connectProjectName = document.getElementById('connect-project-name');
+        this.connectProjectPath = document.getElementById('connect-project-path');
+        this.sessionNameInput = document.getElementById('session-name-input');
+        this.projectConnectConfirm = document.getElementById('project-connect-confirm');
+        this.projectConnectCancel = document.getElementById('project-connect-cancel');
+        this.projectConnectClose = document.getElementById('project-connect-close');
     }
 
     /**
@@ -114,9 +126,30 @@ class EnhancedSidebar {
             this.hideMobileSidebar();
         });
 
-        // ESC键关闭移动端侧边栏
+        // 项目连接对话框事件
+        this.projectConnectConfirm?.addEventListener('click', () => {
+            this.confirmProjectConnection();
+        });
+        
+        this.projectConnectCancel?.addEventListener('click', () => {
+            this.hideProjectConnectModal();
+        });
+        
+        this.projectConnectClose?.addEventListener('click', () => {
+            this.hideProjectConnectModal();
+        });
+        
+        // 会话名称输入框回车确认
+        this.sessionNameInput?.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                this.confirmProjectConnection();
+            }
+        });
+
+        // ESC键关闭对话框和侧边栏
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
+                this.hideProjectConnectModal();
                 this.hideMobileSidebar();
             }
         });
@@ -147,10 +180,7 @@ class EnhancedSidebar {
                 this.projects = data.projects || [];
                 this.renderProjects();
                 
-                // 自动选择第一个项目（如果没有选中的项目）
-                if (this.projects.length > 0 && !this.selectedProject) {
-                    this.selectProject(this.projects[0]);
-                }
+                // 项目加载完成，不自动选择项目
             } else {
                 console.error('加载项目失败:', response.statusText);
                 this.showError('加载项目失败');
@@ -303,15 +333,14 @@ class EnhancedSidebar {
         projectEl.setAttribute('data-project', project.name);
         
         const isExpanded = this.expandedProjects.has(project.name);
+        const allSessions = this.getAllSessions(project);
+        const sessionCount = allSessions.length;
+        const hasMore = project.sessionMeta?.hasMore !== false;
         const isSelected = this.selectedProject?.name === project.name;
         
         if (isSelected) {
             projectEl.classList.add('active');
         }
-
-        const allSessions = this.getAllSessions(project);
-        const sessionCount = allSessions.length;
-        const hasMore = project.sessionMeta?.hasMore !== false;
 
         projectEl.innerHTML = `
             <div class="project-header" onclick="enhancedSidebar.toggleProject('${project.name}')">
@@ -358,7 +387,7 @@ class EnhancedSidebar {
                     <div class="no-sessions">
                         <p>暂无会话</p>
                     </div>
-                    <button class="new-session-btn" onclick="enhancedSidebar.createNewSession('${project.name}')">
+                    <button class="new-session-btn" onclick="enhancedSidebar.showNewSessionModal('${project.name}')">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <line x1="12" y1="5" x2="12" y2="19"></line>
                             <line x1="5" y1="12" x2="19" y2="12"></line>
@@ -424,7 +453,7 @@ class EnhancedSidebar {
 
         // 新建会话按钮
         sessionsHtml += `
-            <button class="new-session-btn" onclick="enhancedSidebar.createNewSession('${project.name}')">
+            <button class="new-session-btn" onclick="enhancedSidebar.showNewSessionModal('${project.name}')">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <line x1="12" y1="5" x2="12" y2="19"></line>
                     <line x1="5" y1="12" x2="19" y2="12"></line>
@@ -455,25 +484,9 @@ class EnhancedSidebar {
         this.renderProjects();
     }
 
-    /**
-     * 选择项目
-     */
-    selectProject(project) {
-        this.selectedProject = project;
-        this.selectedSession = null; // 清除会话选择
-        
-        // 自动展开项目
-        this.expandedProjects.add(project.name);
-        
-        this.renderProjects();
-        this.notifyProjectSelection(project);
-        this.hideMobileSidebar();
-        
-        console.log('选择项目:', project);
-    }
 
     /**
-     * 选择会话
+     * 选择会话（触发连接确认）
      */
     selectSession(projectName, sessionId) {
         const project = this.projects.find(p => p.name === projectName);
@@ -483,44 +496,120 @@ class EnhancedSidebar {
         const session = allSessions.find(s => s.id === sessionId);
         if (!session) return;
 
-        this.selectedProject = project;
-        this.selectedSession = session;
-        
-        this.renderProjects();
-        this.notifySessionSelection(project, session);
-        this.hideMobileSidebar();
+        // 显示连接确认对话框
+        this.showSessionConnectModal(project, session);
         
         console.log('选择会话:', session);
     }
-
+    
     /**
-     * 加载更多会话
+     * 显示会话连接弹窗
      */
-    async loadMoreSessions(projectName) {
-        const project = this.projects.find(p => p.name === projectName);
-        if (!project) return;
-
-        const currentSessionCount = this.getAllSessions(project).length;
-        await this.loadProjectSessions(projectName, 5, currentSessionCount);
-    }
-
-    /**
-     * 创建新会话
-     */
-    createNewSession(projectName) {
-        const project = this.projects.find(p => p.name === projectName);
-        if (!project) return;
-
-        this.selectProject(project);
-        this.selectedSession = null; // 清除当前会话选择以创建新会话
+    showSessionConnectModal(project, session) {
+        this.connectingProject = project;
+        this.connectingSession = session;
         
-        // 通知聊天界面创建新会话
-        const event = new CustomEvent('newSession', { 
-            detail: { project } 
-        });
-        document.dispatchEvent(event);
+        if (this.connectProjectName) {
+            this.connectProjectName.textContent = project.displayName || project.name;
+        }
+        if (this.connectProjectPath) {
+            this.connectProjectPath.textContent = project.path || project.fullPath || '未知路径';
+        }
+        if (this.sessionNameInput) {
+            this.sessionNameInput.value = session.summary || '现有会话';
+            // 焦点到输入框并选中文本
+            setTimeout(() => {
+                this.sessionNameInput.focus();
+                this.sessionNameInput.select();
+            }, 100);
+        }
+        
+        if (this.projectConnectModal) {
+            this.projectConnectModal.classList.add('active');
+        }
+    }
+    
+    /**
+     * 显示新建会话弹窗
+     */
+    showNewSessionModal(projectName) {
+        const project = this.projects.find(p => p.name === projectName);
+        if (!project) return;
+        
+        this.connectingProject = project;
+        this.connectingSession = null; // 标记为新建会话
+        
+        if (this.connectProjectName) {
+            this.connectProjectName.textContent = project.displayName || project.name;
+        }
+        if (this.connectProjectPath) {
+            this.connectProjectPath.textContent = project.path || project.fullPath || '未知路径';
+        }
+        if (this.sessionNameInput) {
+            this.sessionNameInput.value = '新建会话';
+            // 焦点到输入框并选中文本
+            setTimeout(() => {
+                this.sessionNameInput.focus();
+                this.sessionNameInput.select();
+            }, 100);
+        }
+        
+        if (this.projectConnectModal) {
+            this.projectConnectModal.classList.add('active');
+        }
+    }
+    
+    /**
+     * 隐藏项目连接弹窗
+     */  
+    hideProjectConnectModal() {
+        if (this.projectConnectModal) {
+            this.projectConnectModal.classList.remove('active');
+        }
+        this.connectingProject = null;
+        this.connectingSession = null;
     }
 
+    /**
+     * 确认项目连接
+     */
+    confirmProjectConnection() {
+        if (!this.connectingProject) return;
+        
+        const sessionName = this.sessionNameInput?.value?.trim() || '新建会话';
+        
+        if (this.connectingSession) {
+            // 连接到现有会话
+            this.connectToExistingSession(this.connectingProject, this.connectingSession, sessionName);
+        } else {
+            // 创建新会话
+            this.createSession(this.connectingProject, sessionName);
+        }
+        
+        this.hideProjectConnectModal();
+    }
+    
+    /**
+     * 连接到现有会话
+     */
+    connectToExistingSession(project, session, displayName) {
+        const sessionId = this.generateSessionId();
+        const tabElement = this.createSessionTab(sessionId, project, displayName);
+        
+        // 保存会话数据，包含原始会话信息
+        this.activeSessions.set(sessionId, {
+            project: project,
+            sessionName: displayName,
+            tabElement: tabElement,
+            originalSession: session // 保存原始会话信息用于恢复
+        });
+        
+        // 切换到新会话
+        this.switchToSession(sessionId);
+        
+        console.log('连接到现有会话:', sessionId, project.name, displayName, session.id);
+    }
+    
     /**
      * 删除会话
      */
@@ -555,58 +644,123 @@ class EnhancedSidebar {
     }
 
     /**
-     * 通知项目选择
+     * 创建新会话
      */
-    notifyProjectSelection(project) {
-        // 通知聊天界面
-        if (window.chatInterface) {
-            window.chatInterface.setSelectedProject(project);
+    createSession(project, sessionName) {
+        const sessionId = this.generateSessionId();
+        const tabElement = this.createSessionTab(sessionId, project, sessionName);
+        
+        // 保存会话数据，新会话没有originalSession
+        this.activeSessions.set(sessionId, {
+            project: project,
+            sessionName: sessionName,
+            tabElement: tabElement,
+            originalSession: null // 新会话没有原始会话信息
+        });
+        
+        // 切换到新会话
+        this.switchToSession(sessionId);
+        
+        // 更新项目列表显示
+        this.renderProjects();
+        
+        console.log('创建会话:', sessionId, project.name, sessionName);
+    }
+
+    /**
+     * 关闭会话
+     */
+    closeSession(sessionId) {
+        const sessionData = this.activeSessions.get(sessionId);
+        if (!sessionData) return;
+        
+        // 移除页签
+        if (sessionData.tabElement) {
+            sessionData.tabElement.remove();
         }
+        
+        // 从活跃会话中移除
+        this.activeSessions.delete(sessionId);
+        
+        // 如果关闭的是当前会话，切换到其他会话
+        if (this.activeSessionId === sessionId) {
+            const remainingSessions = Array.from(this.activeSessions.keys());
+            if (remainingSessions.length > 0) {
+                this.switchToSession(remainingSessions[0]);
+            } else {
+                this.activeSessionId = null;
+                this.showEmptyState();
+            }
+        }
+        
+        // 更新项目列表显示
+        this.renderProjects();
+        
+        console.log('关闭会话:', sessionId);
+    }
 
-        // 更新文件页面标题显示项目路径
-        this.updateFilePageTitle(project);
+    /**
+     * 切换到指定会话
+     */
+    switchToSession(sessionId) {
+        const sessionData = this.activeSessions.get(sessionId);
+        if (!sessionData) return;
+        
+        // 更新当前活跃会话
+        this.activeSessionId = sessionId;
+        
+        // 更新页签状态
+        this.updateTabStates();
+        
+        // 通知其他组件
+        this.notifySessionSwitch(sessionData);
+        
+        // 更新项目列表显示
+        this.renderProjects();
+        
+        console.log('切换到会话:', sessionId, sessionData.project.name, sessionData.sessionName);
+    }
 
-        // 触发自定义事件
-        const event = new CustomEvent('projectSelected', { 
-            detail: { project } 
+    /**
+     * 通知会话切换
+     */
+    notifySessionSwitch(sessionData) {
+        // 更新当前项目和会话信息显示
+        const currentProject = document.getElementById('current-project');
+        const currentSessionName = document.getElementById('current-session-name');
+        
+        if (currentProject) {
+            currentProject.textContent = sessionData.project.displayName || sessionData.project.name;
+        }
+        if (currentSessionName) {
+            currentSessionName.textContent = sessionData.sessionName;
+        }
+        
+        // 触发自定义事件，传递完整的会话信息
+        const event = new CustomEvent('sessionSwitch', { 
+            detail: { 
+                sessionId: this.activeSessionId,
+                project: sessionData.project,
+                sessionName: sessionData.sessionName,
+                originalSession: sessionData.originalSession // 传递原始会话信息用于恢复
+            } 
         });
         document.dispatchEvent(event);
     }
 
     /**
-     * 更新文件页面标题显示项目路径
+     * 显示空状态
      */
-    updateFilePageTitle(project) {
-        const filesHeader = document.querySelector('#files-panel .files-header h3');
-        if (filesHeader && project) {
-            filesHeader.innerHTML = `项目文件 <span class="project-path-display">${this.escapeHtml(project.path || project.fullPath)}</span>`;
-        } else if (filesHeader) {
-            filesHeader.textContent = '项目文件';
+    showEmptyState() {
+        const currentProject = document.getElementById('current-project');
+        const currentSessionName = document.getElementById('current-session-name');
+        
+        if (currentProject) {
+            currentProject.textContent = '未选择项目';
         }
-    }
-
-    /**
-     * 通知会话选择
-     */
-    notifySessionSelection(project, session) {
-        // 通知聊天界面
-        if (window.chatInterface) {
-            window.chatInterface.setSelectedSession(project, session);
+        if (currentSessionName) {
+            currentSessionName.textContent = '';
         }
-
-        // 更新文件页面标题显示项目路径
-        this.updateFilePageTitle(project);
-
-        // 通知FileTree组件更新文件列表
-        if (window.fileTree) {
-            window.fileTree.setSelectedProject(project);
-        }
-
-        // 触发自定义事件
-        const event = new CustomEvent('sessionSelected', { 
-            detail: { project, session } 
-        });
-        document.dispatchEvent(event);
     }
 
     /**
@@ -778,6 +932,90 @@ class EnhancedSidebar {
      */
     getSelectedSession() {
         return this.selectedSession;
+    }
+
+    /**
+     * 生成会话ID
+     */
+    generateSessionId() {
+        return 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+    }
+    
+    /**
+     * 创建会话页签
+     */
+    createSessionTab(sessionId, project, sessionName) {
+        const tabElement = document.createElement('div');
+        tabElement.className = 'session-tab';
+        tabElement.setAttribute('data-session-id', sessionId);
+        
+        tabElement.innerHTML = `
+            <div class="session-tab-content" onclick="enhancedSidebar.switchToSession('${sessionId}')">
+                <span class="session-tab-title">${this.escapeHtml(project.name)}: ${this.escapeHtml(sessionName)}</span>
+            </div>
+            <button class="session-tab-close" onclick="enhancedSidebar.closeSession('${sessionId}')" title="关闭会话">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+            </button>
+        `;
+        
+        if (this.sessionTabs) {
+            this.sessionTabs.appendChild(tabElement);
+        }
+        
+        return tabElement;
+    }
+    
+    /**
+     * 更新所有页签状态
+     */
+    updateTabStates() {
+        if (!this.sessionTabs) return;
+        
+        const tabs = this.sessionTabs.querySelectorAll('.session-tab');
+        tabs.forEach(tab => {
+            const sessionId = tab.getAttribute('data-session-id');
+            if (sessionId === this.activeSessionId) {
+                tab.classList.add('active');
+            } else {
+                tab.classList.remove('active');
+            }
+        });
+    }
+    
+    /**
+     * 获取项目的所有会话（包括分页加载的）
+     */
+    getAllSessions(project) {
+        const initialSessions = project.sessions || [];
+        const additional = this.additionalSessions[project.name] || [];
+        return [...initialSessions, ...additional];
+    }
+    
+    /**
+     * 加载更多会话
+     */
+    async loadMoreSessions(projectName) {
+        const project = this.projects.find(p => p.name === projectName);
+        if (!project) return;
+
+        const currentSessionCount = this.getAllSessions(project).length;
+        await this.loadProjectSessions(projectName, 5, currentSessionCount);
+    }
+    
+    /**
+     * 获取项目的活跃会话列表
+     */
+    getProjectSessions(projectName) {
+        const sessions = [];
+        for (const [sessionId, sessionData] of this.activeSessions) {
+            if (sessionData.project.name === projectName) {
+                sessions.push(sessionId);
+            }
+        }
+        return sessions;
     }
 
     /**
