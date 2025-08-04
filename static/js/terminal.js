@@ -17,6 +17,7 @@ class Terminal {
         this.initElements();
         this.initEventListeners();
         this.initTerminal();
+        this.initDebugEventListeners();
     }
 
     /**
@@ -95,7 +96,7 @@ class Terminal {
      */
     _createTerminal() {
         
-        // 创建xterm.js终端实例 - 优化配置，修复ANSI支持
+        // 创建xterm.js终端实例 - 只做ANSI处理修复，保持原有配置
         this.terminal = new window.Terminal({
             cursorBlink: true,
             fontSize: 14,
@@ -104,7 +105,7 @@ class Terminal {
             convertEol: true,
             scrollback: 10000,
             tabStopWidth: 4,
-            // 设置固定尺寸防止动态调整问题
+            // 恢复固定尺寸配置
             cols: 120,
             rows: 30,
             // 启用完整ANSI支持
@@ -161,9 +162,11 @@ class Terminal {
         // 使用固定尺寸，不进行动态调整
         console.log('✅ 使用固定终端尺寸: 120x30');
 
-        // 处理终端输入
+        // 处理终端输入 - 恢复简单版本，避免过度过滤
         this.terminal.onData((data) => {
             if (this.isConnected && window.shellWsManager) {
+                // 直接传输所有输入，不做过度过滤
+                // 之前的焦点检查会导致终端内容被意外清除
                 window.shellWsManager.sendInput(data);
             }
         });
@@ -175,6 +178,9 @@ class Terminal {
 
         this.isInitialized = true;
         console.log('✅ xterm.js终端初始化完成');
+
+        // 添加xterm.js事件监听器进行调试
+        this._addTerminalEventListeners();
 
         // 显示欢迎信息
         this.terminal.writeln('\\x1b[36m欢迎使用 Heliki OS Claude 终端\\x1b[0m');
@@ -252,13 +258,106 @@ class Terminal {
             return;
         }
 
-        // 终端输出处理 - 添加前端过滤
+        // 终端输出处理 - 添加ANSI序列调试
         window.shellWsManager.onMessage('output', (data) => {
             if (this.terminal && data.data) {
-                // 前端最后一层过滤
-                const filteredData = this._filterTerminalOutput(data.data);
-                if (filteredData) {
-                    this.terminal.write(filteredData);
+                // 检查是否包含可能导致清除的ANSI序列
+                const hasClearLine = data.data.includes('\x1B[2K');
+                const hasCursorUp = data.data.includes('\x1B[1A');
+                const hasClearScreen = data.data.includes('\x1B[2J');
+                const hasHome = data.data.includes('\x1B[H');
+                
+                console.log(`🔍 [TERMINAL DEBUG] 收到WebSocket输出消息:`, {
+                    originalLength: data.data.length,
+                    preview: data.data.substring(0, 100),
+                    ansiSequences: {
+                        clearLine: hasClearLine,
+                        cursorUp: hasCursorUp,
+                        clearScreen: hasClearScreen,
+                        home: hasHome
+                    },
+                    timestamp: new Date().toISOString()
+                });
+                
+                // 如果包含多个清除序列，记录详细信息
+                if (hasClearLine || hasCursorUp) {
+                    console.warn(`⚠️ [ANSI DEBUG] 检测到可能的内容清除序列:`, {
+                        raw: data.data.split('').map(c => c.charCodeAt(0) < 32 ? `\\x${c.charCodeAt(0).toString(16).padStart(2, '0').toUpperCase()}` : c).join(''),
+                        clearLineCount: (data.data.match(/\x1B\[2K/g) || []).length,
+                        cursorUpCount: (data.data.match(/\x1B\[1A/g) || []).length
+                    });
+                }
+                
+                // 精确的ANSI清除序列限制 - 防止过度清除历史内容
+                let output = data.data;
+                
+                // 检测并限制过度清除序列
+                if (hasClearLine && hasCursorUp) {
+                    const clearLineCount = (data.data.match(/\x1B\[2K/g) || []).length;
+                    const cursorUpCount = (data.data.match(/\x1B\[1A/g) || []).length;
+                    
+                    // 如果清除行数过多，进行动态调整
+                    if (clearLineCount >= 5 && cursorUpCount >= 4) {
+                        // 动态计算：减少2行以保护历史内容，最少保留3行清除能力
+                        const limitedCount = Math.max(clearLineCount - 1, 3);
+                        
+                        console.log(`🛡️ [DYNAMIC LIMIT] 检测到过度清除序列，动态调整清除行数:`, {
+                            原始清除行数: clearLineCount,
+                            原始光标上移: cursorUpCount,
+                            调整后行数: limitedCount,
+                            保护行数: clearLineCount - limitedCount,
+                            timestamp: new Date().toISOString()
+                        });
+                        
+                        // 动态生成限制后的清除序列
+                        let limitedPattern = '';
+                        for (let i = 0; i < limitedCount; i++) {
+                            if (i === limitedCount - 1) {
+                                // 最后一个序列，添加光标归位
+                                limitedPattern += '\x1B[2K\x1B[G';
+                            } else {
+                                // 中间序列，清除行并上移
+                                limitedPattern += '\x1B[2K\x1B[1A';
+                            }
+                        }
+                        
+                        // 替换原始的连续清除序列
+                        const originalPattern = /(\x1B\[2K\x1B\[1A)+\x1B\[2K\x1B\[G/g;
+                        output = data.data.replace(originalPattern, limitedPattern);
+                        
+                        console.warn(`✅ [DYNAMIC LIMIT] 已动态调整清除序列:`, {
+                            原始长度: data.data.length,
+                            处理后长度: output.length,
+                            策略: `${clearLineCount}行 → ${limitedCount}行`,
+                            保护效果: `保护了${clearLineCount - limitedCount}行历史内容`
+                        });
+                    } else if (clearLineCount >= 5) {
+                        // 记录但不限制（用于观察）
+                        console.log(`📝 [ANSI MONITOR] Claude CLI重绘序列:`, {
+                            clearLineCount,
+                            cursorUpCount,
+                            状态: '正常传递',
+                            timestamp: new Date().toISOString()
+                        });
+                    }
+                }
+                
+                // 基本的终端状态检查
+                if (this.terminal && this.terminal.buffer) {
+                    console.log(`🔍 [TERMINAL DEBUG] 写入终端:`, {
+                        outputLength: output.length,
+                        terminalBufferLength: this.terminal.buffer.active?.length || 0
+                    });
+                    this.terminal.write(output);
+                } else {
+                    console.warn(`🔍 [TERMINAL DEBUG] 终端状态异常，跳过写入:`, {
+                        hasTerminal: !!this.terminal,
+                        hasBuffer: !!this.terminal?.buffer,
+                        hasActive: !!this.terminal?.buffer?.active,
+                        dataLength: output.length
+                    });
+                    // 尝试恢复终端状态
+                    this._tryRecoverTerminalState();
                 }
             }
         });
@@ -574,22 +673,152 @@ class Terminal {
     }
 
     /**
-     * 前端输出过滤器 - 简化版，只处理明显错误
+     * 简化的输出处理 - 参考claudecodeui的直接写入方式
      */
     _filterTerminalOutput(rawData) {
         if (!rawData || typeof rawData !== 'string') {
             return rawData;
         }
-
-        let filtered = rawData;
         
-        // 只清理明显的乱码字符，保留所有ANSI序列
-        if (filtered.includes('��')) {
-            filtered = filtered.replace(/��/g, '');
-            console.debug('🧹 前端清理乱码字符');
+        // 简化处理：基本不过滤，直接返回原始数据
+        // 参考claudecodeui的实现，避免过度处理导致的问题
+        return rawData;
+    }
+
+    /**
+     * 添加xterm.js事件监听器进行调试
+     */
+    _addTerminalEventListeners() {
+        if (!this.terminal) return;
+
+        // 监听终端渲染事件
+        this.terminal.onRender((event) => {
+            console.log(`🔍 [XTERM DEBUG] 终端渲染事件:`, {
+                start: event.start,
+                end: event.end,
+                bufferLength: this.terminal?.buffer?.active?.length || 0,
+                viewportY: this.terminal?.buffer?.active?.viewportY || 0,
+                timestamp: new Date().toISOString()
+            });
+        });
+
+        // 移除onWriteParsed监听器 - claudecodeui未使用此事件，可能导致问题
+        // 保留注释以说明移除原因：避免undefined错误和过度处理
+
+        // 监听缓冲区变化
+        this.terminal.onScroll((yDisp) => {
+            console.log(`🔍 [XTERM DEBUG] 滚动事件:`, {
+                yDisp,
+                bufferLength: this.terminal?.buffer?.active?.length || 0,
+                viewportY: this.terminal?.buffer?.active?.viewportY || 0,
+                timestamp: new Date().toISOString()
+            });
+        });
+
+        // 监听选择变化
+        this.terminal.onSelectionChange(() => {
+            console.log(`🔍 [XTERM DEBUG] 选择变化事件:`, {
+                hasSelection: this.terminal.hasSelection(),
+                bufferLength: this.terminal?.buffer?.active?.length || 0,
+                timestamp: new Date().toISOString()
+            });
+        });
+
+        console.log('🔍 [XTERM DEBUG] 事件监听器已添加');
+    }
+
+    /**
+     * 初始化调试事件监听器
+     */
+    initDebugEventListeners() {
+        // 监听页面可见性变化
+        document.addEventListener('visibilitychange', () => {
+            console.log(`🔍 [PAGE DEBUG] 页面可见性变化:`, {
+                hidden: document.hidden,
+                visibilityState: document.visibilityState,
+                hasFocus: document.hasFocus(),
+                terminalActive: this.isActive(),
+                timestamp: new Date().toISOString()
+            });
+        });
+
+        // 监听窗口焦点变化
+        window.addEventListener('focus', () => {
+            console.log(`🔍 [PAGE DEBUG] 窗口获得焦点:`, {
+                terminalActive: this.isActive(),
+                isConnected: this.isConnected,
+                terminalBufferLength: this.terminal?.buffer?.active?.length,
+                timestamp: new Date().toISOString()
+            });
+        });
+
+        window.addEventListener('blur', () => {
+            console.log(`🔍 [PAGE DEBUG] 窗口失去焦点:`, {
+                terminalActive: this.isActive(),
+                isConnected: this.isConnected,
+                terminalBufferLength: this.terminal?.buffer?.active?.length,
+                timestamp: new Date().toISOString()
+            });
+        });
+
+        // 监听文档焦点变化
+        document.addEventListener('focusin', (event) => {
+            console.log(`🔍 [PAGE DEBUG] 文档焦点进入:`, {
+                target: event.target.tagName,
+                targetId: event.target.id,
+                terminalActive: this.isActive(),
+                timestamp: new Date().toISOString()
+            });
+        });
+
+        document.addEventListener('focusout', (event) => {
+            console.log(`🔍 [PAGE DEBUG] 文档焦点离开:`, {
+                target: event.target.tagName,
+                targetId: event.target.id,
+                terminalActive: this.isActive(),
+                timestamp: new Date().toISOString()
+            });
+        });
+
+        console.log('🔍 [PAGE DEBUG] 浏览器事件监听器已添加');
+    }
+
+    /**
+     * 尝试恢复终端状态
+     */
+    _tryRecoverTerminalState() {
+        console.log('🔧 [TERMINAL DEBUG] 尝试恢复终端状态...');
+        
+        if (!this.terminal) {
+            console.error('🔧 [TERMINAL DEBUG] 终端实例不存在，无法恢复');
+            return false;
         }
         
-        return filtered;
+        // 检查终端是否需要重新初始化
+        if (!this.terminal.buffer || !this.terminal.buffer.active) {
+            console.log('🔧 [TERMINAL DEBUG] 终端缓冲区异常，尝试刷新...');
+            
+            try {
+                // 尝试触发终端重新渲染
+                if (this.fitAddon) {
+                    this.fitAddon.fit();
+                }
+                
+                // 检查恢复结果
+                if (this.terminal.buffer && this.terminal.buffer.active) {
+                    console.log('✅ [TERMINAL DEBUG] 终端状态恢复成功');
+                    return true;
+                } else {
+                    console.warn('⚠️ [TERMINAL DEBUG] 终端状态恢复失败');
+                    return false;
+                }
+            } catch (error) {
+                console.error('❌ [TERMINAL DEBUG] 终端状态恢复出错:', error);
+                return false;
+            }
+        }
+        
+        return true;
     }
 
     /**
@@ -603,13 +832,11 @@ class Terminal {
      * 激活终端面板时的处理
      */
     onActivate() {
-        // 面板激活时不调整终端大小，使用固定尺寸
+        // 面板激活时只做日志记录，不进行任何终端内容操作
         console.log('📺 终端面板激活，使用固定尺寸120x30');
         
-        // 检查连接状态，必要时提示重新连接
-        if (!this.isConnected && !this.isConnecting && this.selectedProject) {
-            this.terminal.writeln('\\x1b[33m💡 点击"连接"按钮开始使用 Claude 终端\\x1b[0m');
-        }
+        // 移除任何可能导致终端内容丢失的writeln操作
+        // 焦点切换时不应该向终端写入任何内容
     }
 
     /**
