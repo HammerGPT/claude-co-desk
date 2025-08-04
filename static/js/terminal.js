@@ -183,8 +183,8 @@ class Terminal {
         this._addTerminalEventListeners();
 
         // 显示欢迎信息
-        this.terminal.writeln('\\x1b[36m欢迎使用 Heliki OS Claude 终端\\x1b[0m');
-        this.terminal.writeln('\\x1b[90m请选择项目和会话，然后点击"连接"开始\\x1b[0m');
+        this.terminal.writeln('\x1b[36m欢迎使用 Heliki OS Claude 终端\x1b[0m');
+        this.terminal.writeln('\x1b[90m请选择项目和会话，然后点击"连接"开始\x1b[0m');
         this.terminal.writeln('');
     }
 
@@ -371,11 +371,18 @@ class Terminal {
         window.shellWsManager.onConnection((connected) => {
             this.updateConnectionStatus(connected);
             
-            // 连接成功后立即调整终端尺寸
-            if (connected && this.terminal && this.fitAddon) {
-                setTimeout(() => {
-                    this._fitTerminalSize();
-                }, 100);
+            // 连接成功后清除欢迎信息并调整终端尺寸
+            if (connected && this.terminal) {
+                // 参考claudecodeui的实现，连接成功后清屏
+                this.terminal.clear();
+                this.terminal.write('\x1b[2J\x1b[H'); // 清屏并移动光标到左上角
+                
+                // 调整终端尺寸
+                if (this.fitAddon) {
+                    setTimeout(() => {
+                        this._fitTerminalSize();
+                    }, 100);
+                }
             }
         });
     }
@@ -387,7 +394,7 @@ class Terminal {
         // 检查是否正在连接中
         if (this.isConnecting) {
             console.warn('⚠️ 连接正在进行中，忽略重复请求');
-            this.terminal.writeln('\\x1b[33m⚠️ 连接正在进行中，请稍候...\\x1b[0m');
+            this.terminal.writeln('\x1b[33m⚠️ 连接正在进行中，请稍候...\x1b[0m');
             return;
         }
 
@@ -405,7 +412,7 @@ class Terminal {
 
             // 检查终端是否已初始化
             if (!this.isInitialized) {
-                this.terminal.writeln('\\x1b[31m❌ 终端未初始化\\x1b[0m');
+                this.terminal.writeln('\x1b[31m❌ 终端未初始化\x1b[0m');
                 return;
             }
 
@@ -416,7 +423,7 @@ class Terminal {
                     this.selectedProject = selectedProject;
                     console.log('✅ 从侧边栏获取到项目:', selectedProject);
                 } else {
-                    this.terminal.writeln('\\x1b[31m⚠️ 请先选择一个项目\\x1b[0m');
+                    this.terminal.writeln('\x1b[31m⚠️ 请先选择一个项目\x1b[0m');
                     console.error('❌ 没有选中的项目');
                     return;
                 }
@@ -430,7 +437,7 @@ class Terminal {
             }
 
             // 显示简单的连接状态（避免与后端输出重复）
-            this.terminal.write(`\\x1b[36m🔗 正在连接...\\x1b[0m\\r\\n`);
+            this.terminal.write(`\x1b[36m🔗 正在连接...\x1b[0m\r\n`);
 
             // 初始化WebSocket处理器
             this.initWebSocketHandlers();
@@ -462,7 +469,7 @@ class Terminal {
 
         } catch (error) {
             console.error('❌ 终端连接错误:', error);
-            this.terminal.writeln(`\\x1b[31m❌ 连接失败: ${error.message}\\x1b[0m`);
+            this.terminal.writeln(`\x1b[31m❌ 连接失败: ${error.message}\x1b[0m`);
             this.isConnected = false;
         } finally {
             // 无论成功失败都要释放连接锁
@@ -480,7 +487,7 @@ class Terminal {
             if (window.shellWsManager) {
                 window.shellWsManager.disconnect();
             }
-            this.terminal.writeln('\\x1b[33m🔌 连接已断开\\x1b[0m');
+            this.terminal.writeln('\x1b[33m🔌 连接已断开\x1b[0m');
         } catch (error) {
             console.error('❌ 断开连接时发生错误:', error);
         }
@@ -503,7 +510,7 @@ class Terminal {
         
         // 防止在连接过程中重启
         if (this.isConnecting) {
-            this.terminal.writeln('\\x1b[33m⚠️ 正在连接中，请稍候...\\x1b[0m');
+            this.terminal.writeln('\x1b[33m⚠️ 正在连接中，请稍候...\x1b[0m');
             return;
         }
         
@@ -517,16 +524,16 @@ class Terminal {
 
         // 重新显示欢迎信息
         setTimeout(() => {
-            this.terminal.writeln('\\x1b[36m欢迎使用 Heliki OS Claude 终端\\x1b[0m');
-            this.terminal.writeln('\\x1b[90m请选择项目和会话，然后点击"连接"开始\\x1b[0m');
+            this.terminal.writeln('\x1b[36m欢迎使用 Heliki OS Claude 终端\x1b[0m');
+            this.terminal.writeln('\x1b[90m请选择项目和会话，然后点击"连接"开始\x1b[0m');
             this.terminal.writeln('');
             
             // 如果有选中的项目，显示提示
             if (this.selectedProject) {
-                this.terminal.writeln(`\\x1b[90m📁 已选择项目: ${this.selectedProject.display_name || this.selectedProject.name}\\x1b[0m`);
+                this.terminal.writeln(`\x1b[90m📁 已选择项目: ${this.selectedProject.display_name || this.selectedProject.name}\x1b[0m`);
                 if (this.selectedSession) {
                     const sessionInfo = this.selectedSession.summary || this.selectedSession.id.substring(0, 8);
-                    this.terminal.writeln(`\\x1b[90m📋 已选择会话: ${sessionInfo}\\x1b[0m`);
+                    this.terminal.writeln(`\x1b[90m📋 已选择会话: ${sessionInfo}\x1b[0m`);
                 }
                 this.terminal.writeln('');
             }
@@ -550,7 +557,7 @@ class Terminal {
      * 处理URL打开
      */
     handleUrlOpen(url) {
-        this.terminal.writeln(`\\x1b[32m🌐 正在打开浏览器: ${url}\\x1b[0m`);
+        this.terminal.writeln(`\x1b[32m🌐 正在打开浏览器: ${url}\x1b[0m`);
         
         // 在新标签页中打开URL
         window.open(url, '_blank');
@@ -600,7 +607,7 @@ class Terminal {
         // 如果正在连接中，显示警告并忽略
         if (this.isConnecting) {
             console.warn('⚠️ 正在连接中，忽略项目切换请求');
-            this.terminal.writeln('\\x1b[33m⚠️ 正在连接中，请稍候...\\x1b[0m');
+            this.terminal.writeln('\x1b[33m⚠️ 正在连接中，请稍候...\x1b[0m');
             return;
         }
         
@@ -612,8 +619,8 @@ class Terminal {
         
         // 显示项目切换信息
         if (this.isConnected) {
-            this.terminal.writeln(`\\x1b[33m\\n📁 切换到项目: ${project?.display_name || project?.name}\\x1b[0m`);
-            this.terminal.writeln(`\\x1b[90m💡 点击"连接"按钮切换到此项目\\x1b[0m`);
+            this.terminal.writeln(`\x1b[33m\n📁 切换到项目: ${project?.display_name || project?.name}\x1b[0m`);
+            this.terminal.writeln(`\x1b[90m💡 点击"连接"按钮切换到此项目\x1b[0m`);
         }
     }
 
@@ -631,7 +638,7 @@ class Terminal {
         // 如果正在连接中，显示警告并忽略
         if (this.isConnecting) {
             console.warn('⚠️ 正在连接中，忽略会话切换请求');
-            this.terminal.writeln('\\x1b[33m⚠️ 正在连接中，请稍候...\\x1b[0m');
+            this.terminal.writeln('\x1b[33m⚠️ 正在连接中，请稍候...\x1b[0m');
             return;
         }
         
@@ -644,13 +651,13 @@ class Terminal {
         
         // 显示会话切换信息
         const sessionInfo = session ? session.summary || session.id.substring(0, 8) : '新会话';
-        this.terminal.writeln(`\\x1b[33m📋 已选择会话: ${sessionInfo}\\x1b[0m`);
+        this.terminal.writeln(`\x1b[33m📋 已选择会话: ${sessionInfo}\x1b[0m`);
         
         // 如果已连接，提示用户重新连接
         if (this.isConnected) {
-            this.terminal.writeln(`\\x1b[90m💡 点击"连接"按钮切换到此会话\\x1b[0m`);
+            this.terminal.writeln(`\x1b[90m💡 点击"连接"按钮切换到此会话\x1b[0m`);
         } else {
-            this.terminal.writeln(`\\x1b[90m💡 点击"连接"按钮开始会话\\x1b[0m`);
+            this.terminal.writeln(`\x1b[90m💡 点击"连接"按钮开始会话\x1b[0m`);
         }
     }
 
