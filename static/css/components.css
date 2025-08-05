@@ -299,6 +299,54 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* 主会话和子会话类型标识 */
+.session-type-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  transition: all 150ms ease;
+}
+
+.session-type-badge.primary {
+  background: hsl(var(--primary) / 0.2);
+  color: hsl(var(--primary));
+  border: 1px solid hsl(var(--primary) / 0.3);
+}
+
+.session-type-badge.sub {
+  background: hsl(var(--muted) / 0.5);
+  color: hsl(var(--muted-foreground));
+  border: 1px solid hsl(var(--border));
+}
+
+.session-item.active .session-type-badge.primary {
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+}
+
+.session-item.active .session-type-badge.sub {
+  background: hsl(var(--muted));
+  color: hsl(var(--muted-foreground));
+}
+
+/* 主会话和子会话样式差异 */
+.session-item.primary-session {
+  border-left: 2px solid hsl(var(--primary) / 0.4);
+}
+
+.session-item.sub-session {
+  margin-left: 8px;
+  opacity: 0.85;
+  border-left: 2px solid hsl(var(--muted) / 0.4);
 }
 
 .session-time {

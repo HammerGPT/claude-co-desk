@@ -90,6 +90,7 @@ class ProjectConfigManager:
         
         return project_path
 
+
 class JsonlSessionParser:
     """JSONL会话文件解析器"""
     
@@ -181,12 +182,28 @@ class JsonlSessionParser:
     
     @staticmethod
     async def parse_jsonl_sessions(file_path: Path) -> List[Dict[str, Any]]:
-        """解析JSONL文件并提取会话信息"""
+        """解析JSONL文件并提取会话信息 - 优先使用文件名作为主会话ID"""
         sessions = {}
+        
+        # 从文件名提取主会话ID（不带.jsonl扩展名）
+        main_session_id = file_path.stem
         
         try:
             async with aiofiles.open(file_path, 'r', encoding='utf-8') as f:
                 line_count = 0
+                # 用于收集主会话信息
+                main_session_data = {
+                    'id': main_session_id,
+                    'summary': '新会话',
+                    'messageCount': 0,
+                    'lastActivity': datetime.now(timezone.utc),
+                    'cwd': '',
+                    'isPrimary': True  # 标记为主会话
+                }
+                
+                # 用于收集子会话信息
+                sub_sessions = {}
+                
                 async for line in f:
                     line = line.strip()
                     if not line:
@@ -196,55 +213,91 @@ class JsonlSessionParser:
                     try:
                         entry = json.loads(line)
                         
+                        # 更新主会话信息
+                        main_session_data['messageCount'] += 1
+                        if 'cwd' in entry and entry['cwd']:
+                            main_session_data['cwd'] = entry['cwd']
+                        
+                        # 更新主会话摘要和活动时间
+                        if entry.get('type') == 'summary' and entry.get('summary'):
+                            main_session_data['summary'] = entry['summary']
+                        elif (entry.get('message', {}).get('role') == 'user' and 
+                              entry.get('message', {}).get('content') and 
+                              main_session_data['summary'] == '新会话'):
+                            # 使用第一个用户消息作为摘要
+                            content = entry['message']['content']
+                            if isinstance(content, str) and len(content) > 0:
+                                # 跳过以<command-name>开头的命令消息
+                                if not content.startswith('<command-name>'):
+                                    main_session_data['summary'] = content[:50] + '...' if len(content) > 50 else content
+                        
+                        # 更新最近活动时间
+                        if 'timestamp' in entry:
+                            try:
+                                timestamp = datetime.fromisoformat(
+                                    entry['timestamp'].replace('Z', '+00:00')
+                                )
+                                main_session_data['lastActivity'] = timestamp
+                            except ValueError:
+                                pass
+                        
+                        # 收集子会话信息（如果sessionId不同于文件名）
                         if 'sessionId' in entry:
                             session_id = entry['sessionId']
-                            
-                            if session_id not in sessions:
-                                sessions[session_id] = {
-                                    'id': session_id,
-                                    'summary': '新会话',
-                                    'messageCount': 0,
-                                    'lastActivity': datetime.now(timezone.utc),
-                                    'cwd': entry.get('cwd', '')
-                                }
-                            
-                            session = sessions[session_id]
-                            
-                            # 更新摘要
-                            if entry.get('type') == 'summary' and entry.get('summary'):
-                                session['summary'] = entry['summary']
-                            elif (entry.get('message', {}).get('role') == 'user' and 
-                                  entry.get('message', {}).get('content') and 
-                                  session['summary'] == '新会话'):
-                                # 使用第一个用户消息作为摘要
-                                content = entry['message']['content']
-                                if isinstance(content, str) and len(content) > 0:
-                                    # 跳过以<command-name>开头的命令消息
-                                    if not content.startswith('<command-name>'):
-                                        session['summary'] = content[:50] + '...' if len(content) > 50 else content
-                            
-                            # 统计消息数量
-                            session['messageCount'] += 1
-                            
-                            # 更新最近活动时间
-                            if 'timestamp' in entry:
-                                try:
-                                    session['lastActivity'] = datetime.fromisoformat(
-                                        entry['timestamp'].replace('Z', '+00:00')
-                                    )
-                                except ValueError:
-                                    pass
+                            if session_id != main_session_id:
+                                if session_id not in sub_sessions:
+                                    sub_sessions[session_id] = {
+                                        'id': session_id,
+                                        'summary': '子会话',
+                                        'messageCount': 0,
+                                        'lastActivity': datetime.now(timezone.utc),
+                                        'cwd': entry.get('cwd', ''),
+                                        'isPrimary': False  # 标记为子会话
+                                    }
+                                
+                                sub_session = sub_sessions[session_id]
+                                sub_session['messageCount'] += 1
+                                
+                                # 更新子会话摘要
+                                if entry.get('type') == 'summary' and entry.get('summary'):
+                                    sub_session['summary'] = entry['summary']
+                                elif (entry.get('message', {}).get('role') == 'user' and 
+                                      entry.get('message', {}).get('content') and 
+                                      sub_session['summary'] == '子会话'):
+                                    content = entry['message']['content']
+                                    if isinstance(content, str) and len(content) > 0:
+                                        if not content.startswith('<command-name>'):
+                                            sub_session['summary'] = content[:50] + '...' if len(content) > 50 else content
+                                
+                                # 更新子会话活动时间
+                                if 'timestamp' in entry:
+                                    try:
+                                        sub_session['lastActivity'] = datetime.fromisoformat(
+                                            entry['timestamp'].replace('Z', '+00:00')
+                                        )
+                                    except ValueError:
+                                        pass
+                                
                     except json.JSONDecodeError as e:
                         logger.warning(f"解析JSONL行 {line_count} 时出错: {e}")
                         continue
         except Exception as e:
             logger.error(f"读取JSONL文件 {file_path} 时出错: {e}")
         
-        # 转换为列表并按最近活动排序
-        session_list = list(sessions.values())
-        session_list.sort(key=lambda s: s['lastActivity'], reverse=True)
-        return session_list
-    
+        # 组合结果：主会话优先，然后是子会话
+        all_sessions = [main_session_data]
+        
+        # 按活动时间排序子会话
+        sorted_sub_sessions = sorted(
+            sub_sessions.values(), 
+            key=lambda s: s['lastActivity'], 
+            reverse=True
+        )
+        all_sessions.extend(sorted_sub_sessions)
+        
+        logger.info(f"文件 {file_path.name}: 主会话1个, 子会话{len(sub_sessions)}个")
+        return all_sessions
+
 
 class ProjectManager:
     """项目管理器 - 移植自claudecodeui核心功能"""
@@ -332,7 +385,7 @@ class ProjectManager:
     
     @staticmethod
     async def get_sessions(project_name: str, limit: int = 5, offset: int = 0) -> Dict[str, Any]:
-        """获取项目的会话列表，支持分页"""
+        """获取项目的会话列表，支持分页 - 恢复到原来的JSONL解析方式"""
         project_dir = Path.home() / '.claude' / 'projects' / project_name
         
         try:

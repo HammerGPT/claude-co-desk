@@ -359,6 +359,179 @@ class ClaudeCLIIntegration:
                 return False
         return False
     
+    async def spawn_continue_session(self, options: Dict[str, Any], websocket) -> None:
+        """
+        启动继续会话进程 - 执行 claude -c 命令
+        继续上个会话而不是恢复特定会话
+        """
+        session_id = options.get('sessionId')
+        project_path = options.get('projectPath')
+        project_name = options.get('projectName')
+        cwd = options.get('cwd', project_path or os.getcwd())
+        
+        logger.info(f"启动继续会话 - 项目: {project_name}, 路径: {project_path}, 工作目录: {cwd}")
+        
+        # 构建Claude CLI命令参数 - claude -c 是交互式命令，不需要其他参数
+        args = ['claude']
+        
+        # 使用工作目录
+        working_dir = cwd or os.getcwd()
+        
+        # 对于 -c 参数，只需要基本的 MCP 配置（如果有的话）
+        await self._add_mcp_config_if_available(args)
+        
+        # 最后添加 -c 参数继续上个会话
+        args.append('-c')
+        
+        logger.info(f"🚀 启动Claude继续会话")
+        logger.info(f"📍 完整命令: {' '.join(args)}")
+        logger.info(f"📍 命令数组: {args}")
+        logger.info(f"📁 工作目录: {working_dir}")
+        logger.info(f"🆔 会话信息 - sessionId: {session_id}, 项目: {project_name}")
+        logger.info(f"⚠️  关键: 使用 claude -c 继续上个会话（而非新建会话）")
+        
+        try:
+            # 配置终端环境变量，支持完整ANSI颜色
+            env = os.environ.copy()
+            env.update({
+                'TERM': 'xterm-256color',  # 支持256色
+                'COLORTERM': 'truecolor',  # 支持真彩色
+                'COLUMNS': '120',          # 固定列数
+                'LINES': '30',             # 固定行数
+                'FORCE_COLOR': '1',        # 强制彩色输出
+                'NO_COLOR': '',            # 清除禁用颜色标志
+            })
+            
+            # 启动Claude进程 - 继承标准输入以访问会话历史
+            process = await asyncio.create_subprocess_exec(
+                *args,
+                cwd=working_dir,
+                stdin=None,  # 继承父进程的stdin，让claude -c能访问会话历史
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+                env=env
+            )
+            
+            # 存储进程引用
+            process_key = session_id or str(id(process))
+            self.active_processes[process_key] = process
+            
+            # 处理stdout（流式JSON响应）
+            async def handle_stdout():
+                logger.info("🚀 开始监听Claude继续会话 stdout...")
+                try:
+                    while True:
+                        try:
+                            line = await asyncio.wait_for(process.stdout.readline(), timeout=30.0)
+                            if not line:
+                                logger.info("📜 Claude继续会话 stdout结束")
+                                break
+                        except asyncio.TimeoutError:
+                            logger.warning("⏰ Claude继续会话 stdout读取超时，检查进程状态...")
+                            if process.returncode is not None:
+                                logger.info(f"🔚 Claude继续会话进程已结束，返回码: {process.returncode}")
+                                break
+                            continue
+                        
+                        try:
+                            raw_output = line.decode('utf-8').strip()
+                            if not raw_output:
+                                continue
+                            
+                            logger.info(f"📤 Claude继续会话 stdout: {raw_output[:200]}{'...' if len(raw_output) > 200 else ''}")
+                            
+                            try:
+                                response = json.loads(raw_output)
+                                logger.info(f"✅ 解析JSON成功: type={response.get('type')}")
+                                
+                                # 发送解析后的响应到WebSocket
+                                await websocket.send_text(json.dumps({
+                                    'type': 'claude-response',
+                                    'data': response
+                                }))
+                            except json.JSONDecodeError:
+                                logger.info(f"📄 非JSON响应: {raw_output}")
+                                # 发送原始文本
+                                await websocket.send_text(json.dumps({
+                                    'type': 'claude-output',
+                                    'data': raw_output
+                                }))
+                        except Exception as e:
+                            logger.error(f"❌ 处理stdout行异常: {e}")
+                            
+                except Exception as e:
+                    logger.error(f"❌ handle_stdout异常: {e}")
+                finally:
+                    logger.info("🔚 handle_stdout结束")
+            
+            # 处理stderr
+            async def handle_stderr():
+                logger.info("🚀 开始监听Claude继续会话 stderr...")
+                try:
+                    while True:
+                        try:
+                            line = await asyncio.wait_for(process.stderr.readline(), timeout=30.0)
+                            if not line:
+                                logger.info("📜 Claude继续会话 stderr结束")
+                                break
+                        except asyncio.TimeoutError:
+                            if process.returncode is not None:
+                                break
+                            continue
+                        
+                        try:
+                            stderr_output = line.decode('utf-8').strip()
+                            if stderr_output:
+                                logger.error(f"📤 Claude继续会话 stderr: {stderr_output}")
+                                await websocket.send_text(json.dumps({
+                                    'type': 'claude-error',
+                                    'error': stderr_output
+                                }))
+                        except Exception as e:
+                            logger.error(f"❌ 处理stderr行异常: {e}")
+                            
+                except Exception as e:
+                    logger.error(f"❌ handle_stderr异常: {e}")
+                finally:
+                    logger.info("🔚 handle_stderr结束")
+            
+            # 启动异步处理任务
+            stdout_task = asyncio.create_task(handle_stdout())
+            stderr_task = asyncio.create_task(handle_stderr())
+            
+            # 等待进程完成
+            return_code = await process.wait()
+            
+            # 清理进程引用
+            if process_key in self.active_processes:
+                del self.active_processes[process_key]
+            
+            # 发送完成消息
+            await websocket.send_text(json.dumps({
+                'type': 'claude-complete',
+                'exitCode': return_code,
+                'isContinueSession': True
+            }))
+            
+            # 等待输出处理完成
+            await asyncio.gather(stdout_task, stderr_task, return_exceptions=True)
+            
+            logger.info(f"Claude继续会话进程退出，代码: {return_code}")
+            
+        except Exception as error:
+            logger.error(f"Claude继续会话进程错误: {error}")
+            
+            # 清理进程引用
+            if process_key in self.active_processes:
+                del self.active_processes[process_key]
+            
+            await websocket.send_text(json.dumps({
+                'type': 'claude-error',
+                'error': str(error)
+            }))
+            
+            raise
+    
     @staticmethod
     def check_claude_availability() -> bool:
         """检查Claude CLI是否可用"""

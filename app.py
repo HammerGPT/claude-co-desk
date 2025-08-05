@@ -174,7 +174,7 @@ class PTYShellHandler:
                 self.running and 
                 self.master_fd is not None)
     
-    async def start_shell(self, websocket: WebSocket, project_path: str, session_id: str = None, has_session: bool = False, cols: int = 80, rows: int = 24):
+    async def start_shell(self, websocket: WebSocket, project_path: str, session_id: str = None, has_session: bool = False, cols: int = 80, rows: int = 24, initial_command: str = None):
         """启动PTY shell进程"""
         # 如果已经有进程在运行，先清理
         if self.is_running():
@@ -187,11 +187,19 @@ class PTYShellHandler:
         self.loop = asyncio.get_running_loop()  # 保存当前事件循环
         
         try:
-            # 构建Claude命令 - 使用fallback机制
-            if has_session and session_id:
-                # 尝试恢复会话，失败时自动启动新会话（移植自claudecodeui）
+            # 构建Claude命令 - 支持初始命令参数
+            if initial_command:
+                # 使用传入的初始命令（如 'claude -c'）
+                shell_command = f'cd "{project_path}" && {initial_command}'
+                logger.info(f"🚀 使用初始命令: {initial_command}")
+            elif has_session and session_id:
+                # 优化恢复会话策略：
+                # 1. 首先尝试使用传入的session_id
+                # 2. 如果失败，自动启动新会话
+                # 注：session_id现在优先是文件名(主会话ID)，更可能成功
                 shell_command = f'cd "{project_path}" && (claude --resume {session_id} || claude)'
-                logger.info(f"🔄 恢复会话命令（带fallback）: claude --resume {session_id} || claude")
+                logger.info(f"🔄 恢复会话命令（增强fallback）: claude --resume {session_id} || claude")
+                logger.info(f"💡 会话ID类型: {'主会话' if len(session_id.split('-')) == 5 else '子会话'}")
             else:
                 # 直接启动新会话
                 shell_command = f'cd "{project_path}" && claude'
@@ -1304,12 +1312,15 @@ async def shell_websocket_endpoint(websocket: WebSocket):
                 project_path = message.get('projectPath', str(Path.cwd()))
                 session_id = message.get('sessionId')
                 has_session = message.get('hasSession', False)
+                initial_command = message.get('initialCommand')  # 添加初始命令参数
+                project_name = message.get('projectName')  # 添加项目名称参数
                 cols = message.get('cols', 80)
                 rows = message.get('rows', 24)
                 
                 logger.info(f"🚀 PTY Shell初始化请求")
                 logger.info(f"📁 项目路径: {project_path}")
                 logger.info(f"📋 会话信息: {'恢复会话 ' + str(session_id) if has_session else '新会话'}")
+                logger.info(f"🚀 初始命令: {initial_command or 'claude'}")
                 logger.info(f"📐 终端大小: {cols}x{rows}")
                 
                 # 检查项目路径是否存在
@@ -1327,8 +1338,8 @@ async def shell_websocket_endpoint(websocket: WebSocket):
                     logger.info("🔄 检测到已有PTY进程，先清理")
                     pty_handler.cleanup()
                 
-                # 启动PTY Shell（传入正确的终端尺寸）
-                success = await pty_handler.start_shell(websocket, project_path, session_id, has_session, cols, rows)
+                # 启动PTY Shell，传递初始命令参数
+                success = await pty_handler.start_shell(websocket, project_path, session_id, has_session, cols, rows, initial_command)
                 # 如果启动成功，尺寸已在初始化时设置，无需额外调用resize
             
             elif message.get('type') == 'input':
