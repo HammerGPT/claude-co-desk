@@ -307,6 +307,66 @@
   line-height: 1.2;
 }
 
+/* 会话状态指示器 - 移植自claudecodeui */
+.session-status {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.activity-indicator {
+  width: 8px;
+  height: 8px;
+  background: #22c55e; /* green-500 */
+  border-radius: 50%;
+  animation: pulse 2s infinite;
+}
+
+.selected-indicator {
+  width: 6px;
+  height: 6px;
+  background: hsl(var(--primary));
+  border-radius: 50%;
+  border: 1px solid hsl(var(--background));
+}
+
+
+/* 会话选中状态 */
+.session-item.selected {
+  background: hsl(var(--accent));
+  border: 1px solid hsl(var(--primary) / 0.4);
+  color: hsl(var(--accent-foreground));
+}
+
+.session-item.selected .session-icon {
+  color: hsl(var(--primary));
+}
+
+.session-item.selected .session-title {
+  font-weight: 600;
+}
+
+.session-item.connected {
+  background: hsl(var(--accent) / 0.3);
+  border: 1px solid hsl(var(--primary) / 0.2);
+  border-left: 3px solid #22c55e; /* green-500 - 连接状态左边框 */
+}
+
+.session-item.connected .session-icon {
+  color: hsl(var(--primary));
+}
+
+/* 脉动动画 */
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
 /* 主内容区样式 */
 .main-content {
   flex: 1;
@@ -328,25 +388,45 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 0 16px;
+  padding: 8px 20px; /* 增加内边距，更大的点击区域 */
   background: none;
   border: none;
   color: hsl(var(--muted-foreground));
   cursor: pointer;
-  border-bottom: 2px solid transparent;
-  transition: all 150ms ease;
+  border-bottom: 3px solid transparent; /* 增加边框厚度 */
+  border-radius: 6px 6px 0 0; /* 添加圆角 */
+  transition: all 200ms ease;
   font-size: 14px;
   font-weight: 500;
+  position: relative;
+  margin: 4px 2px 0 2px; /* 添加间距 */
 }
 
 .tab-btn:hover {
   color: hsl(var(--foreground));
-  background: hsl(var(--accent) / 0.5);
+  background: hsl(var(--accent) / 0.6);
+  transform: translateY(-1px); /* 微妙的上移效果 */
 }
 
 .tab-btn.active {
   color: hsl(var(--primary));
+  background: hsl(var(--background)); /* 活跃背景 */
   border-bottom-color: hsl(var(--primary));
+  font-weight: 600; /* 更粗的字体 */
+  box-shadow: 0 -2px 8px hsl(var(--primary) / 0.15); /* 顶部阴影 */
+  transform: translateY(-2px); /* 明显的上移效果 */
+  z-index: 1; /* 确保在其他标签之上 */
+}
+
+.tab-btn.active::before {
+  content: '';
+  position: absolute;
+  bottom: -3px;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: hsl(var(--primary));
+  border-radius: 2px 2px 0 0;
 }
 
 .tab-icon {

@@ -1313,6 +1313,13 @@ async def shell_websocket_endpoint(websocket: WebSocket):
                 input_data = message.get('data', '')
                 await pty_handler.send_input(input_data)
             
+            elif message.get('type') == 'ping':
+                # 心跳检测 - 回复pong
+                await websocket.send_text(json.dumps({
+                    'type': 'pong',
+                    'timestamp': message.get('timestamp')
+                }))
+            
             elif message.get('type') == 'resize':
                 # 处理终端大小调整
                 cols = message.get('cols', 80)

@@ -813,6 +813,69 @@ class ChatInterface {
             return `<pre class="tool-result-text">${this.escapeHtml(result)}</pre>`;
         }
     }
+
+    // ===== 会话连接管理 - 移植自claudecodeui =====
+
+    /**
+     * 连接到指定会话
+     */
+    connectToSession(session) {
+        console.log(`🔗 连接到会话:`, session);
+        
+        // 设置选中的会话和项目
+        this.selectedSession = session;
+        this.selectedProject = {
+            name: session.projectName,
+            path: session.projectPath
+        };
+        
+        // 通知app组件会话已选中
+        if (window.app) {
+            window.app.setSelectedSession(session);
+        }
+        
+        // 加载会话消息
+        this.loadSessionMessages(session.id);
+        
+        // 设置当前会话ID
+        this.currentSessionId = session.id;
+        
+        console.log(`✅ 已连接到会话: ${session.id}`);
+    }
+
+    /**
+     * 处理会话完成事件
+     */
+    handleSessionComplete(sessionId, exitCode = 0) {
+        console.log(`🏁 会话完成: ${sessionId}, 退出码: ${exitCode}`);
+        
+        // 标记会话为非活跃
+        if (window.app) {
+            window.app.markSessionAsInactive(sessionId);
+        }
+        
+        // 如果是当前会话，清理状态
+        if (this.currentSessionId === sessionId) {
+            this.currentSessionId = null;
+        }
+    }
+
+    /**
+     * 处理会话创建事件
+     */
+    handleSessionCreated(sessionId, tempSessionId) {
+        console.log(`🆕 会话已创建: ${sessionId} (临时ID: ${tempSessionId})`);
+        
+        // 更新当前会话ID
+        if (this.currentSessionId === tempSessionId) {
+            this.currentSessionId = sessionId;
+        }
+        
+        // 标记会话为活跃
+        if (window.app) {
+            window.app.markSessionAsActive(sessionId);
+        }
+    }
 }
 
 // 创建全局实例

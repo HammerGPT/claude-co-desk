@@ -44,9 +44,17 @@
 
 .session-tab.active {
     background: hsl(var(--background));
-    border-bottom: 1px solid hsl(var(--background));
-    margin-bottom: -1px;
+    border: 2px solid hsl(var(--primary)); /* 更明显的边框 */
+    border-bottom: 2px solid hsl(var(--background));
+    margin-bottom: -2px; /* 调整以适配更粗的边框 */
     z-index: 1;
+    box-shadow: 0 -4px 12px hsl(var(--primary) / 0.15); /* 顶部阴影 */
+    transform: translateY(-1px); /* 微妙上移效果 */
+}
+
+.session-tab.active .session-tab-title {
+    color: hsl(var(--primary)); /* 活跃标签的文字颜色 */
+    font-weight: 600; /* 加粗字体 */
 }
 
 .session-tab-content {

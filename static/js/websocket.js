@@ -149,6 +149,10 @@ class WebSocketManager {
      */
     _handleMessage(data) {
         const type = data.type;
+        
+        // 优先处理会话状态相关消息
+        this._handleSessionStateMessages(data);
+        
         if (this.messageHandlers.has(type)) {
             const handlers = this.messageHandlers.get(type);
             handlers.forEach(handler => {
@@ -158,6 +162,43 @@ class WebSocketManager {
                     console.error('❌ 消息处理器错误:', error);
                 }
             });
+        }
+    }
+
+    /**
+     * 处理会话状态消息 - 移植自claudecodeui
+     */
+    _handleSessionStateMessages(data) {
+        const type = data.type;
+        
+        switch (type) {
+            case 'claude-response':
+                // Claude开始响应，标记会话为活跃
+                if (data.session_id && window.app) {
+                    window.app.markSessionAsActive(data.session_id);
+                }
+                break;
+                
+            case 'claude-complete':
+                // Claude完成响应，处理会话状态
+                if (data.session_id && window.chatInterface) {
+                    window.chatInterface.handleSessionComplete(data.session_id, data.exitCode);
+                }
+                break;
+                
+            case 'session-created':
+                // 新会话创建
+                if (data.sessionId && data.tempSessionId && window.chatInterface) {
+                    window.chatInterface.handleSessionCreated(data.sessionId, data.tempSessionId);
+                }
+                break;
+                
+            case 'session-resumed':
+                // 会话恢复
+                if (data.sessionId && window.app) {
+                    window.app.markSessionAsActive(data.sessionId);
+                }
+                break;
         }
     }
 
@@ -213,6 +254,17 @@ class ShellWebSocketManager {
         this.isConnecting = false;  // 添加连接状态锁
         this.messageHandlers = new Map();
         this.connectionHandlers = [];
+        // 自动重连相关
+        this.reconnectTimeout = null;
+        this.reconnectAttempts = 0;
+        this.maxReconnectAttempts = 5;
+        this.reconnectDelay = 3000; // 3秒重连间隔
+        this.shouldReconnect = true; // 是否应该自动重连
+        // 心跳机制
+        this.heartbeatInterval = null;
+        this.heartbeatFrequency = 30000; // 30秒心跳间隔
+        this.missedHeartbeats = 0;
+        this.maxMissedHeartbeats = 3;
     }
 
     /**
@@ -245,6 +297,9 @@ class ShellWebSocketManager {
                     console.log('✅ Shell WebSocket连接已建立');
                     this.isConnected = true;
                     this.isConnecting = false;
+                    this.reconnectAttempts = 0; // 重置重连计数器
+                    this.missedHeartbeats = 0; // 重置心跳计数器
+                    this._startHeartbeat(); // 启动心跳
                     this._notifyConnectionHandlers(true);
                     resolve(); // 连接成功后resolve
                 };
@@ -263,7 +318,22 @@ class ShellWebSocketManager {
                     this.isConnected = false;
                     this.isConnecting = false;
                     this.ws = null;
+                    this._stopHeartbeat(); // 停止心跳
                     this._notifyConnectionHandlers(false);
+                    
+                    // 自动重连机制
+                    if (this.shouldReconnect && this.reconnectAttempts < this.maxReconnectAttempts) {
+                        this.reconnectAttempts++;
+                        console.log(`🔄 尝试重新连接Shell WebSocket (${this.reconnectAttempts}/${this.maxReconnectAttempts})...`);
+                        
+                        this.reconnectTimeout = setTimeout(() => {
+                            this.connect().catch(error => {
+                                console.error('❌ Shell WebSocket重连失败:', error);
+                            });
+                        }, this.reconnectDelay);
+                    } else if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+                        console.error('❌ Shell WebSocket重连次数已达上限，停止重连');
+                    }
                 };
                 
                 this.ws.onerror = (error) => {
@@ -345,10 +415,25 @@ class ShellWebSocketManager {
     }
 
     /**
+     * 手动断开连接（不自动重连）
+     */
+    manualDisconnect() {
+        this.shouldReconnect = false; // 禁用自动重连
+        // 清理重连计时器
+        if (this.reconnectTimeout) {
+            clearTimeout(this.reconnectTimeout);
+            this.reconnectTimeout = null;
+        }
+        this.disconnect();
+    }
+
+    /**
      * 断开连接
      */
     disconnect() {
         console.log('🔌 正在断开Shell WebSocket连接...');
+        
+        this._stopHeartbeat(); // 停止心跳
         
         if (this.ws) {
             this.ws.close();
@@ -367,6 +452,13 @@ class ShellWebSocketManager {
      */
     _handleMessage(data) {
         const type = data.type;
+        
+        // 特殊处理心跳响应
+        if (type === 'pong') {
+            this._handlePong(data);
+            return;
+        }
+        
         if (this.messageHandlers.has(type)) {
             const handlers = this.messageHandlers.get(type);
             handlers.forEach(handler => {
@@ -390,6 +482,55 @@ class ShellWebSocketManager {
                 console.error('❌ Shell连接状态处理器错误:', error);
             }
         });
+    }
+
+    /**
+     * 启动心跳机制
+     */
+    _startHeartbeat() {
+        this._stopHeartbeat(); // 先清理现有心跳
+        
+        this.heartbeatInterval = setInterval(() => {
+            if (this.isConnected && this.ws) {
+                const timestamp = Date.now();
+                this.sendMessage({
+                    type: 'ping',
+                    timestamp: timestamp
+                });
+                
+                // 记录心跳发送
+                this._lastPingTime = timestamp;
+                this.missedHeartbeats++;
+                
+                // 检查是否超过最大丢失心跳数
+                if (this.missedHeartbeats > this.maxMissedHeartbeats) {
+                    console.warn('❤️‍🩹 Shell WebSocket心跳超时，主动断开连接');
+                    this.disconnect();
+                }
+            }
+        }, this.heartbeatFrequency);
+        
+        console.log('❤️ Shell WebSocket心跳机制已启动');
+    }
+
+    /**
+     * 停止心跳机制
+     */
+    _stopHeartbeat() {
+        if (this.heartbeatInterval) {
+            clearInterval(this.heartbeatInterval);
+            this.heartbeatInterval = null;
+            console.log('💔 Shell WebSocket心跳机制已停止');
+        }
+    }
+
+    /**
+     * 处理心跳响应
+     */
+    _handlePong(data) {
+        this.missedHeartbeats = 0; // 重置丢失计数
+        const latency = Date.now() - data.timestamp;
+        console.log(`❤️ Shell WebSocket心跳响应: ${latency}ms`);
     }
 }
 

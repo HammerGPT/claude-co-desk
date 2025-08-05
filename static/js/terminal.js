@@ -121,15 +121,18 @@ class Terminal {
             drawBoldTextInBrightColors: true,
             screenReaderMode: false,
             smoothScrollDuration: 0,
-            // 完整的ANSI颜色主题配置
+            // 移植claudecodeui的优化ANSI颜色主题配置
             theme: {
-                background: '#000000',
-                foreground: '#ffffff',
-                cursor: '#ffffff',
-                cursorAccent: '#000000',
-                selectionBackground: '#ffffff40',
-                // 标准16色支持
-                black: '#000000',
+                // 基础颜色 - 改善对比度和护眼效果
+                background: '#1e1e1e',       // 深灰色背景，更护眼
+                foreground: '#d4d4d4',       // 浅灰色前景，更好的对比度
+                cursor: '#ffffff',           // 白色光标
+                cursorAccent: '#1e1e1e',     // 光标强调色
+                selection: '#264f78',        // 选择区域背景色
+                selectionForeground: '#ffffff', // 选择区域文字色
+                selectionBackground: '#264f78', // 选择区域背景色(兼容)
+                // 标准ANSI颜色 (0-7) - 优化可见性
+                black: '#333333',            // 改为深灰避免与背景融合
                 red: '#cd3131',
                 green: '#0dbc79', 
                 yellow: '#e5e510',
@@ -137,8 +140,8 @@ class Terminal {
                 magenta: '#bc3fbc',
                 cyan: '#11a8cd',
                 white: '#e5e5e5',
-                // 亮色变体
-                brightBlack: '#666666',
+                // 亮色变体 (8-15) - 保持高对比度
+                brightBlack: '#666666',      // 中灰色，确保可见
                 brightRed: '#f14c4c',
                 brightGreen: '#23d18b',
                 brightYellow: '#f5f543',

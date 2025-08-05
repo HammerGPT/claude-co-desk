@@ -9,6 +9,11 @@ class App {
         this.activeTab = 'chat';
         this.environmentStatus = null;
         
+        // 会话保护系统 - 移植自claudecodeui
+        this.activeSessions = new Set(); // 活跃会话ID集合
+        this.sessionActivity = new Map(); // 会话活动时间戳
+        this.selectedSession = null; // 当前选中的会话
+        
         this.initElements();
         this.initEventListeners();
         this.initialize();
@@ -333,8 +338,132 @@ class App {
             isLoading: this.isLoading,
             activeTab: this.activeTab,
             environmentStatus: this.environmentStatus,
-            selectedProject: window.enhancedSidebar?.getSelectedProject()
+            selectedProject: window.enhancedSidebar?.getSelectedProject(),
+            activeSessions: Array.from(this.activeSessions),
+            selectedSession: this.selectedSession
         };
+    }
+
+    // ===== 会话保护系统 - 移植自claudecodeui =====
+
+    /**
+     * 标记会话为活跃状态
+     */
+    markSessionAsActive(sessionId) {
+        if (!sessionId) return;
+        
+        this.activeSessions.add(sessionId);
+        this.sessionActivity.set(sessionId, Date.now());
+        
+        console.log(`✅ 会话已激活: ${sessionId}`);
+        
+        // 通知侧边栏更新视觉状态
+        this.notifySessionStateChange();
+    }
+
+    /**
+     * 标记会话为非活跃状态
+     */
+    markSessionAsInactive(sessionId) {
+        if (!sessionId) return;
+        
+        this.activeSessions.delete(sessionId);
+        this.sessionActivity.delete(sessionId);
+        
+        console.log(`🔕 会话已去激活: ${sessionId}`);
+        
+        // 通知侧边栏更新视觉状态
+        this.notifySessionStateChange();
+    }
+
+    /**
+     * 检查会话是否活跃
+     */
+    isSessionActive(sessionId) {
+        return this.activeSessions.has(sessionId);
+    }
+
+    /**
+     * 设置当前选中的会话
+     */
+    setSelectedSession(session) {
+        const previousSession = this.selectedSession;
+        this.selectedSession = session;
+        
+        console.log(`🎯 选中会话: ${session?.id || 'null'}`);
+        
+        // 如果选择了新会话，激活它
+        if (session?.id) {
+            this.markSessionAsActive(session.id);
+        }
+        
+        // 通知其他组件会话选择变化
+        document.dispatchEvent(new CustomEvent('sessionSelected', {
+            detail: { session, previousSession }
+        }));
+        
+        return session;
+    }
+
+    /**
+     * 获取当前选中的会话
+     */
+    getSelectedSession() {
+        return this.selectedSession;
+    }
+
+    /**
+     * 检查会话是否在最近10分钟内活跃
+     */
+    isSessionRecentlyActive(sessionId) {
+        const lastActivity = this.sessionActivity.get(sessionId);
+        if (!lastActivity) return false;
+        
+        const tenMinutesAgo = Date.now() - 10 * 60 * 1000; // 10分钟
+        return lastActivity > tenMinutesAgo;
+    }
+
+    /**
+     * 清理过期的会话活动记录
+     */
+    cleanupExpiredSessions() {
+        const now = Date.now();
+        const oneHourAgo = now - 60 * 60 * 1000; // 1小时
+        
+        for (const [sessionId, timestamp] of this.sessionActivity.entries()) {
+            if (timestamp < oneHourAgo) {
+                this.markSessionAsInactive(sessionId);
+            }
+        }
+    }
+
+    /**
+     * 通知侧边栏会话状态变化
+     */
+    notifySessionStateChange() {
+        document.dispatchEvent(new CustomEvent('sessionStateChanged', {
+            detail: {
+                activeSessions: Array.from(this.activeSessions),
+                selectedSession: this.selectedSession
+            }
+        }));
+    }
+
+    /**
+     * 智能会话选择 - 避免重复连接
+     */
+    handleSessionClick(session) {
+        // 如果点击的是已选中的会话，直接切换到chat标签
+        if (this.selectedSession?.id === session.id) {
+            console.log(`🔄 切换到已连接的会话: ${session.id}`);
+            this.switchTab('chat');
+            return false; // 阻止重复连接
+        }
+        
+        // 选择新会话
+        this.setSelectedSession(session);
+        this.switchTab('chat');
+        return true; // 允许新连接
     }
 }
 
