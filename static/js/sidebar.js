@@ -11,6 +11,7 @@ class Sidebar {
         
         this.initElements();
         this.initEventListeners();
+        this.initSessionHandlers();
     }
 
     /**
@@ -171,19 +172,36 @@ class Sidebar {
     createSessionsList(sessions) {
         if (!sessions || sessions.length === 0) return '';
         
-        const sessionsHtml = sessions.slice(0, 3).map(session => `
-            <div class="session-item" data-session="${session.id}">
-                <div class="session-icon">
-                    <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
-                    </svg>
+        const sessionsHtml = sessions.slice(0, 3).map(session => {
+            // 检查会话连接状态
+            const isActive = window.app?.isSessionActive(session.id) || false;
+            const isRecentlyActive = window.app?.isSessionRecentlyActive(session.id) || false;
+            const isSelected = window.app?.getSelectedSession()?.id === session.id;
+            
+            // 构建会话状态类名
+            const statusClasses = [];
+            if (isSelected) statusClasses.push('selected');
+            if (isActive) statusClasses.push('active');
+            if (isRecentlyActive) statusClasses.push('recently-active');
+            
+            return `
+                <div class="session-item ${statusClasses.join(' ')}" data-session="${session.id}">
+                    <div class="session-icon">
+                        <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
+                        </svg>
+                    </div>
+                    <div class="session-content">
+                        <div class="session-title">${this.escapeHtml(session.summary || session.id.substring(0, 8))}</div>
+                        <div class="session-time">${this.formatTimeAgo(session.lastActivity)}</div>
+                    </div>
+                    <div class="session-status">
+                        ${isRecentlyActive ? '<div class="activity-indicator"></div>' : ''}
+                        ${isSelected ? '<div class="selected-indicator"></div>' : ''}
+                    </div>
                 </div>
-                <div class="session-content">
-                    <div class="session-title">${this.escapeHtml(session.summary || session.id.substring(0, 8))}</div>
-                    <div class="session-time">${this.formatTimeAgo(session.lastActivity)}</div>
-                </div>
-            </div>
-        `).join('');
+            `;
+        }).join('');
 
         return `
             <div class="sessions-list">
@@ -400,6 +418,134 @@ class Sidebar {
      */
     getSelectedProject() {
         return this.selectedProject;
+    }
+
+    // ===== 会话状态管理 - 移植自claudecodeui =====
+
+    /**
+     * 初始化会话处理器
+     */
+    initSessionHandlers() {
+        // 监听会话状态变化
+        document.addEventListener('sessionStateChanged', (event) => {
+            this.updateSessionStates(event.detail);
+        });
+
+        // 监听会话选择变化
+        document.addEventListener('sessionSelected', (event) => {
+            this.handleSessionSelectionChange(event.detail);
+        });
+
+        // 添加会话点击事件委托
+        if (this.projectsList) {
+            this.projectsList.addEventListener('click', (event) => {
+                const sessionItem = event.target.closest('.session-item');
+                if (sessionItem && !sessionItem.classList.contains('show-more')) {
+                    const sessionId = sessionItem.getAttribute('data-session');
+                    if (sessionId) {
+                        this.handleSessionClick(sessionId);
+                    }
+                }
+            });
+        }
+    }
+
+    /**
+     * 处理会话点击
+     */
+    handleSessionClick(sessionId) {
+        console.log(`🎯 点击会话: ${sessionId}`);
+        
+        // 构建会话对象
+        const session = this.findSessionById(sessionId);
+        if (!session) {
+            console.warn(`⚠️ 未找到会话: ${sessionId}`);
+            return;
+        }
+
+        // 使用app的智能会话选择
+        if (window.app) {
+            const shouldConnect = window.app.handleSessionClick(session);
+            
+            if (shouldConnect) {
+                // 需要建立新连接
+                console.log(`🔗 建立新会话连接: ${sessionId}`);
+                
+                // 通知聊天组件建立连接
+                if (window.chatInterface) {
+                    window.chatInterface.connectToSession(session);
+                }
+            } else {
+                // 已连接会话，仅切换页签
+                console.log(`🔄 切换到已连接会话: ${sessionId}`);
+            }
+        }
+    }
+
+    /**
+     * 根据ID查找会话
+     */
+    findSessionById(sessionId) {
+        for (const project of this.projects) {
+            if (project.sessions) {
+                const session = project.sessions.find(s => s.id === sessionId);
+                if (session) {
+                    return {
+                        ...session,
+                        projectName: project.name,
+                        projectPath: project.path
+                    };
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * 更新会话状态显示
+     */
+    updateSessionStates(stateData) {
+        if (!this.projectsList) return;
+
+        const sessionItems = this.projectsList.querySelectorAll('.session-item[data-session]');
+        
+        sessionItems.forEach(item => {
+            const sessionId = item.getAttribute('data-session');
+            const isActive = stateData.activeSessions.includes(sessionId);
+            const isSelected = stateData.selectedSession?.id === sessionId;
+            const isRecentlyActive = window.app?.isSessionRecentlyActive(sessionId) || false;
+
+            // 更新状态类
+            item.classList.toggle('active', isActive);
+            item.classList.toggle('selected', isSelected);
+            item.classList.toggle('recently-active', isRecentlyActive);
+
+            // 更新状态指示器
+            const statusContainer = item.querySelector('.session-status');
+            if (statusContainer) {
+                statusContainer.innerHTML = `
+                    ${isRecentlyActive ? '<div class="activity-indicator"></div>' : ''}
+                    ${isSelected ? '<div class="selected-indicator"></div>' : ''}
+                `;
+            }
+        });
+
+        console.log(`🔄 更新会话状态显示: ${stateData.activeSessions.length} 个活跃会话`);
+    }
+
+    /**
+     * 处理会话选择变化
+     */
+    handleSessionSelectionChange(changeData) {
+        console.log(`🎯 会话选择变化:`, changeData);
+        
+        // 重新渲染以更新选中状态
+        if (changeData.session) {
+            this.updateSessionStates({
+                activeSessions: Array.from(window.app?.activeSessions || []),
+                selectedSession: changeData.session
+            });
+        }
     }
 
     /**

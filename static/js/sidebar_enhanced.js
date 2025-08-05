@@ -19,6 +19,7 @@ class EnhancedSidebar {
         
         this.initElements();
         this.initEventListeners();
+        this.initSessionStateHandlers();
         this.startTimeUpdater();
     }
 
@@ -405,8 +406,18 @@ class EnhancedSidebar {
             const timeAgo = this.formatTimeAgo(session.lastActivity);
             const isRecentlyActive = this.isSessionRecentlyActive(session.lastActivity);
             
+            // 检查会话连接状态（合并状态指示器逻辑）
+            const isConnected = this.activeSessions.has(session.id);
+            const isSelected = this.activeSessionId === session.id; // 使用enhancedSidebar的状态
+            
+            // 构建状态类名（简化逻辑，只根据连接状态显示）
+            const statusClasses = [];
+            if (isActive) statusClasses.push('active');
+            if (isConnected) statusClasses.push('connected');
+            if (isSelected) statusClasses.push('selected');
+            
             sessionsHtml += `
-                <div class="session-item ${isActive ? 'active' : ''} ${isRecentlyActive ? 'recently-active' : ''}" 
+                <div class="session-item ${statusClasses.join(' ')}" 
                      onclick="enhancedSidebar.selectSession('${project.name}', '${session.id}')">
                     <div class="session-icon">
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -422,6 +433,10 @@ class EnhancedSidebar {
                                 ''
                             }
                         </div>
+                    </div>
+                    <div class="session-status">
+                        ${isConnected ? '<div class="activity-indicator"></div>' : ''}
+                        ${isSelected ? '<div class="selected-indicator"></div>' : ''}
                     </div>
                     <div class="session-actions">
                         <button class="delete-session-btn" 
@@ -486,7 +501,7 @@ class EnhancedSidebar {
 
 
     /**
-     * 选择会话（触发连接确认）
+     * 选择会话（智能会话管理 - 移植自claudecodeui）
      */
     selectSession(projectName, sessionId) {
         const project = this.projects.find(p => p.name === projectName);
@@ -496,8 +511,40 @@ class EnhancedSidebar {
         const session = allSessions.find(s => s.id === sessionId);
         if (!session) return;
 
-        // 显示连接确认对话框
-        this.showSessionConnectModal(project, session);
+        console.log(`🎯 点击会话: ${sessionId}`);
+
+        // 检查会话是否已经活跃（已打开标签）
+        if (this.activeSessions.has(sessionId)) {
+            console.log(`🔄 切换到已连接的会话: ${sessionId}`);
+            
+            // 直接切换到已有的会话标签
+            this.switchToSession(sessionId);
+            return;
+        }
+
+        // 使用app的智能会话选择逻辑
+        if (window.app) {
+            const sessionData = {
+                id: sessionId,
+                projectName: project.name,
+                projectPath: project.path || project.fullPath,
+                summary: session.summary
+            };
+            
+            const shouldConnect = window.app.handleSessionClick(sessionData);
+            
+            if (shouldConnect) {
+                // 需要建立新连接，显示连接确认对话框
+                console.log(`🔗 建立新会话连接: ${sessionId}`);
+                this.showSessionConnectModal(project, session);
+            } else {
+                // 已连接会话，仅切换页签
+                console.log(`🔄 切换到已连接会话: ${sessionId}`);
+            }
+        } else {
+            // 降级处理：直接显示连接对话框
+            this.showSessionConnectModal(project, session);
+        }
         
         console.log('选择会话:', session);
     }
@@ -593,7 +640,8 @@ class EnhancedSidebar {
      * 连接到现有会话
      */
     connectToExistingSession(project, session, displayName) {
-        const sessionId = this.generateSessionId();
+        // 使用原始会话ID作为key，这样防重复连接检查才能生效
+        const sessionId = session.id;
         const tabElement = this.createSessionTab(sessionId, project, displayName);
         
         // 保存会话数据，包含原始会话信息
@@ -734,6 +782,17 @@ class EnhancedSidebar {
         }
         if (currentSessionName) {
             currentSessionName.textContent = sessionData.sessionName;
+        }
+        
+        // 通知app.js更新会话状态
+        if (window.app && this.activeSessionId) {
+            const session = {
+                id: this.activeSessionId,
+                projectName: sessionData.project.name,
+                projectPath: sessionData.project.path || sessionData.project.fullPath,
+                summary: sessionData.sessionName
+            };
+            window.app.setSelectedSession(session);
         }
         
         // 触发自定义事件，传递完整的会话信息
@@ -1016,6 +1075,45 @@ class EnhancedSidebar {
             }
         }
         return sessions;
+    }
+
+    // ===== 会话状态管理 - 移植自claudecodeui =====
+
+    /**
+     * 初始化会话状态处理器
+     */
+    initSessionStateHandlers() {
+        // 监听会话状态变化
+        document.addEventListener('sessionStateChanged', (event) => {
+            this.updateSessionStates(event.detail);
+        });
+
+        // 监听会话选择变化
+        document.addEventListener('sessionSelected', (event) => {
+            this.handleSessionSelectionChange(event.detail);
+        });
+    }
+
+    /**
+     * 更新会话状态显示
+     */
+    updateSessionStates(stateData) {
+        console.log(`🔄 更新会话状态显示: ${stateData.activeSessions.length} 个活跃会话`);
+        
+        // 重新渲染项目列表以更新状态指示器
+        this.renderProjects();
+    }
+
+    /**
+     * 处理会话选择变化
+     */
+    handleSessionSelectionChange(changeData) {
+        console.log(`🎯 会话选择变化:`, changeData);
+        
+        // 重新渲染以更新选中状态
+        if (changeData.session) {
+            this.renderProjects();
+        }
     }
 
     /**
