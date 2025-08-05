@@ -11,8 +11,17 @@ class SessionTerminal {
         this.activeSessionId = null;
         this.isInitialized = false;
         
+        // 状态保存相关
+        this.CONNECTION_STATE_KEY = 'heliki_session_terminal_state';
+        this.autoRestoreEnabled = true;
+        
         this.initElements();
         this.initEventListeners();
+        
+        // 页面加载后尝试恢复状态
+        setTimeout(() => {
+            this.attemptStateRestore();
+        }, 1000);
     }
 
     /**
@@ -61,6 +70,9 @@ class SessionTerminal {
         
         // 显示对应的终端
         this.showTerminal(sessionId);
+        
+        // 更新当前项目和会话的显示
+        this.updateCurrentSessionDisplay(project, sessionName);
         
         // 如果连接不存在，建立连接
         if (!this.connections.has(sessionId)) {
@@ -270,6 +282,9 @@ class SessionTerminal {
                 setTimeout(() => {
                     this._fitTerminalSize(sessionId);
                 }, 100);
+                
+                // 保存连接状态
+                this.saveConnectionState();
                 
                 console.log('✅ WebSocket连接已建立:', sessionId);
             };
@@ -710,6 +725,187 @@ class SessionTerminal {
         });
 
         console.log('🔍 [XTERM DEBUG] 事件监听器已添加:', sessionId);
+    }
+
+    /**
+     * 保存连接状态到localStorage
+     */
+    saveConnectionState() {
+        if (!this.activeSessionId) {
+            console.warn('⚠️ 没有活跃的会话，无法保存连接状态');
+            return;
+        }
+
+        // 获取当前活跃会话的信息
+        const terminalData = this.terminals.get(this.activeSessionId);
+        if (!terminalData) {
+            console.warn('⚠️ 找不到活跃会话的终端数据');
+            return;
+        }
+
+        const state = {
+            activeSessionId: this.activeSessionId,
+            project: terminalData.project,
+            sessionName: terminalData.sessionName,
+            originalSession: terminalData.originalSession,
+            connected: true,
+            timestamp: Date.now()
+        };
+
+        try {
+            localStorage.setItem(this.CONNECTION_STATE_KEY, JSON.stringify(state));
+            console.log('✅ 会话终端连接状态已保存:', {
+                sessionId: this.activeSessionId,
+                project: state.project.name,
+                sessionName: state.sessionName
+            });
+        } catch (error) {
+            console.error('❌ 保存会话终端连接状态失败:', error);
+        }
+    }
+
+    /**
+     * 从localStorage恢复连接状态
+     */
+    async attemptStateRestore() {
+        if (!this.autoRestoreEnabled) {
+            console.log('🔒 自动恢复已禁用');
+            return false;
+        }
+
+        try {
+            const stateStr = localStorage.getItem(this.CONNECTION_STATE_KEY);
+            if (!stateStr) {
+                console.log('📭 没有保存的会话终端连接状态');
+                return false;
+            }
+
+            const state = JSON.parse(stateStr);
+            
+            // 检查状态有效性（24小时内）
+            const maxAge = 24 * 60 * 60 * 1000; // 24小时
+            if (Date.now() - state.timestamp > maxAge) {
+                console.log('⏰ 保存的会话终端连接状态已过期，清除');
+                this.clearConnectionState();
+                return false;
+            }
+
+            console.log('🔄 开始恢复会话终端连接状态:', {
+                sessionId: state.activeSessionId,
+                project: state.project.name,
+                sessionName: state.sessionName,
+                saveTime: new Date(state.timestamp).toLocaleString()
+            });
+
+            // 等待所有组件初始化
+            await new Promise(resolve => setTimeout(resolve, 2000));
+
+            // 自动切换到终端标签
+            if (window.app) {
+                window.app.switchTab('terminal');
+            }
+
+            // 通知侧边栏恢复选择状态
+            if (window.enhancedSidebar) {
+                await window.enhancedSidebar.restoreSelection(state.project, state.originalSession);
+                
+                // 等待一小段时间让侧边栏更新完成
+                await new Promise(resolve => setTimeout(resolve, 500));
+                
+                // 使用侧边栏的连接方法来恢复会话，这样会正确创建页签
+                if (state.originalSession) {
+                    console.log('🔄 通过侧边栏连接方法恢复会话:', state.originalSession.id);
+                    window.enhancedSidebar.connectToExistingSession(
+                        state.project, 
+                        state.originalSession, 
+                        state.sessionName
+                    );
+                } else {
+                    // 如果没有原始会话，直接创建新会话
+                    console.log('🔄 创建新会话:', state.activeSessionId);
+                    await this.switchToSession(
+                        state.activeSessionId,
+                        state.project,
+                        state.sessionName,
+                        null
+                    );
+                }
+            }
+
+            return true;
+
+        } catch (error) {
+            console.error('❌ 恢复会话终端连接状态失败:', error);
+            this.clearConnectionState();
+            return false;
+        }
+    }
+
+    /**
+     * 清除保存的连接状态
+     */
+    clearConnectionState() {
+        try {
+            localStorage.removeItem(this.CONNECTION_STATE_KEY);
+            console.log('🗑️ 已清除保存的会话终端连接状态');
+        } catch (error) {
+            console.error('❌ 清除会话终端连接状态失败:', error);
+        }
+    }
+
+    /**
+     * 检查是否有保存的连接状态
+     */
+    hasSavedConnectionState() {
+        try {
+            const stateStr = localStorage.getItem(this.CONNECTION_STATE_KEY);
+            if (!stateStr) return false;
+
+            const state = JSON.parse(stateStr);
+            const maxAge = 24 * 60 * 60 * 1000; // 24小时
+            
+            return (Date.now() - state.timestamp) <= maxAge;
+        } catch (error) {
+            return false;
+        }
+    }
+
+    /**
+     * 断开会话连接（用户主动断开时清除状态）
+     */
+    disconnectSession(sessionId) {
+        if (this.connections.has(sessionId)) {
+            const connection = this.connections.get(sessionId);
+            if (connection) {
+                connection.disconnect();
+            }
+            this.connections.delete(sessionId);
+        }
+
+        // 如果是活跃会话，清除保存的状态
+        if (sessionId === this.activeSessionId) {
+            this.clearConnectionState();
+        }
+
+        console.log('🔌 会话连接已断开:', sessionId);
+    }
+
+    /**
+     * 更新当前会话显示
+     */
+    updateCurrentSessionDisplay(project, sessionName) {
+        if (this.currentProject) {
+            this.currentProject.textContent = project.display_name || project.name;
+        }
+        
+        if (this.currentSessionName) {
+            this.currentSessionName.textContent = sessionName || '';
+        }
+        
+        console.log('📱 已更新当前会话显示:', {
+            project: project.name,
+            sessionName: sessionName
+        });
     }
 }
 
