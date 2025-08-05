@@ -39,8 +39,8 @@ class SessionTerminal {
     initEventListeners() {
         // 监听会话切换事件
         document.addEventListener('sessionSwitch', (event) => {
-            const { sessionId, project, sessionName, originalSession } = event.detail;
-            this.switchToSession(sessionId, project, sessionName, originalSession);
+            const { sessionId, project, sessionName, originalSession, initialCommand } = event.detail;
+            this.switchToSession(sessionId, project, sessionName, originalSession, initialCommand);
         });
 
         // 监听终端命令事件（来自文件抽屉）
@@ -58,8 +58,8 @@ class SessionTerminal {
     /**
      * 切换到指定会话
      */
-    async switchToSession(sessionId, project, sessionName, originalSession = null) {
-        console.log('切换到会话终端:', sessionId, project.name, sessionName, originalSession?.id);
+    async switchToSession(sessionId, project, sessionName, originalSession = null, initialCommand = null) {
+        console.log('切换到会话终端:', sessionId, project.name, sessionName, originalSession?.id, '初始命令:', initialCommand);
         
         this.activeSessionId = sessionId;
         
@@ -76,7 +76,7 @@ class SessionTerminal {
         
         // 如果连接不存在，建立连接
         if (!this.connections.has(sessionId)) {
-            await this.connectSession(sessionId, project, originalSession);
+            await this.connectSession(sessionId, project, originalSession, initialCommand);
         }
     }
 
@@ -224,7 +224,7 @@ class SessionTerminal {
     /**
      * 连接会话到WebSocket - 添加连接状态锁防止重复连接
      */
-    async connectSession(sessionId, project, originalSession = null) {
+    async connectSession(sessionId, project, originalSession = null, initialCommand = null) {
         // 检查是否正在连接中
         if (this.connectingStates.get(sessionId)) {
             console.warn('⚠️ 连接正在进行中，忽略重复请求', sessionId);
@@ -258,12 +258,14 @@ class SessionTerminal {
                 
                 console.log(`📐 发送固定终端尺寸: ${fixedCols}x${fixedRows}`, sessionId);
                 console.log(`🔍 会话状态: hasSession=${hasSession}, originalSessionId=${originalSession?.id}`, sessionId);
+                console.log(`🚀 初始命令: ${initialCommand || 'claude'}`, sessionId);
                 
                 ws.send(JSON.stringify({
                     type: 'init',
                     projectPath: project.path || project.fullPath,
                     sessionId: originalSession?.id || sessionId, // 使用原始会话ID或当前sessionId
                     hasSession: hasSession,
+                    initialCommand: initialCommand, // 传递初始命令
                     cols: fixedCols,
                     rows: fixedRows
                 }));

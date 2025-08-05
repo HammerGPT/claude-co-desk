@@ -324,8 +324,16 @@
   color: #dc2626;
 }
 
-/* 按钮样式 */
-.load-more-btn, .new-session-btn {
+/* 会话操作按钮区域 */
+.session-actions-row {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+  min-width: 0; /* 确保按钮可以收缩 */
+}
+
+/* 加载更多按钮 */
+.load-more-btn {
   width: 100%;
   display: flex;
   align-items: center;
@@ -342,24 +350,76 @@
   transition: all 0.2s ease;
 }
 
-.load-more-btn:hover, .new-session-btn:hover {
+.load-more-btn:hover {
   background: hsl(var(--accent));
   border-color: hsl(var(--primary));
   color: hsl(var(--accent-foreground));
 }
 
+/* 新建会话按钮 */
 .new-session-btn {
-  border-style: solid;
-  background: hsl(var(--primary) / 0.1);
-  color: hsl(var(--primary));
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  padding: 0.6rem 0.5rem;
+  border: 1px solid hsl(var(--primary));
+  border-radius: 0.5rem;
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  font-size: 0.75rem;
   font-weight: 500;
-  border-color: hsl(var(--primary) / 0.3);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  min-width: 0;
 }
 
 .new-session-btn:hover {
-  background: hsl(var(--primary));
-  color: hsl(var(--primary-foreground));
+  background: hsl(var(--primary) / 0.9);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px hsl(var(--primary) / 0.3);
+}
+
+/* 继续会话按钮 */
+.continue-session-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  padding: 0.6rem 0.5rem;
+  border: 1px solid hsl(var(--primary) / 0.3);
+  border-radius: 0.5rem;
+  background: transparent;
+  color: hsl(var(--primary));
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.continue-session-btn:hover:not(.disabled) {
+  background: hsl(var(--primary) / 0.1);
   border-color: hsl(var(--primary));
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px hsl(var(--primary) / 0.2);
+}
+
+.continue-session-btn.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  color: var(--text-muted);
+  border-color: var(--border);
+}
+
+.continue-session-btn.disabled:hover {
+  transform: none;
+  box-shadow: none;
+  background: transparent;
 }
 
 .load-more-btn.loading {

@@ -466,15 +466,27 @@ class EnhancedSidebar {
             `;
         }
 
-        // 新建会话按钮
+        // 会话操作按钮区域
         sessionsHtml += `
-            <button class="new-session-btn" onclick="enhancedSidebar.showNewSessionModal('${project.name}')">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <line x1="12" y1="5" x2="12" y2="19"></line>
-                    <line x1="5" y1="12" x2="19" y2="12"></line>
-                </svg>
-                新建会话
-            </button>
+            <div class="session-actions-row">
+                <button class="new-session-btn" onclick="enhancedSidebar.showNewSessionModal('${project.name}')">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
+                    新建会话
+                </button>
+                <button class="continue-session-btn ${allSessions.length === 0 ? 'disabled' : ''}" 
+                        onclick="enhancedSidebar.continueLastSession('${project.name}')"
+                        ${allSessions.length === 0 ? 'disabled' : ''}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M9 12l2 2 4-4"></path>
+                        <path d="M21 12c0 5-3 9-9 9s-9-4-9-9 3-9 9-9c2.5 0 4.8 1 6.5 2.8"></path>
+                        <path d="M21 4v4h-4"></path>
+                    </svg>
+                    继续上个会话
+                </button>
+            </div>
         `;
 
         sessionsHtml += '</div>';
@@ -748,6 +760,68 @@ class EnhancedSidebar {
     }
 
     /**
+     * 继续上个会话 - 在项目目录下执行 claude -c 命令
+     */
+    continueLastSession(projectName) {
+        const project = this.projects.find(p => p.name === projectName);
+        if (!project) {
+            console.error('项目未找到:', projectName);
+            return;
+        }
+        
+        const allSessions = this.getAllSessions(project);
+        if (allSessions.length === 0) {
+            console.warn('项目没有历史会话，无法继续上个会话');
+            return;
+        }
+        
+        console.log('继续上个会话 - 项目:', project.name, '路径:', project.path);
+        
+        // 创建新的终端会话用于继续操作
+        const sessionId = this.generateSessionId();
+        const sessionName = '继续会话 - ' + (project.displayName || project.name);
+        const tabElement = this.createSessionTab(sessionId, project, sessionName);
+        
+        // 保存会话数据，标记为继续会话类型
+        this.activeSessions.set(sessionId, {
+            project: project,
+            sessionName: sessionName,
+            tabElement: tabElement,
+            originalSession: null,
+            isContinueSession: true, // 标记为继续会话
+            initialCommand: 'claude -c' // 指定初始执行命令
+        });
+        
+        // 切换到新会话
+        this.switchToSession(sessionId);
+        
+        // 在终端中执行 claude -c 命令
+        this.requestContinueSession(project, sessionId);
+        
+        console.log('创建继续会话终端:', sessionId, project.name, sessionName);
+    }
+
+    /**
+     * 发送继续会话请求到后端 - 在终端中执行 claude -c
+     */
+    async requestContinueSession(project, sessionId) {
+        try {
+            // 通过终端命令事件在当前会话中执行 claude -c
+            const event = new CustomEvent('terminalCommand', {
+                detail: {
+                    command: 'claude -c',
+                    project: project
+                }
+            });
+            document.dispatchEvent(event);
+            console.log('在终端中执行继续会话命令: claude -c');
+        } catch (error) {
+            console.error('执行继续会话命令失败:', error);
+            alert('继续会话失败: ' + error.message);
+        }
+    }
+
+    /**
      * 切换到指定会话
      */
     switchToSession(sessionId) {
@@ -784,8 +858,8 @@ class EnhancedSidebar {
             currentSessionName.textContent = sessionData.sessionName;
         }
         
-        // 通知app.js更新会话状态
-        if (window.app && this.activeSessionId) {
+        // 通知app.js更新会话状态（但跳过继续会话类型）
+        if (window.app && this.activeSessionId && !sessionData.isContinueSession) {
             const session = {
                 id: this.activeSessionId,
                 projectName: sessionData.project.name,
@@ -801,7 +875,8 @@ class EnhancedSidebar {
                 sessionId: this.activeSessionId,
                 project: sessionData.project,
                 sessionName: sessionData.sessionName,
-                originalSession: sessionData.originalSession // 传递原始会话信息用于恢复
+                originalSession: sessionData.originalSession, // 传递原始会话信息用于恢复
+                initialCommand: sessionData.initialCommand // 传递初始命令
             } 
         });
         document.dispatchEvent(event);
