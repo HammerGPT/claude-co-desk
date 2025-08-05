@@ -465,6 +465,7 @@ class App {
         this.switchTab('chat');
         return true; // 允许新连接
     }
+
 }
 
 // 应用启动

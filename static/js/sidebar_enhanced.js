@@ -994,6 +994,83 @@ class EnhancedSidebar {
     }
 
     /**
+     * 恢复项目和会话选择状态（配合终端状态恢复）
+     */
+    async restoreSelection(projectData, sessionData) {
+        console.log('🔄 恢复侧边栏选择状态:', {
+            project: projectData?.name,
+            session: sessionData?.id
+        });
+
+        try {
+            // 查找对应的项目
+            const project = this.projects.find(p => p.name === projectData.name);
+            if (!project) {
+                console.warn('⚠️ 未找到对应的项目:', projectData.name);
+                return false;
+            }
+
+            // 设置选中的项目
+            this.selectedProject = project;
+
+            // 如果有会话数据，尝试恢复会话选择
+            if (sessionData) {
+                // 加载项目会话（如果还没有加载）
+                if (!project.sessions || project.sessions.length === 0) {
+                    await this.loadProjectSessions(project.name);
+                }
+
+                // 查找对应的会话
+                const session = project.sessions?.find(s => s.id === sessionData.id);
+                if (session) {
+                    this.selectedSession = session;
+                    console.log('✅ 成功恢复会话选择:', session.id);
+                } else {
+                    // 如果找不到会话，创建一个临时会话对象
+                    this.selectedSession = {
+                        id: sessionData.id,
+                        summary: sessionData.summary || sessionData.id.substring(0, 8),
+                        created_at: new Date().toISOString(),
+                        last_updated: new Date().toISOString(),
+                        restored: true // 标记为恢复的会话
+                    };
+                    console.log('🔧 创建临时会话对象:', this.selectedSession.id);
+                }
+            } else {
+                this.selectedSession = null;
+            }
+
+            // 展开对应的项目
+            this.expandedProjects.add(project.name);
+
+            // 重新渲染界面
+            this.renderProjects();
+
+            // 发送项目选择事件
+            document.dispatchEvent(new CustomEvent('projectSelected', {
+                detail: { project: this.selectedProject }
+            }));
+
+            // 如果有会话，发送会话选择事件
+            if (this.selectedSession) {
+                document.dispatchEvent(new CustomEvent('sessionSelected', {
+                    detail: { 
+                        project: this.selectedProject, 
+                        session: this.selectedSession 
+                    }
+                }));
+            }
+
+            console.log('✅ 侧边栏选择状态恢复完成');
+            return true;
+
+        } catch (error) {
+            console.error('❌ 恢复侧边栏选择状态失败:', error);
+            return false;
+        }
+    }
+
+    /**
      * 生成会话ID
      */
     generateSessionId() {

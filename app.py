@@ -633,34 +633,57 @@ class PTYShellHandler:
     
     async def send_output(self, data: str):
         """发送输出到WebSocket"""
-        if self.websocket:
-            try:
-                # 检测URL并处理
-                import re
-                url_patterns = [
-                    r'(?:xdg-open|open|start)\s+(https?://[^\s\x1b\x07]+)',
-                    r'OPEN_URL:\s*(https?://[^\s\x1b\x07]+)',
-                    r'Opening\s+(https?://[^\s\x1b\x07]+)',
-                    r'Visit:\s*(https?://[^\s\x1b\x07]+)',
-                    r'View at:\s*(https?://[^\s\x1b\x07]+)',
-                    r'Browse to:\s*(https?://[^\s\x1b\x07]+)'
-                ]
-                
-                for pattern in url_patterns:
-                    matches = re.findall(pattern, data, re.IGNORECASE)
-                    for url in matches:
-                        logger.info(f"🔗 检测到URL: {url}")
-                        await self.websocket.send_text(json.dumps({
-                            'type': 'url_open',
-                            'url': url
-                        }))
-                
-                # 发送输出数据
-                await self.websocket.send_text(json.dumps({
-                    'type': 'output',
-                    'data': data
-                }))
-            except Exception as e:
+        # 检查WebSocket连接状态
+        if not self.websocket:
+            logger.debug("⚠️ WebSocket连接不存在，跳过发送输出")
+            return
+            
+        # 检查WebSocket是否已关闭
+        try:
+            if hasattr(self.websocket, 'client_state') and self.websocket.client_state.name != 'CONNECTED':
+                logger.debug(f"⚠️ WebSocket连接已关闭 ({self.websocket.client_state.name})，跳过发送输出")
+                return
+        except:
+            # 如果检查连接状态失败，也跳过发送
+            logger.debug("⚠️ 无法检查WebSocket连接状态，跳过发送输出")
+            return
+            
+        try:
+            # 检测URL并处理
+            import re
+            url_patterns = [
+                r'(?:xdg-open|open|start)\s+(https?://[^\s\x1b\x07]+)',
+                r'OPEN_URL:\s*(https?://[^\s\x1b\x07]+)',
+                r'Opening\s+(https?://[^\s\x1b\x07]+)',
+                r'Visit:\s*(https?://[^\s\x1b\x07]+)',
+                r'View at:\s*(https?://[^\s\x1b\x07]+)',
+                r'Browse to:\s*(https?://[^\s\x1b\x07]+)'
+            ]
+            
+            for pattern in url_patterns:
+                matches = re.findall(pattern, data, re.IGNORECASE)
+                for url in matches:
+                    logger.info(f"🔗 检测到URL: {url}")
+                    await self.websocket.send_text(json.dumps({
+                        'type': 'url_open',
+                        'url': url
+                    }))
+            
+            # 发送输出数据
+            await self.websocket.send_text(json.dumps({
+                'type': 'output',
+                'data': data
+            }))
+        except Exception as e:
+            # 更详细的错误分类
+            error_msg = str(e)
+            if "after sending 'websocket.close'" in error_msg:
+                logger.debug("⚠️ WebSocket已关闭，停止发送输出")
+                self.websocket = None  # 清理已关闭的连接引用
+            elif "Connection is already closed" in error_msg:
+                logger.debug("⚠️ WebSocket连接已断开")
+                self.websocket = None
+            else:
                 logger.error(f"❌ 发送WebSocket输出失败: {e}")
     
     async def resize_terminal(self, cols: int, rows: int):
