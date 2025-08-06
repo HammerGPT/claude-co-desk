@@ -53,6 +53,38 @@ class SessionTerminal {
         window.addEventListener('resize', () => {
             this.resizeActiveTerminal();
         });
+        
+        // 页面卸载事件监听 - 修复标签页关闭时终端状态未清除的bug
+        window.addEventListener('beforeunload', () => {
+            console.log('🔄 [SESSION TERMINAL] 页面即将卸载，清理所有会话终端状态');
+            this.cleanup();
+        });
+        
+        window.addEventListener('pagehide', () => {
+            console.log('🔄 [SESSION TERMINAL] 页面隐藏，清理所有会话终端状态');
+            this.cleanup();
+        });
+        
+        // 监听浏览器标签页可见性变化
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                console.log('🔄 [SESSION TERMINAL] 页面变为隐藏状态，准备清理状态');
+                // 延迟清理，避免快速切换标签页时误清理
+                this.pageHideTimeout = setTimeout(() => {
+                    if (document.hidden) {
+                        console.log('🔄 [SESSION TERMINAL] 页面持续隐藏，执行清理');
+                        this.cleanup();
+                    }
+                }, 2000);
+            } else {
+                console.log('🔄 [SESSION TERMINAL] 页面变为可见状态，取消清理');
+                // 取消延迟清理
+                if (this.pageHideTimeout) {
+                    clearTimeout(this.pageHideTimeout);
+                    this.pageHideTimeout = null;
+                }
+            }
+        });
     }
 
     /**
@@ -597,43 +629,49 @@ class SessionTerminal {
     }
 
     /**
-     * 关闭会话 - 清理所有相关状态
+     * 关闭会话 - 清理所有相关状态（修复版）
      */
     closeSession(sessionId) {
-        // 关闭WebSocket连接
+        console.log('🗝 [SESSION TERMINAL] 关闭会话:', sessionId);
+        
+        // 1. 关闭WebSocket连接
         const connection = this.connections.get(sessionId);
         if (connection) {
-            connection.close();
+            try {
+                connection.close();
+            } catch (error) {
+                console.warn('⚠️ [SESSION TERMINAL] 关闭连接失败:', error);
+            }
             this.connections.delete(sessionId);
         }
 
-        // 销毁终端
+        // 2. 销毁终端实例
         const terminalData = this.terminals.get(sessionId);
         if (terminalData) {
-            if (terminalData.terminal) {
-                terminalData.terminal.dispose();
-            }
-            if (terminalData.container) {
-                terminalData.container.remove();
+            try {
+                if (terminalData.terminal) {
+                    terminalData.terminal.dispose();
+                }
+                if (terminalData.container) {
+                    terminalData.container.remove();
+                }
+            } catch (error) {
+                console.warn('⚠️ [SESSION TERMINAL] 清理终端实例失败:', error);
             }
             this.terminals.delete(sessionId);
         }
 
-        // 清理连接状态
+        // 3. 清理连接状态
         this.connectingStates.delete(sessionId);
 
-        // 如果关闭的是当前活跃会话，清空状态
+        // 4. 如果关闭的是当前活跃会话，重置活跃ID（不显示空状态）
+        // 由 sidebar 负责判断是否显示空状态或切换到其他会话
         if (this.activeSessionId === sessionId) {
             this.activeSessionId = null;
-            
-            // 显示空状态
-            const emptyState = this.terminalWrapper.querySelector('.empty-terminal-state');
-            if (emptyState) {
-                emptyState.style.display = 'flex';
-            }
+            console.log('🗝 [SESSION TERMINAL] 当前活跃会话已清除，等待sidebar切换逐譡');
         }
 
-        console.log('关闭会话终端:', sessionId);
+        console.log('✅ [SESSION TERMINAL] 会话关闭完成:', sessionId);
     }
 
     /**
@@ -734,14 +772,16 @@ class SessionTerminal {
      */
     saveConnectionState() {
         if (!this.activeSessionId) {
-            console.warn('⚠️ 没有活跃的会话，无法保存连接状态');
+            console.warn('⚠️ 没有活跃的会话，清除保存的状态');
+            this.clearConnectionState();
             return;
         }
 
         // 获取当前活跃会话的信息
         const terminalData = this.terminals.get(this.activeSessionId);
         if (!terminalData) {
-            console.warn('⚠️ 找不到活跃会话的终端数据');
+            console.warn('⚠️ 找不到活跃会话的终端数据，清除保存的状态');
+            this.clearConnectionState();
             return;
         }
 
@@ -893,6 +933,116 @@ class SessionTerminal {
     }
 
     /**
+     * 显示空状态 - 由 sidebar 调用
+     */
+    showEmptyState() {
+        console.log('💭 [SESSION TERMINAL] 显示空状态');
+        
+        // 重置活跃会话
+        this.activeSessionId = null;
+        
+        // 显示空状态提示
+        if (this.terminalWrapper) {
+            const emptyState = this.terminalWrapper.querySelector('.empty-terminal-state');
+            if (emptyState) {
+                emptyState.style.display = 'flex';
+            }
+        }
+        
+        // 清理localStorage状态
+        this.clearConnectionState();
+    }
+
+    /**
+     * 完全清理所有会话终端资源 - 修复页面关闭时状态未清除的问题
+     */
+    cleanup() {
+        console.log('🧹 [SESSION TERMINAL] 开始清理所有会话终端资源...');
+        
+        try {
+            // 1. 清理定时器
+            if (this.pageHideTimeout) {
+                clearTimeout(this.pageHideTimeout);
+                this.pageHideTimeout = null;
+            }
+            
+            // 2. 断开所有WebSocket连接
+            console.log('🧹 [SESSION TERMINAL] 断开所有WebSocket连接...');
+            for (const [sessionId, connection] of this.connections) {
+                try {
+                    if (connection && connection.readyState === WebSocket.OPEN) {
+                        connection.onclose = null; // 防止触发重连
+                        connection.onerror = null;
+                        connection.close();
+                    }
+                    console.log('✅ [SESSION TERMINAL] 已断开会话连接:', sessionId);
+                } catch (error) {
+                    console.error('❌ [SESSION TERMINAL] 断开会话连接失败:', sessionId, error);
+                }
+            }
+            this.connections.clear();
+            
+            // 3. 销毁所有终端实例和清理DOM
+            console.log('🧹 [SESSION TERMINAL] 清理所有终端实例...');
+            for (const [sessionId, terminalData] of this.terminals) {
+                try {
+                    // 销毁终端实例
+                    if (terminalData.terminal) {
+                        terminalData.terminal.dispose();
+                    }
+                    
+                    // 移除DOM元素
+                    if (terminalData.container) {
+                        terminalData.container.remove();
+                    }
+                    
+                    console.log('✅ [SESSION TERMINAL] 已清理会话终端:', sessionId);
+                } catch (error) {
+                    console.error('❌ [SESSION TERMINAL] 清理会话终端失败:', sessionId, error);
+                }
+            }
+            this.terminals.clear();
+            
+            // 4. 清理连接状态
+            this.connectingStates.clear();
+            
+            // 5. 重置活跃会话
+            this.activeSessionId = null;
+            
+            // 6. 清理localStorage中的连接状态 - 关键修复
+            console.log('🧹 [SESSION TERMINAL] 清理localStorage中的连接状态...');
+            this.clearConnectionState();
+            
+            // 7. 清理终端容器显示，显示空状态
+            if (this.terminalWrapper) {
+                // 移除所有终端实例容器
+                const terminalInstances = this.terminalWrapper.querySelectorAll('.session-terminal-instance');
+                terminalInstances.forEach(instance => instance.remove());
+                
+                // 显示空状态提示
+                const emptyState = this.terminalWrapper.querySelector('.empty-terminal-state');
+                if (emptyState) {
+                    emptyState.style.display = 'flex';
+                }
+            }
+            
+            // 8. 清理项目显示
+            if (this.currentProject) {
+                this.currentProject.textContent = '未选择项目';
+            }
+            
+            if (this.currentSessionName) {
+                this.currentSessionName.textContent = '';
+            }
+            
+            console.log('✅ [SESSION TERMINAL] 所有会话终端资源清理完成');
+            
+        } catch (error) {
+            console.error('❌ [SESSION TERMINAL] 清理过程中出现错误:', error);
+        }
+    }
+
+    /**
      * 更新当前会话显示
      */
     updateCurrentSessionDisplay(project, sessionName) {
@@ -908,6 +1058,20 @@ class SessionTerminal {
             project: project.name,
             sessionName: sessionName
         });
+    }
+
+    /**
+     * 获取活跃会话数量
+     */
+    getActiveSessionCount() {
+        return this.terminals.size;
+    }
+
+    /**
+     * 检查是否有活跃会话
+     */
+    hasActiveSessions() {
+        return this.terminals.size > 0;
     }
 }
 

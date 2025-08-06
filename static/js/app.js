@@ -69,6 +69,17 @@ class App {
         document.addEventListener('keydown', (e) => {
             this.handleKeyboard(e);
         });
+        
+        // 页面卸载事件监听 - 修复标签页关闭时连接未断开的bug
+        window.addEventListener('beforeunload', () => {
+            console.log('🔄 [APP] 页面即将卸载，清理应用资源');
+            this.cleanup();
+        });
+        
+        window.addEventListener('pagehide', () => {
+            console.log('🔄 [APP] 页面隐藏，清理应用资源');
+            this.cleanup();
+        });
     }
 
     /**
@@ -464,6 +475,48 @@ class App {
         this.setSelectedSession(session);
         this.switchTab('chat');
         return true; // 允许新连接
+    }
+
+    /**
+     * 清理应用资源 - 修复页面关闭时连接未断开的问题
+     */
+    cleanup() {
+        console.log('🧹 [APP] 开始清理应用资源...');
+        
+        try {
+            // 1. 清理会话终端（新版多会话终端）
+            if (window.sessionTerminal) {
+                console.log('🧹 [APP] 清理会话终端...');
+                window.sessionTerminal.cleanup();
+            }
+            
+            // 2. 清理旧版终端（兼容性）
+            if (window.terminal) {
+                console.log('🧹 [APP] 清理旧版终端...');
+                window.terminal.cleanup();
+            }
+            
+            // 3. 清理WebSocket连接
+            if (window.wsManager) {
+                console.log('🧹 [APP] 清理聊天WebSocket...');
+                window.wsManager.disconnect();
+            }
+            
+            if (window.shellWsManager) {
+                console.log('🧹 [APP] 清理Shell WebSocket...');
+                window.shellWsManager.cleanup();
+            }
+            
+            // 4. 清理会话状态
+            this.activeSessions.clear();
+            this.sessionActivity.clear();
+            this.selectedSession = null;
+            
+            console.log('✅ [APP] 应用资源清理完成');
+            
+        } catch (error) {
+            console.error('❌ [APP] 清理过程中出现错误:', error);
+        }
     }
 
 }

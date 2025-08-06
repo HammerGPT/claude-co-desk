@@ -1269,6 +1269,97 @@ class EnhancedSidebar {
     }
 
     /**
+     * 关闭会话页签 - 修复版（避免影响其他会话）
+     */
+    closeSession(sessionId) {
+        console.log('🗙️ [SIDEBAR] 关闭会话页签:', sessionId);
+        
+        // 1. 从活跃会话中移除
+        const sessionData = this.activeSessions.get(sessionId);
+        if (!sessionData) {
+            console.warn('⚠️ [SIDEBAR] 未找到会话数据:', sessionId);
+            return;
+        }
+        
+        // 移除页签 DOM 元素
+        if (sessionData.tabElement) {
+            sessionData.tabElement.remove();
+        }
+        this.activeSessions.delete(sessionId);
+        
+        // 2. 通知会话终端关闭对应的会话
+        if (window.sessionTerminal) {
+            window.sessionTerminal.closeSession(sessionId);
+        }
+        
+        // 3. 检查是否还有其他活跃会话
+        if (this.activeSessions.size === 0) {
+            // 所有会话都关闭了，显示空状态
+            console.log('🗙️ [SIDEBAR] 所有会话已关闭，显示空状态');
+            this.activeSessionId = null;
+            this.showEmptyState();
+            
+            // 通知会话终端显示空状态
+            if (window.sessionTerminal) {
+                window.sessionTerminal.showEmptyState();
+            }
+        } else {
+            // 还有其他会话，检查是否需要切换
+            if (this.activeSessionId === sessionId) {
+                // 关闭的是当前活跃会话，切换到其他会话
+                const remainingSessions = Array.from(this.activeSessions.keys());
+                const switchToSessionId = remainingSessions[remainingSessions.length - 1];
+                console.log('🗙️ [SIDEBAR] 当前活跃会话被关闭，切换到:', switchToSessionId);
+                this.switchToSession(switchToSessionId);
+            } else {
+                // 关闭的不是当前活跃会话，只需要更新页签状态
+                console.log('🗙️ [SIDEBAR] 关闭非活跃会话，保持当前状态');
+            }
+        }
+        
+        // 4. 更新页签状态
+        this.updateTabStates();
+        
+        // 5. 更新localStorage状态
+        this.updateConnectionState();
+        
+        console.log('✅ [SIDEBAR] 会话页签关闭完成:', {
+            sessionId,
+            remainingSessions: this.activeSessions.size,
+            activeSessionId: this.activeSessionId
+        });
+    }
+
+    /**
+     * 更新连接状态 - 确保 localStorage 与实际状态同步
+     */
+    updateConnectionState() {
+        if (window.sessionTerminal) {
+            if (this.activeSessionId && this.activeSessions.has(this.activeSessionId)) {
+                // 有活跃会话，更新localStorage
+                window.sessionTerminal.saveConnectionState();
+            } else {
+                // 没有活跃会话，清除localStorage
+                window.sessionTerminal.clearConnectionState();
+            }
+        }
+    }
+
+    /**
+     * 获取活跃会话数量
+     */
+    getActiveSessionCount() {
+        return this.activeSessions.size;
+    }
+
+    /**
+     * 检查是否有活跃会话
+     */
+    hasActiveSessions() {
+        return this.activeSessions.size > 0;
+    }
+
+    /**
      * 工具函数
      */
     escapeHtml(text) {

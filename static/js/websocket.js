@@ -418,6 +418,7 @@ class ShellWebSocketManager {
      * 手动断开连接（不自动重连）
      */
     manualDisconnect() {
+        console.log('🔌 [SHELL WS] 手动断开Shell WebSocket连接');
         this.shouldReconnect = false; // 禁用自动重连
         // 清理重连计时器
         if (this.reconnectTimeout) {
@@ -431,11 +432,20 @@ class ShellWebSocketManager {
      * 断开连接
      */
     disconnect() {
-        console.log('🔌 正在断开Shell WebSocket连接...');
+        console.log('🔌 [SHELL WS] 正在断开Shell WebSocket连接...');
         
         this._stopHeartbeat(); // 停止心跳
         
+        // 清理重连计时器
+        if (this.reconnectTimeout) {
+            clearTimeout(this.reconnectTimeout);
+            this.reconnectTimeout = null;
+        }
+        
         if (this.ws) {
+            // 先移除事件监听器，防止触发重连
+            this.ws.onclose = null;
+            this.ws.onerror = null;
             this.ws.close();
             this.ws = null;
         }
@@ -445,6 +455,8 @@ class ShellWebSocketManager {
         
         // 通知连接状态变化
         this._notifyConnectionHandlers(false);
+        
+        console.log('✅ [SHELL WS] Shell WebSocket连接已断开');
     }
 
     /**
@@ -531,6 +543,50 @@ class ShellWebSocketManager {
         this.missedHeartbeats = 0; // 重置丢失计数
         const latency = Date.now() - data.timestamp;
         console.log(`❤️ Shell WebSocket心跳响应: ${latency}ms`);
+    }
+
+    /**
+     * 完全清理WebSocket连接和资源
+     */
+    cleanup() {
+        console.log('🧹 [SHELL WS] 开始清理Shell WebSocket资源...');
+        
+        // 禁用自动重连
+        this.shouldReconnect = false;
+        
+        // 停止心跳
+        this._stopHeartbeat();
+        
+        // 清理所有计时器
+        if (this.reconnectTimeout) {
+            clearTimeout(this.reconnectTimeout);
+            this.reconnectTimeout = null;
+        }
+        
+        // 清理WebSocket连接
+        if (this.ws) {
+            this.ws.onopen = null;
+            this.ws.onmessage = null;
+            this.ws.onclose = null;
+            this.ws.onerror = null;
+            
+            if (this.ws.readyState === WebSocket.OPEN) {
+                this.ws.close();
+            }
+            this.ws = null;
+        }
+        
+        // 重置状态
+        this.isConnected = false;
+        this.isConnecting = false;
+        this.reconnectAttempts = 0;
+        this.missedHeartbeats = 0;
+        
+        // 清理处理器
+        this.messageHandlers.clear();
+        this.connectionHandlers = [];
+        
+        console.log('✅ [SHELL WS] Shell WebSocket资源清理完成');
     }
 }
 
