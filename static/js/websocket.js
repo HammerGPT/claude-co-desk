@@ -260,11 +260,11 @@ class ShellWebSocketManager {
         this.maxReconnectAttempts = 5;
         this.reconnectDelay = 3000; // 3秒重连间隔
         this.shouldReconnect = true; // 是否应该自动重连
-        // 心跳机制
+        // 心跳机制 - 设置极长间隔实现静默连接
         this.heartbeatInterval = null;
-        this.heartbeatFrequency = 30000; // 30秒心跳间隔
+        this.heartbeatFrequency = 86400000; // 24小时心跳间隔（基本等于禁用）
         this.missedHeartbeats = 0;
-        this.maxMissedHeartbeats = 3;
+        this.maxMissedHeartbeats = 999; // 极大容忍度，基本不会触发断开
     }
 
     /**
@@ -313,8 +313,16 @@ class ShellWebSocketManager {
                     }
                 };
                 
-                this.ws.onclose = () => {
+                this.ws.onclose = (event) => {
                     console.log('🔌 Shell WebSocket连接已断开');
+                    console.log('📊 断开详情:', {
+                        code: event.code,
+                        reason: event.reason,
+                        wasClean: event.wasClean,
+                        timestamp: new Date().toISOString(),
+                        url: this.ws?.url
+                    });
+                    console.trace('📍 WebSocket断开调用栈');
                     this.isConnected = false;
                     this.isConnecting = false;
                     this.ws = null;
@@ -419,6 +427,7 @@ class ShellWebSocketManager {
      */
     manualDisconnect() {
         console.log('🔌 [SHELL WS] 手动断开Shell WebSocket连接');
+        console.trace('📍 手动断开调用栈');
         this.shouldReconnect = false; // 禁用自动重连
         // 清理重连计时器
         if (this.reconnectTimeout) {
@@ -433,6 +442,7 @@ class ShellWebSocketManager {
      */
     disconnect() {
         console.log('🔌 [SHELL WS] 正在断开Shell WebSocket连接...');
+        console.trace('📍 disconnect()调用栈');
         
         this._stopHeartbeat(); // 停止心跳
         
@@ -497,9 +507,14 @@ class ShellWebSocketManager {
     }
 
     /**
-     * 启动心跳机制
+     * 启动心跳机制 - 完全禁用以避免自动断开
      */
     _startHeartbeat() {
+        // 完全禁用心跳机制，避免任何可能的自动断开
+        console.log('❤️ Shell WebSocket心跳机制已禁用，保持永久连接');
+        return;
+        
+        /* 原心跳逻辑已禁用
         this._stopHeartbeat(); // 先清理现有心跳
         
         this.heartbeatInterval = setInterval(() => {
@@ -523,6 +538,7 @@ class ShellWebSocketManager {
         }, this.heartbeatFrequency);
         
         console.log('❤️ Shell WebSocket心跳机制已启动');
+        */
     }
 
     /**
@@ -593,3 +609,21 @@ class ShellWebSocketManager {
 // 导出全局实例
 window.wsManager = new WebSocketManager();
 window.shellWsManager = new ShellWebSocketManager();
+
+// 添加全局调试监听器
+window.addEventListener('load', () => {
+    console.log('🔍 [GLOBAL DEBUG] WebSocket全局监听器已启动');
+    
+    // 监听所有可能导致页面状态变化的事件
+    ['beforeunload', 'pagehide', 'visibilitychange', 'focus', 'blur'].forEach(eventType => {
+        document.addEventListener(eventType, (event) => {
+            console.log(`🔍 [GLOBAL DEBUG] 页面事件触发: ${eventType}`, {
+                hidden: document.hidden,
+                visibilityState: document.visibilityState,
+                hasFocus: document.hasFocus(),
+                shellConnected: window.shellWsManager?.isConnected,
+                timestamp: new Date().toISOString()
+            });
+        });
+    });
+});

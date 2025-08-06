@@ -112,7 +112,16 @@ class FilesDrawer {
         this.currentProject = project;
         
         if (this.drawerTitle) {
-            this.drawerTitle.textContent = project ? `${project.displayName || project.name} - 文件` : '项目文件';
+            if (project) {
+                this.drawerTitle.innerHTML = `
+                    <div class="project-info">
+                        <div class="project-name">${this.escapeHtml(project.displayName || project.name)}</div>
+                        <div class="project-path">${this.escapeHtml(project.path || '')}</div>
+                    </div>
+                `;
+            } else {
+                this.drawerTitle.textContent = '项目文件';
+            }
         }
         
         // 如果抽屉已打开，重新加载文件
@@ -231,24 +240,46 @@ class FilesDrawer {
     }
 
     /**
-     * 打开文件（在终端中执行claude命令）
+     * 打开文件（先检查文件大小，再决定打开方式）
      */
     async openFile(filePath) {
         if (!this.currentProject) return;
         
-        // 通过终端执行claude命令打开文件
-        const event = new CustomEvent('terminalCommand', {
-            detail: {
-                command: `claude "${filePath}"`,
-                project: this.currentProject
+        try {
+            // 显示加载状态
+            this.showFileLoading(filePath);
+            
+            // 先检查文件大小和内容
+            const response = await fetch(`/api/files/read?file_path=${encodeURIComponent(filePath)}&project_path=${encodeURIComponent(this.currentProject.path)}`);
+            
+            if (!response.ok) {
+                const error = await response.json();
+                
+                // 检查是否为文件过大错误（10MB限制）
+                if (response.status === 413 && error.canOpenWithSystem) {
+                    this.hideFileLoading();
+                    this.showLargeFileDialog(error, filePath);
+                    return;
+                }
+                
+                this.hideFileLoading();
+                this.showError(`无法读取文件: ${error.error || '未知错误'}`);
+                return;
             }
-        });
-        document.dispatchEvent(event);
-        
-        // 关闭抽屉
-        this.close();
-        
-        console.log('打开文件:', filePath);
+            
+            this.hideFileLoading();
+            
+            // 文件大小正常，读取文件内容并显示编辑器
+            const fileData = await response.json();
+            this.showFileEditor(fileData, filePath);
+            
+            console.log('打开文件编辑器:', filePath);
+            
+        } catch (error) {
+            this.hideFileLoading();
+            console.error('读取文件错误:', error);
+            this.showError('网络错误，无法读取文件');
+        }
     }
 
     /**
@@ -314,6 +345,287 @@ class FilesDrawer {
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
+    }
+
+    /**
+     * 显示大文件提示对话框
+     */
+    showLargeFileDialog(error, filePath) {
+        const filename = filePath.split('/').pop();
+        
+        const modal = document.createElement('div');
+        modal.className = 'large-file-dialog-modal';
+        modal.innerHTML = `
+            <div class="large-file-dialog-backdrop" onclick="filesDrawer.closeLargeFileDialog()"></div>
+            <div class="large-file-dialog-container">
+                <div class="large-file-dialog-header">
+                    <h3>文件过大</h3>
+                    <button class="large-file-dialog-close" onclick="filesDrawer.closeLargeFileDialog()">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+                <div class="large-file-dialog-content">
+                    <p class="file-info">
+                        <strong>文件：</strong>${this.escapeHtml(filename)}
+                    </p>
+                    <p class="file-size-info">
+                        <strong>文件大小：</strong>${error.fileSizeFormatted}
+                    </p>
+                    <p class="size-limit-info">
+                        <strong>编辑器限制：</strong>${error.maxSizeFormatted}
+                    </p>
+                    <div class="warning-message">
+                        <span>⚠️ 在Claude中打开此大文件可能会导致性能问题。建议使用系统默认应用打开。</span>
+                    </div>
+                </div>
+                <div class="large-file-dialog-actions">
+                    <button class="btn btn-primary" onclick="filesDrawer.openWithSystemApp('${this.escapeHtml(filePath)}')">
+                        用系统应用打开
+                    </button>
+                    <button class="btn btn-warning" onclick="filesDrawer.forceOpenWithClaude('${this.escapeHtml(filePath)}')">
+                        仍用Claude打开
+                    </button>
+                    <button class="btn btn-secondary" onclick="filesDrawer.closeLargeFileDialog()">
+                        取消
+                    </button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+    }
+
+    /**
+     * 关闭大文件提示对话框
+     */
+    closeLargeFileDialog() {
+        const modal = document.querySelector('.large-file-dialog-modal');
+        if (modal) {
+            modal.remove();
+        }
+    }
+
+    /**
+     * 用系统应用打开文件
+     */
+    async openWithSystemApp(filePath) {
+        try {
+            const response = await fetch('/api/files/open-system', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    filePath: filePath,
+                    projectPath: this.currentProject.path
+                })
+            });
+
+            const result = await response.json();
+            
+            if (response.ok) {
+                console.log('文件已用系统应用打开:', result.message);
+                this.closeLargeFileDialog();
+                this.showSuccessMessage('文件已用系统应用打开');
+            } else {
+                console.error('打开文件失败:', result.error);
+                this.showError(result.error || '无法打开文件');
+            }
+        } catch (error) {
+            console.error('打开文件错误:', error);
+            this.showError('网络错误，无法打开文件');
+        }
+    }
+
+    /**
+     * 强制用Claude打开大文件
+     */
+    async forceOpenWithClaude(filePath) {
+        this.closeLargeFileDialog();
+        
+        try {
+            // 强制读取大文件内容
+            const response = await fetch(`/api/files/read?file_path=${encodeURIComponent(filePath)}&project_path=${encodeURIComponent(this.currentProject.path)}`);
+            
+            if (response.ok) {
+                const fileData = await response.json();
+                this.showFileEditor(fileData, filePath);
+                console.log('强制用编辑器打开大文件:', filePath);
+            } else {
+                this.showError('无法读取大文件');
+            }
+        } catch (error) {
+            console.error('强制打开大文件错误:', error);
+            this.showError('网络错误，无法打开大文件');
+        }
+    }
+
+    /**
+     * 显示文件加载状态
+     */
+    showFileLoading(filePath) {
+        const filename = filePath.split('/').pop();
+        
+        if (this.drawerContent) {
+            const loadingEl = document.createElement('div');
+            loadingEl.className = 'file-loading-overlay';
+            loadingEl.innerHTML = `
+                <div class="file-loading-content">
+                    <div class="spinner"></div>
+                    <p>正在检查文件: ${this.escapeHtml(filename)}</p>
+                </div>
+            `;
+            this.drawerContent.appendChild(loadingEl);
+        }
+    }
+
+    /**
+     * 隐藏文件加载状态
+     */
+    hideFileLoading() {
+        const loadingEl = document.querySelector('.file-loading-overlay');
+        if (loadingEl) {
+            loadingEl.remove();
+        }
+    }
+
+    /**
+     * 显示成功消息
+     */
+    showSuccessMessage(message) {
+        // 创建临时成功消息提示
+        const toast = document.createElement('div');
+        toast.className = 'success-toast';
+        toast.innerHTML = `
+            <div class="toast-content">
+                <svg class="toast-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                </svg>
+                <span>${this.escapeHtml(message)}</span>
+            </div>
+        `;
+        document.body.appendChild(toast);
+        
+        // 3秒后自动移除
+        setTimeout(() => {
+            if (toast.parentNode) {
+                toast.parentNode.removeChild(toast);
+            }
+        }, 3000);
+    }
+
+    /**
+     * 显示文件编辑器
+     */
+    showFileEditor(fileData, filePath) {
+        const filename = filePath.split('/').pop();
+        const language = window.syntaxHighlighter ? 
+            window.syntaxHighlighter.getLanguageFromExtension(filename) : 'text';
+        const displayName = window.syntaxHighlighter ? 
+            window.syntaxHighlighter.getLanguageDisplayName(language) : '文本文件';
+        const fileIcon = window.syntaxHighlighter ? 
+            window.syntaxHighlighter.getFileTypeIcon(filename) : '📄';
+
+        // 创建编辑器模态框
+        const modal = document.createElement('div');
+        modal.className = 'file-editor-modal';
+        modal.innerHTML = `
+            <div class="file-editor-backdrop" onclick="filesDrawer.closeFileEditor()"></div>
+            <div class="file-editor-container">
+                <div class="file-editor-header">
+                    <div class="file-editor-title">
+                        <span class="file-name">
+                            ${fileIcon} ${this.escapeHtml(filename)}
+                            <span class="file-type-badge">${displayName}</span>
+                        </span>
+                        <span class="file-path">${this.escapeHtml(filePath)}</span>
+                    </div>
+                    <div class="file-editor-actions">
+                        <button class="btn btn-sm btn-primary" onclick="filesDrawer.saveFile()">保存</button>
+                        <button class="btn btn-sm btn-secondary" onclick="filesDrawer.closeFileEditor()">关闭</button>
+                    </div>
+                </div>
+                <div class="file-editor-content">
+                    <textarea class="file-editor-textarea" placeholder="文件内容..." data-language="${language}">${this.escapeHtml(fileData.content)}</textarea>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(modal);
+        this.selectedFile = fileData;
+        this.selectedFile.path = filePath; // 确保路径正确
+        
+        // 获取编辑器元素
+        const textarea = modal.querySelector('.file-editor-textarea');
+        
+        // 应用语法高亮
+        if (window.syntaxHighlighter && language !== 'text') {
+            // 给容器添加语法高亮类
+            const content = modal.querySelector('.file-editor-content');
+            content.classList.add('syntax-highlighted');
+            
+            // 为textarea添加语法高亮增强
+            this.syntaxHighlightInstance = window.syntaxHighlighter.enhanceTextarea(textarea, filename);
+        }
+        
+        // 聚焦到编辑器
+        textarea.focus();
+    }
+
+    /**
+     * 保存文件
+     */
+    async saveFile() {
+        if (!this.selectedFile) return;
+
+        const modal = document.querySelector('.file-editor-modal');
+        const textarea = modal?.querySelector('.file-editor-textarea');
+        
+        if (!textarea) return;
+
+        try {
+            const response = await fetch('/api/files/write', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    filePath: this.selectedFile.path,
+                    content: textarea.value,
+                    projectPath: this.currentProject.path
+                })
+            });
+
+            if (response.ok) {
+                console.log('文件保存成功');
+                this.showSuccessMessage('文件保存成功');
+                this.closeFileEditor();
+            } else {
+                const error = await response.json();
+                this.showError(error.error || '保存文件失败');
+            }
+        } catch (error) {
+            console.error('保存文件错误:', error);
+            this.showError('网络错误，无法保存文件');
+        }
+    }
+
+    /**
+     * 关闭文件编辑器
+     */
+    closeFileEditor() {
+        // 清理语法高亮实例
+        if (this.syntaxHighlightInstance && this.syntaxHighlightInstance.destroy) {
+            this.syntaxHighlightInstance.destroy();
+            this.syntaxHighlightInstance = null;
+        }
+        
+        const modal = document.querySelector('.file-editor-modal');
+        if (modal) {
+            modal.remove();
+        }
+        this.selectedFile = null;
     }
 }
 

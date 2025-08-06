@@ -1059,7 +1059,7 @@ async def get_project_files(project_name: str):
         
         # 构建文件树
         file_tree = await build_file_tree(project_path)
-        return JSONResponse(content=file_tree)
+        return JSONResponse(content={"files": file_tree})
         
     except Exception as e:
         logger.error(f"获取项目 {project_name} 文件时出错: {e}")
@@ -1307,6 +1307,14 @@ async def shell_websocket_endpoint(websocket: WebSocket):
             data = await websocket.receive_text()
             message = json.loads(data)
             
+            # 处理心跳消息 - 在WebSocket层直接处理，确保始终能响应
+            if message.get('type') == 'ping':
+                await websocket.send_text(json.dumps({
+                    'type': 'pong',
+                    'timestamp': message.get('timestamp')
+                }))
+                continue
+            
             # 处理终端消息
             if message.get('type') == 'init':
                 project_path = message.get('projectPath', str(Path.cwd()))
@@ -1347,13 +1355,6 @@ async def shell_websocket_endpoint(websocket: WebSocket):
                 input_data = message.get('data', '')
                 await pty_handler.send_input(input_data)
             
-            elif message.get('type') == 'ping':
-                # 心跳检测 - 回复pong
-                await websocket.send_text(json.dumps({
-                    'type': 'pong',
-                    'timestamp': message.get('timestamp')
-                }))
-            
             elif message.get('type') == 'resize':
                 # 处理终端大小调整
                 cols = message.get('cols', 80)
@@ -1362,7 +1363,10 @@ async def shell_websocket_endpoint(websocket: WebSocket):
                 await pty_handler.resize_terminal(cols, rows)
                 
     except WebSocketDisconnect:
-        logger.info("🔌 Shell WebSocket客户端断开连接")
+        logger.info("🔌 Shell WebSocket客户端断开连接 - WebSocketDisconnect异常")
+        logger.info(f"📊 断开连接时的连接状态: isConnected={pty_handler.running if pty_handler else 'N/A'}")
+        import traceback
+        logger.info(f"📍 断开连接调用栈: {traceback.format_exc()}")
         manager.disconnect(websocket)
         pty_handler.cleanup()
     except Exception as e:
@@ -1405,5 +1409,9 @@ if __name__ == "__main__":
         host="localhost", 
         port=3005, 
         reload=True,
-        log_level="info"
+        log_level="info",
+        # WebSocket长连接配置 - 设置极长超时时间实现静默连接
+        timeout_keep_alive=86400*7,  # 7天保持连接
+        ws_ping_interval=0,          # 禁用服务器端ping
+        ws_ping_timeout=86400*7      # WebSocket ping超时7天
     )

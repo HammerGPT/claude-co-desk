@@ -15,8 +15,13 @@ class SessionTerminal {
         this.CONNECTION_STATE_KEY = 'heliki_session_terminal_state';
         this.autoRestoreEnabled = true;
         
+        // 主题相关
+        this.THEME_STATE_KEY = 'heliki_terminal_theme';
+        this.isLightTheme = false;
+        
         this.initElements();
         this.initEventListeners();
+        this.initTheme();
         
         // 页面加载后尝试恢复状态
         setTimeout(() => {
@@ -31,6 +36,7 @@ class SessionTerminal {
         this.terminalWrapper = document.getElementById('session-terminal-wrapper');
         this.currentProject = document.getElementById('current-project');
         this.currentSessionName = document.getElementById('current-session-name');
+        this.themeToggleBtn = document.getElementById('terminal-theme-toggle');
     }
 
     /**
@@ -49,36 +55,42 @@ class SessionTerminal {
             this.executeCommand(command);
         });
 
+        // 监听主题切换按钮
+        if (this.themeToggleBtn) {
+            this.themeToggleBtn.addEventListener('click', () => {
+                this.toggleTheme();
+            });
+        }
+
         // 窗口大小变化时调整终端
         window.addEventListener('resize', () => {
             this.resizeActiveTerminal();
         });
         
-        // 页面卸载事件监听 - 修复标签页关闭时终端状态未清除的bug
+        // 完全禁用beforeunload自动清理
+        /*
         window.addEventListener('beforeunload', () => {
             console.log('🔄 [SESSION TERMINAL] 页面即将卸载，清理所有会话终端状态');
             this.cleanup();
         });
+        */
         
+        // 完全禁用pagehide自动清理
+        /*
         window.addEventListener('pagehide', () => {
             console.log('🔄 [SESSION TERMINAL] 页面隐藏，清理所有会话终端状态');
             this.cleanup();
         });
+        */
         
-        // 监听浏览器标签页可见性变化
+        // 监听浏览器标签页可见性变化 - 完全禁用自动清理
         document.addEventListener('visibilitychange', () => {
             if (document.hidden) {
-                console.log('🔄 [SESSION TERMINAL] 页面变为隐藏状态，准备清理状态');
-                // 延迟清理，避免快速切换标签页时误清理
-                this.pageHideTimeout = setTimeout(() => {
-                    if (document.hidden) {
-                        console.log('🔄 [SESSION TERMINAL] 页面持续隐藏，执行清理');
-                        this.cleanup();
-                    }
-                }, 2000);
+                console.log('🔄 [SESSION TERMINAL] 页面变为隐藏状态，保持连接不清理');
+                // 完全禁用自动清理，保持终端连接状态
             } else {
-                console.log('🔄 [SESSION TERMINAL] 页面变为可见状态，取消清理');
-                // 取消延迟清理
+                console.log('🔄 [SESSION TERMINAL] 页面变为可见状态');
+                // 取消任何可能的延迟清理
                 if (this.pageHideTimeout) {
                     clearTimeout(this.pageHideTimeout);
                     this.pageHideTimeout = null;
@@ -133,35 +145,8 @@ class SessionTerminal {
             rows: 30,
             allowProposedApi: true,
             macOptionIsMeta: true,
-            // 移植claudecodeui的优化ANSI颜色主题配置
-            theme: {
-                // 基础颜色 - 改善对比度和护眼效果
-                background: '#1e1e1e',       // 深灰色背景，更护眼
-                foreground: '#d4d4d4',       // 浅灰色前景，更好的对比度
-                cursor: '#ffffff',           // 白色光标
-                cursorAccent: '#1e1e1e',     // 光标强调色
-                selection: '#264f78',        // 选择区域背景色
-                selectionForeground: '#ffffff', // 选择区域文字色
-                selectionBackground: '#264f78', // 选择区域背景色(兼容)
-                // 标准ANSI颜色 (0-7) - 优化可见性
-                black: '#333333',            // 改为深灰避免与背景融合
-                red: '#cd3131',
-                green: '#0dbc79', 
-                yellow: '#e5e510',
-                blue: '#2472c8',
-                magenta: '#bc3fbc',
-                cyan: '#11a8cd',
-                white: '#e5e5e5',
-                // 亮色变体 (8-15) - 保持高对比度
-                brightBlack: '#666666',      // 中灰色，确保可见
-                brightRed: '#f14c4c',
-                brightGreen: '#23d18b',
-                brightYellow: '#f5f543',
-                brightBlue: '#3b8eea',
-                brightMagenta: '#d670d6',
-                brightCyan: '#29b8db',
-                brightWhite: '#ffffff'
-            }
+            // 使用动态主题配置
+            theme: this.getTerminalThemeConfig()
         });
 
         // 加载插件
@@ -517,7 +502,7 @@ class SessionTerminal {
         if (connection && connection.readyState === WebSocket.OPEN) {
             connection.send(JSON.stringify({
                 type: 'input',
-                data: command + '\\r'
+                data: command + '\r'
             }));
         }
     }
@@ -1072,6 +1057,335 @@ class SessionTerminal {
      */
     hasActiveSessions() {
         return this.terminals.size > 0;
+    }
+
+    /**
+     * 初始化主题
+     */
+    initTheme() {
+        // 从localStorage恢复主题设置
+        try {
+            const savedTheme = localStorage.getItem(this.THEME_STATE_KEY);
+            if (savedTheme) {
+                this.isLightTheme = JSON.parse(savedTheme);
+            }
+        } catch (error) {
+            console.error('恢复主题设置失败:', error);
+            this.isLightTheme = false;
+        }
+
+        // 应用初始主题状态
+        this.applyTheme();
+        this.updateThemeButton();
+        
+        // 强制设置按钮样式 - 终极解决方案
+        setTimeout(() => {
+            this.forceButtonStyles();
+        }, 500); // 延迟执行确保DOM已完全加载
+    }
+
+    /**
+     * 切换主题
+     */
+    toggleTheme() {
+        this.isLightTheme = !this.isLightTheme;
+        
+        // 保存主题设置到localStorage
+        try {
+            localStorage.setItem(this.THEME_STATE_KEY, JSON.stringify(this.isLightTheme));
+        } catch (error) {
+            console.error('保存主题设置失败:', error);
+        }
+
+        // 应用新主题
+        this.applyTheme();
+        this.updateThemeButton();
+        
+        console.log('切换终端主题:', this.isLightTheme ? '明亮模式' : '暗色模式');
+    }
+
+    /**
+     * 应用主题到所有终端
+     */
+    applyTheme() {
+        // 更新终端包装器的CSS类
+        if (this.terminalWrapper) {
+            if (this.isLightTheme) {
+                this.terminalWrapper.classList.add('terminal-light-theme');
+            } else {
+                this.terminalWrapper.classList.remove('terminal-light-theme');
+            }
+        }
+
+        // 更新所有已创建的终端主题
+        for (const [sessionId, terminalData] of this.terminals) {
+            this.updateTerminalTheme(terminalData.terminal);
+        }
+    }
+
+    /**
+     * 更新指定终端的主题配置
+     */
+    updateTerminalTheme(terminal) {
+        if (!terminal) return;
+
+        const theme = this.getTerminalThemeConfig();
+        
+        try {
+            // 更新xterm.js的主题选项
+            terminal.options.theme = theme;
+            
+            // 强制刷新终端显示
+            terminal.refresh(0, terminal.rows - 1);
+            
+        } catch (error) {
+            console.error('更新终端主题失败:', error);
+        }
+    }
+
+    /**
+     * 获取当前主题配置
+     */
+    getTerminalThemeConfig() {
+        if (this.isLightTheme) {
+            // 明亮主题配置
+            return {
+                background: '#ffffff',
+                foreground: '#000000',
+                cursor: '#000000',
+                cursorAccent: '#ffffff',
+                selection: '#0078d4',
+                selectionForeground: '#ffffff',
+                selectionBackground: '#0078d4',
+                // 标准ANSI颜色 - 明亮主题适配
+                black: '#000000',
+                red: '#cd3131',
+                green: '#00bc00',
+                yellow: '#949800',
+                blue: '#0451a5',
+                magenta: '#bc05bc',
+                cyan: '#0598bc',
+                white: '#000000',
+                // 亮色变体
+                brightBlack: '#666666',
+                brightRed: '#cd3131',
+                brightGreen: '#14ce14',
+                brightYellow: '#b5ba00',
+                brightBlue: '#0451a5',
+                brightMagenta: '#bc05bc',
+                brightCyan: '#0598bc',
+                brightWhite: '#000000'
+            };
+        } else {
+            // 暗色主题配置（原有配置）
+            return {
+                background: '#1e1e1e',
+                foreground: '#d4d4d4',
+                cursor: '#ffffff',
+                cursorAccent: '#1e1e1e',
+                selection: '#264f78',
+                selectionForeground: '#ffffff',
+                selectionBackground: '#264f78',
+                // 标准ANSI颜色
+                black: '#333333',
+                red: '#cd3131',
+                green: '#0dbc79', 
+                yellow: '#e5e510',
+                blue: '#2472c8',
+                magenta: '#bc3fbc',
+                cyan: '#11a8cd',
+                white: '#e5e5e5',
+                // 亮色变体
+                brightBlack: '#666666',
+                brightRed: '#f14c4c',
+                brightGreen: '#23d18b',
+                brightYellow: '#f5f543',
+                brightBlue: '#3b8eea',
+                brightMagenta: '#d670d6',
+                brightCyan: '#29b8db',
+                brightWhite: '#ffffff'
+            };
+        }
+    }
+
+    /**
+     * 更新主题按钮状态
+     */
+    updateThemeButton() {
+        if (!this.themeToggleBtn) return;
+
+        const themeIcon = this.themeToggleBtn.querySelector('.terminal-theme-icon');
+        if (!themeIcon) return;
+
+        // 切换按钮的CSS类来控制图标显示
+        if (this.isLightTheme) {
+            themeIcon.classList.remove('terminal-theme-dark');
+            themeIcon.classList.add('terminal-theme-light');
+            // 明亮模式下按钮激活状态
+            this.themeToggleBtn.classList.add('theme-active');
+        } else {
+            themeIcon.classList.remove('terminal-theme-light');
+            themeIcon.classList.add('terminal-theme-dark');
+            // 暗色模式下移除激活状态
+            this.themeToggleBtn.classList.remove('theme-active');
+        }
+
+        // 更新按钮标题
+        this.themeToggleBtn.title = this.isLightTheme ? '切换到暗色模式' : '切换到明亮模式';
+        
+        console.log('更新主题按钮状态:', {
+            isLightTheme: this.isLightTheme,
+            iconClass: this.isLightTheme ? 'terminal-theme-light' : 'terminal-theme-dark',
+            buttonClass: this.isLightTheme ? 'theme-active' : 'normal'
+        });
+    }
+
+    /**
+     * 强制设置按钮样式 - 终极解决方案
+     * 通过JavaScript内联样式绕过所有CSS冲突
+     */
+    forceButtonStyles() {
+        console.log('🎨 [强制样式] 开始设置session-actions按钮样式...');
+        
+        // 文件按钮 - 紫色
+        const filesBtn = document.getElementById('files-drawer-btn');
+        if (filesBtn) {
+            filesBtn.style.cssText = `
+                background: #7c3aed !important;
+                border: 1px solid #6d28d9 !important;
+                color: white !important;
+                padding: 8px !important;
+                border-radius: 6px !important;
+                min-width: 32px !important;
+                min-height: 32px !important;
+                display: flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+                cursor: pointer !important;
+                transition: all 0.2s ease !important;
+                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2) !important;
+            `;
+            
+            // 悬停效果
+            filesBtn.onmouseenter = function() {
+                this.style.background = '#8b5cf6';
+                this.style.borderColor = '#a855f7';
+                this.style.transform = 'translateY(-1px) scale(1.05)';
+                this.style.boxShadow = '0 4px 12px rgba(124, 58, 237, 0.4)';
+            };
+            filesBtn.onmouseleave = function() {
+                this.style.background = '#7c3aed';
+                this.style.borderColor = '#6d28d9';
+                this.style.transform = 'none';
+                this.style.boxShadow = '0 2px 4px rgba(0, 0, 0, 0.2)';
+            };
+            
+            console.log('✅ [强制样式] 文件按钮样式已设置');
+        }
+
+        // 主题切换按钮 - 金色/绿色
+        const themeBtn = document.getElementById('terminal-theme-toggle');
+        if (themeBtn) {
+            const setThemeButtonStyle = () => {
+                const isActive = themeBtn.classList.contains('theme-active');
+                const bgColor = isActive ? '#10b981' : '#f59e0b';
+                const borderColor = isActive ? '#059669' : '#d97706';
+                const hoverBg = isActive ? '#34d399' : '#ea580c';
+                const hoverBorder = isActive ? '#10b981' : '#dc2626';
+                
+                themeBtn.style.cssText = `
+                    background: ${bgColor} !important;
+                    border: 1px solid ${borderColor} !important;
+                    color: white !important;
+                    padding: 8px !important;
+                    border-radius: 6px !important;
+                    min-width: 32px !important;
+                    min-height: 32px !important;
+                    display: flex !important;
+                    align-items: center !important;
+                    justify-content: center !important;
+                    cursor: pointer !important;
+                    transition: all 0.2s ease !important;
+                    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2) !important;
+                `;
+                
+                themeBtn.onmouseenter = function() {
+                    this.style.background = hoverBg;
+                    this.style.borderColor = hoverBorder;
+                    this.style.transform = 'translateY(-1px) scale(1.05)';
+                    this.style.boxShadow = `0 4px 12px rgba(245, 158, 11, 0.4)`;
+                };
+                themeBtn.onmouseleave = function() {
+                    this.style.background = bgColor;
+                    this.style.borderColor = borderColor;
+                    this.style.transform = 'none';
+                    this.style.boxShadow = '0 2px 4px rgba(0, 0, 0, 0.2)';
+                };
+            };
+            
+            setThemeButtonStyle();
+            
+            // 监听主题变化，更新按钮样式
+            const originalToggle = this.toggleTheme.bind(this);
+            this.toggleTheme = function() {
+                originalToggle();
+                setTimeout(setThemeButtonStyle, 100); // 延迟执行确保类已更新
+            };
+            
+            console.log('✅ [强制样式] 主题切换按钮样式已设置');
+        }
+
+        // 设置按钮 - 蓝色
+        const settingsBtn = document.getElementById('session-settings');
+        if (settingsBtn) {
+            settingsBtn.style.cssText = `
+                background: #1e40af !important;
+                border: 1px solid #1d4ed8 !important;
+                color: white !important;
+                padding: 8px !important;
+                border-radius: 6px !important;
+                min-width: 32px !important;
+                min-height: 32px !important;
+                display: flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+                cursor: pointer !important;
+                transition: all 0.2s ease !important;
+                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2) !important;
+            `;
+            
+            settingsBtn.onmouseenter = function() {
+                this.style.background = '#2563eb';
+                this.style.borderColor = '#3b82f6';
+                this.style.transform = 'translateY(-1px) scale(1.05)';
+                this.style.boxShadow = '0 4px 12px rgba(37, 99, 235, 0.4)';
+            };
+            settingsBtn.onmouseleave = function() {
+                this.style.background = '#1e40af';
+                this.style.borderColor = '#1d4ed8';
+                this.style.transform = 'none';
+                this.style.boxShadow = '0 2px 4px rgba(0, 0, 0, 0.2)';
+            };
+            
+            console.log('✅ [强制样式] 设置按钮样式已设置');
+        }
+
+        // 强制设置SVG图标样式
+        const buttons = [filesBtn, themeBtn, settingsBtn].filter(Boolean);
+        buttons.forEach(btn => {
+            const svg = btn.querySelector('svg');
+            if (svg) {
+                svg.style.cssText = `
+                    width: 16px !important;
+                    height: 16px !important;
+                    stroke: currentColor !important;
+                    fill: none !important;
+                    stroke-width: 2 !important;
+                `;
+            }
+        });
+
+        console.log('🎨 [强制样式] 所有按钮样式设置完成！');
     }
 }
 

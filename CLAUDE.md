@@ -71,11 +71,6 @@ ls ~/.claude/projects/  # 验证项目目录是否存在
 
 ## 重要设计决策
 
-### 移植策略
-- 我提供的任何功能或者需要修复的bug，都先在 @claudecodeui/ 项目寻找解决办法。我们首要目标就是移植其中的功能
-
-参考claudecodeui的实现方式，所有功能开发应首先查看 `claudecodeui/` 目录中的对应实现，确保功能对等性。
-
 ### WebSocket通信协议
 **聊天消息格式:**
 ```javascript
