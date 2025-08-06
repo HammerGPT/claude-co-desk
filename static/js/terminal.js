@@ -374,18 +374,20 @@ class Terminal {
         window.shellWsManager.onConnection((connected) => {
             this.updateConnectionStatus(connected);
             
-            // 连接成功后清除欢迎信息并调整终端尺寸
+            // 连接成功时调整终端尺寸，但不清除内容（保持断开前的状态）
             if (connected && this.terminal) {
-                // 参考claudecodeui的实现，连接成功后清屏
-                this.terminal.clear();
-                this.terminal.write('\x1b[2J\x1b[H'); // 清屏并移动光标到左上角
-                
                 // 调整终端尺寸
                 if (this.fitAddon) {
                     setTimeout(() => {
                         this._fitTerminalSize();
                     }, 100);
                 }
+                
+                // 显示重连成功提示
+                this.terminal.writeln('\x1b[32m✅ 连接已恢复\x1b[0m');
+            } else if (!connected && this.terminal) {
+                // 连接断开时显示提示，但不清除终端内容
+                this.terminal.writeln('\x1b[33m⚠️ 连接已断开，正在尝试重连...\x1b[0m');
             }
         });
     }
@@ -490,7 +492,10 @@ class Terminal {
             if (window.shellWsManager) {
                 window.shellWsManager.disconnect();
             }
-            this.terminal.writeln('\x1b[33m🔌 连接已断开\x1b[0m');
+            // 保持终端内容，只显示断开提示
+            if (this.terminal) {
+                this.terminal.writeln('\x1b[33m🔌 连接已断开\x1b[0m');
+            }
         } catch (error) {
             console.error('❌ 断开连接时发生错误:', error);
         }
@@ -790,6 +795,26 @@ class Terminal {
             });
         });
 
+        // 完全禁用所有自动清理事件 - 保持连接始终活跃
+        // 注释掉所有可能导致自动断开的事件监听器
+        
+        /*
+        // 这些事件监听器会导致切换标签页时自动断开，已禁用
+        window.addEventListener('beforeunload', () => {
+            console.log('🔄 [PAGE DEBUG] 页面即将卸载，清理终端连接');
+            this.cleanup();
+        });
+
+        window.addEventListener('pagehide', () => {
+            console.log('🔄 [PAGE DEBUG] 页面隐藏，清理终端连接');
+            this.cleanup();
+        });
+
+        document.addEventListener('visibilitychange', () => {
+            // 完全禁用可见性变化时的任何处理
+        });
+        */
+
         console.log('🔍 [PAGE DEBUG] 浏览器事件监听器已添加');
     }
 
@@ -854,6 +879,45 @@ class Terminal {
      */
     onDeactivate() {
         // 面板停用时的逻辑
+    }
+
+    /**
+     * 清理终端资源 - 修复标签页关闭时连接未断开的问题
+     */
+    cleanup() {
+        console.log('🧹 [TERMINAL CLEANUP] 开始清理终端资源...');
+        
+        try {
+            // 1. 断开WebSocket连接
+            if (this.isConnected && window.shellWsManager) {
+                console.log('🧹 [TERMINAL CLEANUP] 断开Shell WebSocket连接');
+                window.shellWsManager.manualDisconnect();
+            }
+            
+            // 2. 清理连接状态
+            this.isConnected = false;
+            this.isConnecting = false;
+            
+            // 3. 清理定时器
+            if (this.pageHideTimeout) {
+                clearTimeout(this.pageHideTimeout);
+                this.pageHideTimeout = null;
+            }
+            
+            // 4. 更新UI状态
+            this.updateConnectionStatus(false);
+            
+            // 5. 清理终端内容（可选）
+            if (this.terminal) {
+                this.terminal.clear();
+                this.terminal.writeln('\x1b[90m终端连接已清理\x1b[0m');
+            }
+            
+            console.log('✅ [TERMINAL CLEANUP] 终端资源清理完成');
+            
+        } catch (error) {
+            console.error('❌ [TERMINAL CLEANUP] 清理过程中出现错误:', error);
+        }
     }
 }
 

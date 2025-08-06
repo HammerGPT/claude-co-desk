@@ -57,20 +57,7 @@
   gap: 8px;
 }
 
-.action-btn {
-  padding: 8px;
-  background: none;
-  border: none;
-  color: hsl(var(--muted-foreground));
-  cursor: pointer;
-  border-radius: var(--radius);
-  transition: all 150ms ease;
-}
-
-.action-btn:hover {
-  background: hsl(var(--accent));
-  color: hsl(var(--accent-foreground));
-}
+/* 旧样式已删除，使用更高优先级的新样式 */
 
 .sidebar-content {
   flex: 1;
@@ -1689,3 +1676,260 @@
   padding-left: 8px;
   margin: 4px 0;
 }
+
+/* 终端主题切换按钮样式 - 强制应用样式 */
+.session-actions #terminal-theme-toggle {
+  background: rgba(156, 163, 175, 0.4) !important;
+  border: 1px solid rgba(0, 0, 0, 0.4) !important;
+  color: #374151 !important;
+}
+
+.session-actions #terminal-theme-toggle:hover {
+  background: rgba(59, 130, 246, 0.25) !important;
+  border-color: rgba(59, 130, 246, 0.6) !important;
+  color: rgb(59, 130, 246) !important;
+  transform: translateY(-1px) scale(1.02) !important;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4) !important;
+}
+
+/* 明亮模式激活状态 */
+.session-actions #terminal-theme-toggle.theme-active {
+  background: rgba(59, 130, 246, 0.15) !important;
+  border-color: rgba(59, 130, 246, 0.4) !important;
+  color: rgb(59, 130, 246) !important;
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3) !important;
+}
+
+/* 主题图标切换动画 */
+.terminal-theme-icon .sun-icon,
+.terminal-theme-icon .moon-icon {
+  transition: all 300ms ease;
+  transform-origin: center;
+}
+
+/* 暗色模式状态 (默认) */
+.terminal-theme-dark .sun-icon {
+  display: block;
+  opacity: 1;
+}
+
+.terminal-theme-dark .moon-icon {
+  display: none !important;
+  opacity: 0;
+}
+
+/* 明亮模式状态 */
+.terminal-theme-light .sun-icon {
+  display: none !important;
+  opacity: 0;
+}
+
+.terminal-theme-light .moon-icon {
+  display: block !important;
+  opacity: 1;
+}
+
+/* 终端明亮主题样式 */
+.session-terminal-wrapper.terminal-light-theme .xterm {
+  background: #ffffff !important;
+}
+
+.session-terminal-wrapper.terminal-light-theme .xterm .xterm-viewport {
+  background: #ffffff !important;
+}
+
+.session-terminal-wrapper.terminal-light-theme .xterm .xterm-screen {
+  background: #ffffff !important;
+}
+
+/* 确保xterm.js容器在明亮模式下的样式 */
+.session-terminal-wrapper.terminal-light-theme {
+  background: #ffffff !important;
+}
+
+/* 明亮模式下的终端包装器样式 */
+.terminal-container.terminal-light-theme {
+  background: #ffffff !important;
+  color: #000000 !important;
+}
+
+.terminal-container.terminal-light-theme .terminal-wrapper {
+  background: #ffffff !important;
+}
+
+/* 明亮主题下的文字颜色修复 - 解决白色文字在白色背景下不可见的问题 */
+.session-terminal-wrapper.terminal-light-theme .xterm .xterm-rows span[style*="color:#ffffff"],
+.session-terminal-wrapper.terminal-light-theme .xterm .xterm-rows span[style*="color: rgb(255, 255, 255)"],
+.session-terminal-wrapper.terminal-light-theme .xterm .xterm-rows span[style*="color: #ffffff"],
+.session-terminal-wrapper.terminal-light-theme .xterm .xterm-rows span[style*="color:rgb(255,255,255)"] {
+  color: #000000 !important;
+}
+
+/* 修复明亮主题下其他可能的白色文字问题 */
+.session-terminal-wrapper.terminal-light-theme .xterm .xterm-rows span[style*="color: white"] {
+  color: #000000 !important;
+}
+
+/* 确保明亮主题下cursor和selection的可见性 */
+.session-terminal-wrapper.terminal-light-theme .xterm .xterm-cursor-layer .xterm-cursor {
+  background-color: #000000 !important;
+  color: #ffffff !important;
+}
+
+/* 移动端主题切换按钮响应式优化 */
+@media (max-width: 767px) {
+  #terminal-theme-toggle {
+    padding: 6px;
+  }
+  
+  .terminal-theme-icon {
+    width: 18px;
+    height: 18px;
+  }
+  
+  /* 移动端session-actions间距优化 */
+  .session-actions {
+    gap: 6px;
+  }
+  
+  .session-actions .action-btn {
+    min-width: 32px;
+    min-height: 32px;
+  }
+}
+
+/* 终端session-actions按钮超高优先级修复 - 对抗session_mode.css的覆盖 */
+
+/* 容器样式 - 高权重选择器 */
+div.session-header div.session-actions {
+  background: rgba(0, 0, 0, 0.05) !important;
+  border: 1px solid rgba(0, 0, 0, 0.15) !important;
+  border-radius: 8px !important;
+  padding: 4px !important;
+  backdrop-filter: blur(8px) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
+  display: flex !important;
+  gap: 8px !important;
+  align-items: center !important;
+}
+
+/* 通用按钮样式 - 覆盖session_mode.css的background:none */
+div.session-header div.session-actions button.action-btn {
+  background: #1e40af !important;
+  border: 1px solid #1d4ed8 !important;
+  color: white !important;
+  padding: 8px !important;
+  border-radius: 6px !important;
+  min-width: 32px !important;
+  min-height: 32px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  transition: all 0.2s ease !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2) !important;
+  cursor: pointer !important;
+}
+
+/* 通用按钮悬停效果 */
+div.session-header div.session-actions button.action-btn:hover {
+  background: #2563eb !important;
+  border-color: #3b82f6 !important;
+  color: white !important;
+  transform: translateY(-1px) scale(1.05) !important;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4) !important;
+}
+
+/* ID选择器 - 最高权重：主题切换按钮 */
+#terminal-theme-toggle {
+  background: #f59e0b !important;
+  border: 1px solid #d97706 !important;
+  color: white !important;
+  padding: 8px !important;
+  border-radius: 6px !important;
+  min-width: 32px !important;
+  min-height: 32px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  transition: all 0.2s ease !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2) !important;
+  cursor: pointer !important;
+}
+
+#terminal-theme-toggle:hover {
+  background: #ea580c !important;
+  border-color: #dc2626 !important;
+  color: white !important;
+  transform: translateY(-1px) scale(1.05) !important;
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.4) !important;
+}
+
+#terminal-theme-toggle.theme-active {
+  background: #10b981 !important;
+  border-color: #059669 !important;
+  color: white !important;
+  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.3) !important;
+}
+
+/* ID选择器：文件按钮 */
+#files-drawer-btn {
+  background: #7c3aed !important;
+  border: 1px solid #6d28d9 !important;
+  color: white !important;
+  padding: 8px !important;
+  border-radius: 6px !important;
+  min-width: 32px !important;
+  min-height: 32px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  transition: all 0.2s ease !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2) !important;
+  cursor: pointer !important;
+}
+
+#files-drawer-btn:hover {
+  background: #8b5cf6 !important;
+  border-color: #a855f7 !important;
+  transform: translateY(-1px) scale(1.05) !important;
+  box-shadow: 0 4px 12px rgba(124, 58, 237, 0.4) !important;
+}
+
+/* ID选择器：设置按钮 */
+#session-settings {
+  background: #1e40af !important;
+  border: 1px solid #1d4ed8 !important;
+  color: white !important;
+  padding: 8px !important;
+  border-radius: 6px !important;
+  min-width: 32px !important;
+  min-height: 32px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  transition: all 0.2s ease !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2) !important;
+  cursor: pointer !important;
+}
+
+#session-settings:hover {
+  background: #2563eb !important;
+  border-color: #3b82f6 !important;
+  color: white !important;
+  transform: translateY(-1px) scale(1.05) !important;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4) !important;
+}
+
+/* 确保SVG图标显示 */
+#terminal-theme-toggle svg,
+#files-drawer-btn svg, 
+#session-settings svg {
+  width: 16px !important;
+  height: 16px !important;
+  stroke: currentColor !important;
+  fill: none !important;
+  stroke-width: 2 !important;
+}
+
+/* 强制CSS更新 - 时间戳: 2025-01-15-17:30 */
+/* 确保按钮可见性修复已应用 */
