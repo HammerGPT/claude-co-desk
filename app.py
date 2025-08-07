@@ -56,7 +56,29 @@ class EnvironmentChecker:
     @staticmethod
     def check_claude_cli() -> bool:
         """检测Claude CLI是否已安装"""
-        return shutil.which('claude') is not None
+        # 首先尝试PATH中的claude
+        if shutil.which('claude') is not None:
+            return True
+        
+        # 备用路径检查 - 常见的Claude CLI安装位置
+        common_paths = [
+            Path.home() / '.local' / 'bin' / 'claude',
+            Path('/usr/local/bin/claude'),
+            Path('/opt/homebrew/bin/claude'),
+        ]
+        
+        for path in common_paths:
+            if path.exists() and path.is_file():
+                try:
+                    # 验证文件可执行
+                    result = subprocess.run([str(path), '--version'], 
+                                          capture_output=True, timeout=5)
+                    if result.returncode == 0:
+                        return True
+                except (subprocess.SubprocessError, FileNotFoundError, PermissionError):
+                    continue
+        
+        return False
     
     @staticmethod
     def check_projects_directory() -> bool:

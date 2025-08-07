@@ -1,6 +1,9 @@
 /**
  * 会话终端管理器 - 支持多会话的终端系统
  * 基于原有terminal.js重构为多会话支持
+ * 
+ * 备份说明: 原始ANSI序列限制逻辑已备份至session_terminal.js.backup (2025-08-07)
+ * 当前版本: 简化版ANSI处理，参考Claudecodeui的透传策略，解决Claude CLI 1.0.70兼容问题
  */
 
 class SessionTerminal {
@@ -382,91 +385,15 @@ class SessionTerminal {
         const terminalData = this.terminals.get(sessionId);
         if (!terminalData || !terminalData.terminal || !data) return;
 
-        // 检查是否包含可能导致清除的ANSI序列
-        const hasClearLine = data.includes('\x1B[2K');
-        const hasCursorUp = data.includes('\x1B[1A');
-        const hasClearScreen = data.includes('\x1B[2J');
-        const hasHome = data.includes('\x1B[H');
-        
-        console.log(`🔍 [TERMINAL DEBUG] 收到WebSocket输出消息:`, {
+        // 基本的输出监控（简化版）
+        console.log(`📤 [TERMINAL] 会话输出:`, {
             sessionId: sessionId,
-            originalLength: data.length,
-            preview: data.substring(0, 100),
-            ansiSequences: {
-                clearLine: hasClearLine,
-                cursorUp: hasCursorUp,
-                clearScreen: hasClearScreen,
-                home: hasHome
-            },
-            timestamp: new Date().toISOString()
+            length: data.length,
+            preview: data.substring(0, 50) + (data.length > 50 ? '...' : '')
         });
         
-        // 如果包含多个清除序列，记录详细信息
-        if (hasClearLine || hasCursorUp) {
-            console.warn(`⚠️ [ANSI DEBUG] 检测到可能的内容清除序列:`, {
-                sessionId: sessionId,
-                raw: data.split('').map(c => c.charCodeAt(0) < 32 ? `\\x${c.charCodeAt(0).toString(16).padStart(2, '0').toUpperCase()}` : c).join(''),
-                clearLineCount: (data.match(/\x1B\[2K/g) || []).length,
-                cursorUpCount: (data.match(/\x1B\[1A/g) || []).length
-            });
-        }
-        
-        // 精确的ANSI清除序列限制 - 防止过度清除历史内容
+        // 简化的ANSI处理 - 直接透传，让xterm.js处理（参考Claudecodeui策略）
         let output = data;
-        
-        // 检测并限制过度清除序列
-        if (hasClearLine && hasCursorUp) {
-            const clearLineCount = (data.match(/\x1B\[2K/g) || []).length;
-            const cursorUpCount = (data.match(/\x1B\[1A/g) || []).length;
-            
-            // 如果清除行数过多，进行动态调整
-            if (clearLineCount >= 5 && cursorUpCount >= 4) {
-                // 动态计算：减少2行以保护历史内容，最少保留3行清除能力
-                const limitedCount = Math.max(clearLineCount - 1, 3);
-                
-                console.log(`🛡️ [DYNAMIC LIMIT] 检测到过度清除序列，动态调整清除行数:`, {
-                    sessionId: sessionId,
-                    原始清除行数: clearLineCount,
-                    原始光标上移: cursorUpCount,
-                    调整后行数: limitedCount,
-                    保护行数: clearLineCount - limitedCount,
-                    timestamp: new Date().toISOString()
-                });
-                
-                // 动态生成限制后的清除序列
-                let limitedPattern = '';
-                for (let i = 0; i < limitedCount; i++) {
-                    if (i === limitedCount - 1) {
-                        // 最后一个序列，添加光标归位
-                        limitedPattern += '\x1B[2K\x1B[G';
-                    } else {
-                        // 中间序列，清除行并上移
-                        limitedPattern += '\x1B[2K\x1B[1A';
-                    }
-                }
-                
-                // 替换原始的连续清除序列
-                const originalPattern = /(\x1B\[2K\x1B\[1A)+\x1B\[2K\x1B\[G/g;
-                output = data.replace(originalPattern, limitedPattern);
-                
-                console.warn(`✅ [DYNAMIC LIMIT] 已动态调整清除序列:`, {
-                    sessionId: sessionId,
-                    原始长度: data.length,
-                    处理后长度: output.length,
-                    策略: `${clearLineCount}行 → ${limitedCount}行`,
-                    保护效果: `保护了${clearLineCount - limitedCount}行历史内容`
-                });
-            } else if (clearLineCount >= 5) {
-                // 记录但不限制（用于观察）
-                console.log(`📝 [ANSI MONITOR] Claude CLI重绘序列:`, {
-                    sessionId: sessionId,
-                    clearLineCount,
-                    cursorUpCount,
-                    状态: '正常传递',
-                    timestamp: new Date().toISOString()
-                });
-            }
-        }
         
         // 基本的终端状态检查
         if (terminalData.terminal && terminalData.terminal.buffer) {

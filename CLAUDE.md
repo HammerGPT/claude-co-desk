@@ -8,16 +8,27 @@ Heliki OS 是基于Claude Code构建的系统级AI操作系统，通过Web界面
 
 ## 开发命令
 
+### 环境设置
+```bash
+# 创建Python虚拟环境（如果不存在）
+python -m venv venv
+
+# 激活虚拟环境（必须先激活）
+# Windows
+venv\Scripts\activate
+# macOS/Linux
+source venv/bin/activate
+
+# 安装依赖
+pip install -r requirements.txt
+```
+
 ### 启动开发服务器
 ```bash
+# 确保在虚拟环境中运行
 python app.py
 ```
 应用将在 `http://localhost:3005` 启动
-
-### 安装依赖
-```bash
-pip install -r requirements.txt
-```
 
 ### 前置条件检查
 确保Claude CLI已安装并可用：
@@ -26,35 +37,60 @@ claude --version  # 验证Claude CLI是否可用
 ls ~/.claude/projects/  # 验证项目目录是否存在
 ```
 
+### 调试和验证
+```bash
+# 检查Python依赖
+pip list
+
+# 验证FastAPI服务状态
+curl http://localhost:3005/health
+
+# 检查WebSocket连接
+# 在浏览器开发者工具中查看WebSocket连接状态
+```
+
 ## 架构设计
 
 ### 后端架构 (Python + FastAPI)
 
 **主要模块:**
 - `app.py` - FastAPI应用主入口，包含WebSocket路由和API端点
-- `claude_cli.py` - Claude CLI集成模块，负责进程管理和通信
-- WebSocket双通道设计:
-  - `/ws` - 聊天接口WebSocket 
-  - `/shell` - 终端接口WebSocket
+- `claude_cli.py` - Claude CLI集成模块，负责进程管理和通信  
+- `projects_manager.py` - 项目管理器，处理Claude项目扫描和会话管理
+
+**WebSocket接口:**
+- `/ws` - 聊天接口WebSocket，处理Claude对话
+- `/shell` - 终端接口WebSocket，提供Shell交互
+- `/api/projects` - 项目列表API，获取可用的Claude项目
+- `/api/file-tree/{project_path:path}` - 文件树API，浏览项目文件
 
 **核心类:**
-- `EnvironmentChecker` - 环境检测和验证
-- `ProjectScanner` - 项目扫描和管理
-- `ConnectionManager` - WebSocket连接管理
-- `ClaudeCLIIntegration` - Claude CLI进程集成
+- `ClaudeCLIIntegration` - Claude CLI进程集成和管理 (claude_cli.py:17)
+- `ProjectManager` - 项目扫描和会话管理 (projects_manager.py)
+- `ConnectionManager` - WebSocket连接池管理 (app.py)
 
 ### 前端架构 (原生 HTML/CSS/JS)
 
-**组件化设计:**
+**核心组件:**
 - `app.js` - 主应用协调器，环境检测和标签管理
-- `websocket.js` - WebSocket管理和消息路由
+- `websocket.js` - WebSocket管理和消息路由  
 - `chat.js` - 聊天界面，消息渲染和Claude交互
 - `sidebar.js` - 侧边栏，项目列表和选择
 - `terminal.js` - 终端模拟器，Shell集成
 
+**扩展组件:**
+- `file_tree.js` - 文件树组件，文件浏览和导航
+- `files_drawer.js` - 文件抽屉组件，文件管理界面
+- `session_terminal.js` - 会话终端组件，支持会话恢复
+- `sidebar_enhanced.js` - 增强侧边栏，更丰富的项目管理
+- `syntax_highlighter.js` - 语法高亮组件
+
 **CSS架构:**
 - `main.css` - CSS变量系统和全局样式
-- `components.css` - 组件特定样式和响应式设计
+- `components.css` - 基础组件样式
+- `enhanced_components.css` - 增强组件样式
+- `file_tree.css` - 文件树专用样式
+- `session_mode.css` - 会话模式样式
 
 ### Claude CLI集成机制
 
@@ -122,6 +158,14 @@ ls ~/.claude/projects/  # 验证项目目录是否存在
 
 ### 环境管理
 - 项目需要在python虚拟环境中运行，所有涉及到项目的调试先进入虚拟环境
+- 虚拟环境目录：`venv/` (已存在，勿删除)
+
+### 测试和质量保证
+项目当前没有自动化测试框架，建议：
+- 手动测试WebSocket连接功能
+- 验证Claude CLI集成是否正常
+- 测试项目选择和文件浏览功能
+- 检查终端模拟器的shell集成
 
 ## 协作指南
 
