@@ -7,6 +7,8 @@
 import json
 import asyncio
 import logging
+import shutil
+import os
 from pathlib import Path
 from typing import Dict, List, Any, Optional, Set
 from datetime import datetime, timezone
@@ -656,6 +658,276 @@ class ProjectManager:
 def clear_project_directory_cache():
     """清除项目目录缓存"""
     project_directory_cache.clear()
+
+class SystemProjectManager:
+    """系统项目管理器 - 管理系统根目录的Claude项目初始化"""
+    
+    @staticmethod
+    def check_system_project_status() -> Dict[str, Any]:
+        """检测系统根目录项目状态"""
+        root_dir = Path.home()  # 用户主目录（真正的系统根目录）
+        claude_md_path = root_dir / 'CLAUDE.md'
+        claude_dir = root_dir / '.claude'
+        agents_dir = claude_dir / 'agents'
+        
+        status = {
+            'root_directory': str(root_dir),
+            'has_claude_md': claude_md_path.exists(),
+            'has_claude_dir': claude_dir.exists(),
+            'has_agents_dir': agents_dir.exists(),
+            'claude_md_path': str(claude_md_path),
+            'agents_dir_path': str(agents_dir),
+            'needs_initialization': False
+        }
+        
+        # 判断是否需要初始化
+        status['needs_initialization'] = not (
+            status['has_claude_md'] and 
+            status['has_claude_dir'] and 
+            status['has_agents_dir']
+        )
+        
+        # 检查默认智能体是否已部署
+        if status['has_agents_dir']:
+            default_agents = [
+                'document-manager.md',
+                'work-assistant.md', 
+                'finance-assistant.md',
+                'info-collector.md',
+                'fullstack-engineer.md'
+            ]
+            
+            deployed_agents = []
+            for agent_file in default_agents:
+                agent_path = agents_dir / agent_file
+                deployed_agents.append({
+                    'name': agent_file,
+                    'deployed': agent_path.exists(),
+                    'path': str(agent_path)
+                })
+            
+            status['default_agents'] = deployed_agents
+            status['all_agents_deployed'] = all(agent['deployed'] for agent in deployed_agents)
+        else:
+            status['default_agents'] = []
+            status['all_agents_deployed'] = False
+        
+        return status
+    
+    @staticmethod
+    async def initialize_system_project():
+        """初始化系统根目录项目"""
+        from claude_cli import ClaudeCLIIntegration
+        
+        try:
+            status = SystemProjectManager.check_system_project_status()
+            
+            if not status['needs_initialization']:
+                logger.info("系统项目已经初始化完成")
+                return {'success': True, 'message': '系统项目已经初始化'}
+            
+            logger.info(f"开始初始化系统项目: {status['root_directory']}")
+            
+            # 使用Claude Code在用户主目录下初始化项目
+            logger.info("🏗️ 使用Claude Code初始化用户主目录...")
+            
+            # 创建Claude CLI实例
+            claude_cli = ClaudeCLIIntegration()
+            
+            # 创建异步mock websocket
+            class MockWebSocket:
+                async def send_text(self, msg):
+                    logger.info(f"初始化输出: {msg}")
+            
+            mock_websocket = MockWebSocket()
+            
+            # 在用户主目录下运行Claude /init命令
+            system_root = Path.home()
+            await claude_cli.spawn_claude(
+                command="/init --yes",
+                options={
+                    'projectPath': str(system_root),
+                    'cwd': str(system_root)
+                },
+                websocket=mock_websocket
+            )
+            
+            # 等待Claude初始化完成(增加超时时间到60秒)
+            if await SystemProjectManager._verify_claude_initialization(timeout=60):
+                # 部署默认智能体
+                logger.info("🧑‍💼 开始部署默认智能体...")
+                deploy_result = await SystemProjectManager.deploy_default_agents()
+                
+                if deploy_result['success']:
+                    logger.info("✅ 系统项目初始化完成")
+                    return {
+                        'success': True, 
+                        'message': '系统项目初始化完成',
+                        'agents_deployed': deploy_result['deployed_count']
+                    }
+                else:
+                    logger.error("❌ 智能体部署失败")
+                    return {
+                        'success': False,
+                        'message': f'智能体部署失败: {deploy_result.get("message", "未知错误")}'
+                    }
+            else:
+                logger.error("❌ Claude项目初始化失败")
+                return {
+                    'success': False,
+                    'message': 'Claude项目初始化超时，请确保Claude CLI正常工作'
+                }
+                
+        except Exception as e:
+            logger.error(f"系统项目初始化出错: {e}")
+            return {
+                'success': False, 
+                'message': f'初始化出错: {str(e)}'
+            }
+    
+    @staticmethod
+    async def _verify_claude_initialization(timeout: int = 30) -> bool:
+        """验证Claude初始化是否成功"""
+        root_dir = Path.home()
+        claude_md_path = root_dir / 'CLAUDE.md'
+        
+        # 等待CLAUDE.md文件生成
+        for attempt in range(timeout):
+            if claude_md_path.exists():
+                logger.info(f"CLAUDE.md文件已生成: {claude_md_path}")
+                return True
+            await asyncio.sleep(1)
+        
+        logger.error(f"等待{timeout}秒后CLAUDE.md文件仍未生成")
+        return False
+    
+    @staticmethod
+    async def deploy_default_agents() -> Dict[str, Any]:
+        """部署默认智能体到系统项目"""
+        try:
+            root_dir = Path.home()
+            agents_dir = root_dir / '.claude' / 'agents'
+            
+            # 确保agents目录存在
+            agents_dir.mkdir(parents=True, exist_ok=True)
+            
+            # 默认智能体配置文件
+            current_file_dir = Path(__file__).parent
+            source_agents_dir = current_file_dir / 'agents'
+            
+            default_agents = [
+                'document-manager.md',
+                'work-assistant.md', 
+                'finance-assistant.md',
+                'info-collector.md',
+                'fullstack-engineer.md'
+            ]
+            
+            deployed_count = 0
+            failed_agents = []
+            
+            for agent_file in default_agents:
+                try:
+                    source_path = source_agents_dir / agent_file
+                    target_path = agents_dir / agent_file
+                    
+                    if source_path.exists():
+                        # 复制智能体配置文件
+                        shutil.copy2(source_path, target_path)
+                        deployed_count += 1
+                        logger.info(f"已部署智能体: {agent_file}")
+                    else:
+                        logger.warning(f"源文件不存在: {source_path}")
+                        failed_agents.append(f"{agent_file} (源文件不存在)")
+                        
+                except Exception as e:
+                    logger.error(f"部署智能体 {agent_file} 时出错: {e}")
+                    failed_agents.append(f"{agent_file} ({str(e)})")
+            
+            if deployed_count > 0:
+                return {
+                    'success': True,
+                    'deployed_count': deployed_count,
+                    'total_count': len(default_agents),
+                    'failed_agents': failed_agents,
+                    'message': f'成功部署 {deployed_count}/{len(default_agents)} 个智能体'
+                }
+            else:
+                return {
+                    'success': False,
+                    'deployed_count': 0,
+                    'total_count': len(default_agents),
+                    'failed_agents': failed_agents,
+                    'message': '没有成功部署任何智能体'
+                }
+                
+        except Exception as e:
+            logger.error(f"部署默认智能体时出错: {e}")
+            return {
+                'success': False,
+                'message': f'部署出错: {str(e)}'
+            }
+    
+    @staticmethod
+    async def get_system_agents_status() -> Dict[str, Any]:
+        """获取系统智能体状态"""
+        try:
+            status = SystemProjectManager.check_system_project_status()
+            
+            agents_status = []
+            if 'default_agents' in status:
+                for agent in status['default_agents']:
+                    agent_info = {
+                        'name': agent['name'].replace('.md', ''),
+                        'file_name': agent['name'],
+                        'deployed': agent['deployed'],
+                        'path': agent['path'],
+                        'status': 'deployed' if agent['deployed'] else 'missing'
+                    }
+                    
+                    # 如果文件存在，读取配置信息
+                    if agent['deployed']:
+                        try:
+                            agent_path = Path(agent['path'])
+                            async with aiofiles.open(agent_path, 'r', encoding='utf-8') as f:
+                                content = await f.read()
+                                
+                            # 解析YAML前置内容
+                            if content.startswith('---'):
+                                yaml_end = content.find('---', 3)
+                                if yaml_end != -1:
+                                    yaml_content = content[3:yaml_end].strip()
+                                    # 简单解析关键字段
+                                    for line in yaml_content.split('\n'):
+                                        if ':' in line:
+                                            key, value = line.split(':', 1)
+                                            key = key.strip()
+                                            value = value.strip()
+                                            if key == 'description':
+                                                agent_info['description'] = value
+                                            elif key == 'tools':
+                                                agent_info['tools'] = value
+                        except Exception as e:
+                            logger.warning(f"读取智能体配置 {agent['name']} 时出错: {e}")
+                    
+                    agents_status.append(agent_info)
+            
+            return {
+                'system_project_ready': not status['needs_initialization'],
+                'agents_deployed': status.get('all_agents_deployed', False),
+                'agents': agents_status,
+                'root_directory': status['root_directory']
+            }
+            
+        except Exception as e:
+            logger.error(f"获取系统智能体状态时出错: {e}")
+            return {
+                'system_project_ready': False,
+                'agents_deployed': False,
+                'agents': [],
+                'error': str(e)
+            }
+
 
 def serialize_datetime_objects(obj):
     """递归序列化对象中的datetime对象为ISO格式字符串"""

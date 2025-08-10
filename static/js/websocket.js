@@ -153,6 +153,11 @@ class WebSocketManager {
         // 优先处理会话状态相关消息
         this._handleSessionStateMessages(data);
         
+        // 触发全局WebSocket事件（备用方案）
+        document.dispatchEvent(new CustomEvent('websocketMessage', {
+            detail: data
+        }));
+        
         if (this.messageHandlers.has(type)) {
             const handlers = this.messageHandlers.get(type);
             handlers.forEach(handler => {
@@ -162,6 +167,8 @@ class WebSocketManager {
                     console.error('❌ 消息处理器错误:', error);
                 }
             });
+        } else {
+            console.log(`📋 没有为消息类型 '${type}' 注册处理器，仅触发全局事件`);
         }
     }
 
@@ -609,6 +616,9 @@ class ShellWebSocketManager {
 // 导出全局实例
 window.wsManager = new WebSocketManager();
 window.shellWsManager = new ShellWebSocketManager();
+
+// 为了兼容性，添加别名
+window.websocketManager = window.wsManager;
 
 // 添加全局调试监听器
 window.addEventListener('load', () => {

@@ -114,8 +114,24 @@
                         </div>
                     </div>
                     
-                    <!-- 项目列表 -->
+                    <!-- 侧边栏内容 -->
                     <div class="sidebar-content">
+                        <!-- 员工团队区域 -->
+                        <div class="employees-section">
+                            <div class="section-header">
+                                <h3>数字员工团队</h3>
+                                <button id="system-status-btn" class="system-status-btn" title="系统状态">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                    </svg>
+                                </button>
+                            </div>
+                            <div id="employees-list" class="employees-list">
+                                <!-- 动态填充员工列表 -->
+                            </div>
+                        </div>
+                        
+                        <!-- 项目列表 -->
                         <div class="projects-section">
                             <div class="section-header">
                                 <h3>项目</h3>
@@ -243,6 +259,39 @@
         
         <!-- 移动端侧边栏遮罩 -->
         <div id="sidebar-overlay" class="sidebar-overlay"></div>
+        
+        <!-- 系统初始化进度弹窗 -->
+        <div id="system-init-modal" class="modal-overlay hidden">
+            <div class="modal-content large-modal">
+                <div class="modal-header">
+                    <h3>🚀 正在初始化数字员工团队</h3>
+                    <button id="init-modal-close" class="modal-close hidden" style="background: none; border: none; font-size: 20px; cursor: pointer;">×</button>
+                </div>
+                <div class="modal-body">
+                    <!-- 进度条 -->
+                    <div class="progress-container">
+                        <div class="progress-bar">
+                            <div id="init-progress-fill" class="progress-fill" style="width: 0%;"></div>
+                        </div>
+                        <div class="progress-info">
+                            <span id="init-progress-text">准备初始化...</span>
+                            <span id="init-progress-percent">0%</span>
+                        </div>
+                    </div>
+                    
+                    <!-- 终端输出 -->
+                    <div id="init-terminal-container" class="init-terminal-container">
+                        <div id="init-terminal" class="init-terminal" style="background: #000; color: #fff; padding: 10px; height: 200px; overflow-y: auto; font-family: monospace; font-size: 12px; line-height: 1.4;">
+                            准备初始化...
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button id="init-cancel-btn" class="btn btn-secondary">取消</button>
+                    <button id="init-modal-close-alt" class="btn btn-primary hidden">完成</button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- xterm.js 脚本 -->
@@ -258,6 +307,8 @@
     <!-- JavaScript文件 -->
     <script src="/static/js/websocket.js"></script>
     <script src="/static/js/syntax_highlighter.js"></script>
+    <script src="/static/js/system_init_modal.js"></script>
+    <script src="/static/js/employees_manager.js"></script>
     <script src="/static/js/sidebar_enhanced.js"></script>
     <script src="/static/js/files_drawer.js"></script>
     <script src="/static/js/session_terminal.js"></script>

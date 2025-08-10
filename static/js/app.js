@@ -176,6 +176,12 @@ class App {
             // 连接WebSocket
             await window.wsManager.connect();
             
+            // 初始化员工管理器（如果存在）
+            if (window.employeesManager) {
+                console.log('🧑‍💼 初始化员工团队管理器...');
+                // 员工管理器已经在自己的构造函数中初始化了
+            }
+            
             // 加载项目列表
             await window.enhancedSidebar.loadProjects();
             

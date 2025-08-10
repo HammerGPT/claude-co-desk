@@ -1,9 +1,6 @@
 /**
  * 会话终端管理器 - 支持多会话的终端系统
  * 基于原有terminal.js重构为多会话支持
- * 
- * 备份说明: 原始ANSI序列限制逻辑已备份至session_terminal.js.backup (2025-08-07)
- * 当前版本: 简化版ANSI处理，参考Claudecodeui的透传策略，解决Claude CLI 1.0.70兼容问题
  */
 
 class SessionTerminal {
@@ -21,10 +18,6 @@ class SessionTerminal {
         // 主题相关
         this.THEME_STATE_KEY = 'heliki_terminal_theme';
         this.isLightTheme = false;
-        
-        // 初始化会话自动引导相关
-        this.initializingSessions = new Set(); // 追踪初始化会话
-        this.claudeStartupDetected = new Map(); // sessionId -> 是否检测到Claude启动
         
         this.initElements();
         this.initEventListeners();
@@ -114,12 +107,6 @@ class SessionTerminal {
         
         this.activeSessionId = sessionId;
         
-        // 检查是否为初始化会话（通过sessionName或其他标识）
-        if (sessionName && sessionName.includes('系统初始化')) {
-            console.log('🚀 检测到初始化会话，将使用组合命令直接启动:', sessionId);
-            // 不再需要复杂的启动检测，直接使用组合命令
-        }
-        
         // 如果终端不存在，创建新终端
         if (!this.terminals.has(sessionId)) {
             await this.createTerminal(sessionId, project, sessionName, originalSession);
@@ -198,11 +185,7 @@ class SessionTerminal {
         });
 
         // 添加xterm.js事件监听器进行调试
-        try {
-            this._addTerminalEventListeners(sessionId, terminal);
-        } catch (error) {
-            console.error('❌ 添加终端事件监听器失败:', sessionId, error);
-        }
+        this._addTerminalEventListeners(sessionId, terminal);
 
         // 禁用终端大小变化处理，使用固定尺寸
         terminal.onResize(({ cols, rows }) => {
@@ -399,17 +382,91 @@ class SessionTerminal {
         const terminalData = this.terminals.get(sessionId);
         if (!terminalData || !terminalData.terminal || !data) return;
 
-        // 基本的输出监控（简化版）
-        console.log(`📤 [TERMINAL] 会话输出:`, {
+        // 检查是否包含可能导致清除的ANSI序列
+        const hasClearLine = data.includes('\x1B[2K');
+        const hasCursorUp = data.includes('\x1B[1A');
+        const hasClearScreen = data.includes('\x1B[2J');
+        const hasHome = data.includes('\x1B[H');
+        
+        console.log(`🔍 [TERMINAL DEBUG] 收到WebSocket输出消息:`, {
             sessionId: sessionId,
-            length: data.length,
-            preview: data.substring(0, 50) + (data.length > 50 ? '...' : '')
+            originalLength: data.length,
+            preview: data.substring(0, 100),
+            ansiSequences: {
+                clearLine: hasClearLine,
+                cursorUp: hasCursorUp,
+                clearScreen: hasClearScreen,
+                home: hasHome
+            },
+            timestamp: new Date().toISOString()
         });
         
-        // 不再需要复杂的启动检测，组合命令会直接处理初始化
+        // 如果包含多个清除序列，记录详细信息
+        if (hasClearLine || hasCursorUp) {
+            console.warn(`⚠️ [ANSI DEBUG] 检测到可能的内容清除序列:`, {
+                sessionId: sessionId,
+                raw: data.split('').map(c => c.charCodeAt(0) < 32 ? `\\x${c.charCodeAt(0).toString(16).padStart(2, '0').toUpperCase()}` : c).join(''),
+                clearLineCount: (data.match(/\x1B\[2K/g) || []).length,
+                cursorUpCount: (data.match(/\x1B\[1A/g) || []).length
+            });
+        }
         
-        // 简化的ANSI处理 - 直接透传，让xterm.js处理（参考Claudecodeui策略）
+        // 精确的ANSI清除序列限制 - 防止过度清除历史内容
         let output = data;
+        
+        // 检测并限制过度清除序列
+        if (hasClearLine && hasCursorUp) {
+            const clearLineCount = (data.match(/\x1B\[2K/g) || []).length;
+            const cursorUpCount = (data.match(/\x1B\[1A/g) || []).length;
+            
+            // 如果清除行数过多，进行动态调整 - 为Claude 1.0.70+版本放宽限制
+            if (clearLineCount >= 8 && cursorUpCount >= 7) {
+                // 动态计算：对于过度清除才进行限制，允许正常的界面重绘
+                const limitedCount = Math.max(clearLineCount - 2, 5);
+                
+                console.log(`🛡️ [DYNAMIC LIMIT] 检测到过度清除序列，动态调整清除行数:`, {
+                    sessionId: sessionId,
+                    原始清除行数: clearLineCount,
+                    原始光标上移: cursorUpCount,
+                    调整后行数: limitedCount,
+                    保护行数: clearLineCount - limitedCount,
+                    timestamp: new Date().toISOString()
+                });
+                
+                // 动态生成限制后的清除序列
+                let limitedPattern = '';
+                for (let i = 0; i < limitedCount; i++) {
+                    if (i === limitedCount - 1) {
+                        // 最后一个序列，添加光标归位
+                        limitedPattern += '\x1B[2K\x1B[G';
+                    } else {
+                        // 中间序列，清除行并上移
+                        limitedPattern += '\x1B[2K\x1B[1A';
+                    }
+                }
+                
+                // 替换原始的连续清除序列
+                const originalPattern = /(\x1B\[2K\x1B\[1A)+\x1B\[2K\x1B\[G/g;
+                output = data.replace(originalPattern, limitedPattern);
+                
+                console.warn(`✅ [DYNAMIC LIMIT] 已动态调整清除序列:`, {
+                    sessionId: sessionId,
+                    原始长度: data.length,
+                    处理后长度: output.length,
+                    策略: `${clearLineCount}行 → ${limitedCount}行`,
+                    保护效果: `保护了${clearLineCount - limitedCount}行历史内容`
+                });
+            } else if (clearLineCount >= 5) {
+                // 记录但不限制（用于观察）- 新版Claude的正常重绘序列
+                console.log(`📝 [ANSI MONITOR] Claude CLI重绘序列:`, {
+                    sessionId: sessionId,
+                    clearLineCount,
+                    cursorUpCount,
+                    状态: '正常传递 (Claude 1.0.70+ 兼容)',
+                    timestamp: new Date().toISOString()
+                });
+            }
+        }
         
         // 基本的终端状态检查
         if (terminalData.terminal && terminalData.terminal.buffer) {
@@ -659,56 +716,40 @@ class SessionTerminal {
     _addTerminalEventListeners(sessionId, terminal) {
         if (!terminal) return;
 
-        try {
-            // 监听终端渲染事件
-            if (typeof terminal.onRender === 'function') {
-                terminal.onRender((event) => {
-                    console.log(`🔍 [XTERM DEBUG] 终端渲染事件:`, {
-                        sessionId: sessionId,
-                        start: event?.start || 'N/A',
-                        end: event?.end || 'N/A',
-                        bufferLength: terminal?.buffer?.active?.length || 0,
-                        viewportY: terminal?.buffer?.active?.viewportY || 0,
-                        timestamp: new Date().toISOString()
-                    });
-                });
-            } else {
-                console.warn('🔍 [XTERM DEBUG] onRender方法不存在:', sessionId);
-            }
+        // 监听终端渲染事件
+        terminal.onRender((event) => {
+            console.log(`🔍 [XTERM DEBUG] 终端渲染事件:`, {
+                sessionId: sessionId,
+                start: event.start,
+                end: event.end,
+                bufferLength: terminal?.buffer?.active?.length || 0,
+                viewportY: terminal?.buffer?.active?.viewportY || 0,
+                timestamp: new Date().toISOString()
+            });
+        });
 
-            // 监听缓冲区变化
-            if (typeof terminal.onScroll === 'function') {
-                terminal.onScroll((yDisp) => {
-                    console.log(`🔍 [XTERM DEBUG] 滚动事件:`, {
-                        sessionId: sessionId,
-                        yDisp,
-                        bufferLength: terminal?.buffer?.active?.length || 0,
-                        viewportY: terminal?.buffer?.active?.viewportY || 0,
-                        timestamp: new Date().toISOString()
-                    });
-                });
-            } else {
-                console.warn('🔍 [XTERM DEBUG] onScroll方法不存在:', sessionId);
-            }
+        // 监听缓冲区变化
+        terminal.onScroll((yDisp) => {
+            console.log(`🔍 [XTERM DEBUG] 滚动事件:`, {
+                sessionId: sessionId,
+                yDisp,
+                bufferLength: terminal?.buffer?.active?.length || 0,
+                viewportY: terminal?.buffer?.active?.viewportY || 0,
+                timestamp: new Date().toISOString()
+            });
+        });
 
-            // 监听选择变化
-            if (typeof terminal.onSelectionChange === 'function') {
-                terminal.onSelectionChange(() => {
-                    console.log(`🔍 [XTERM DEBUG] 选择变化事件:`, {
-                        sessionId: sessionId,
-                        hasSelection: typeof terminal.hasSelection === 'function' ? terminal.hasSelection() : 'N/A',
-                        bufferLength: terminal?.buffer?.active?.length || 0,
-                        timestamp: new Date().toISOString()
-                    });
-                });
-            } else {
-                console.warn('🔍 [XTERM DEBUG] onSelectionChange方法不存在:', sessionId);
-            }
+        // 监听选择变化
+        terminal.onSelectionChange(() => {
+            console.log(`🔍 [XTERM DEBUG] 选择变化事件:`, {
+                sessionId: sessionId,
+                hasSelection: terminal.hasSelection(),
+                bufferLength: terminal?.buffer?.active?.length || 0,
+                timestamp: new Date().toISOString()
+            });
+        });
 
-            console.log('🔍 [XTERM DEBUG] 事件监听器已添加:', sessionId);
-        } catch (error) {
-            console.error('❌ [XTERM DEBUG] 添加事件监听器失败:', sessionId, error);
-        }
+        console.log('🔍 [XTERM DEBUG] 事件监听器已添加:', sessionId);
     }
 
     /**
@@ -1345,161 +1386,6 @@ class SessionTerminal {
         });
 
         console.log('🎨 [强制样式] 所有按钮样式设置完成！');
-    }
-
-    /**
-     * 检测Claude Code启动
-     */
-    _detectClaudeStartup(sessionId, data) {
-        // 增强调试：记录原始数据
-        console.log(`🔍 [启动检测] 检测数据 (${sessionId}):`, {
-            dataLength: data.length,
-            dataPreview: data.substring(0, 100),
-            fullData: data // 临时显示完整数据用于调试
-        });
-
-        // Claude Code的启动标志：扩展检测范围
-        const claudeStartupSignals = [
-            '>', // Claude Code提示符
-            'Claude Code', // Claude Code欢迎信息  
-            'claude.ai', // Claude相关信息
-            'Welcome to Claude', // 欢迎信息
-            'Type a message', // 输入提示
-            'Available commands:', // 命令帮助
-            'Enter a message', // 输入提示变体
-            'How can I help', // 帮助信息
-            'What can I do', // 服务提示
-            'I\'m ready to help', // 就绪信息
-            'claude@', // 终端提示符
-            'Ready to assist' // 准备协助
-        ];
-        
-        // 检查是否包含启动信号 - 增强调试
-        let detectedSignal = null;
-        const detectedStartup = claudeStartupSignals.some(signal => {
-            const found = data.includes(signal) || data.toLowerCase().includes(signal.toLowerCase());
-            if (found) {
-                detectedSignal = signal;
-                console.log(`🎯 [启动检测] 找到启动信号: "${signal}" 在数据中`);
-            }
-            return found;
-        });
-        
-        console.log(`🔍 [启动检测] 检测结果 (${sessionId}): ${detectedStartup ? '✅ 检测到' : '❌ 未检测到'}`);
-        if (detectedSignal) {
-            console.log(`🔍 [启动检测] 匹配的信号: "${detectedSignal}"`);
-        }
-        
-        if (detectedStartup) {
-            console.log('🎯 检测到Claude Code启动信号:', sessionId, '信号:', detectedSignal);
-            this.claudeStartupDetected.set(sessionId, true);
-            
-            // 延时发送引导文字，确保Claude Code完全启动
-            console.log('⏰ 设置2秒延迟后自动发送引导文字...');
-            setTimeout(() => {
-                console.log('⏰ 延迟结束，开始发送引导文字...');
-                this._sendInitializationGuidance(sessionId);
-            }, 2000); // 2秒延迟
-        } else {
-            console.log('🔍 [启动检测] 未发现Claude Code启动信号，继续等待...');
-        }
-    }
-
-    /**
-     * 发送初始化引导文字
-     */
-    _sendInitializationGuidance(sessionId) {
-        console.log('📤 [引导发送] 开始发送初始化引导文字:', sessionId);
-        
-        const connection = this.connections.get(sessionId);
-        console.log('📤 [引导发送] WebSocket连接状态:', {
-            sessionId: sessionId,
-            hasConnection: !!connection,
-            readyState: connection ? connection.readyState : 'N/A',
-            isOpen: connection ? connection.readyState === WebSocket.OPEN : false
-        });
-        
-        if (!connection || connection.readyState !== WebSocket.OPEN) {
-            console.warn('⚠️ WebSocket连接不可用，无法发送引导文字:', sessionId);
-            console.warn('⚠️ [引导发送] 连接详情:', {
-                connection: !!connection,
-                readyState: connection?.readyState,
-                CONNECTING: WebSocket.CONNECTING,
-                OPEN: WebSocket.OPEN,
-                CLOSING: WebSocket.CLOSING,
-                CLOSED: WebSocket.CLOSED
-            });
-            return;
-        }
-
-        // 完整的初始化引导文字（标准化流程）
-        const guidanceText = `你现在要初始化用户电脑的根目录/主目录 (~/)，包含用户的全部数字生活内容：
-
-- 各种应用程序和工具
-- 工作文档和项目文件  
-- 财务数据和个人文档
-- 代码项目和开发环境
-- 媒体文件和个人资料
-- 系统配置和环境设置
-
-请按照以下标准流程执行：
-
-1. 创建TodoList追踪进度：
-   - 分析主目录整体结构和文件分布
-   - 识别开发项目、工作文档、个人文件分类  
-   - 检测系统配置和开发环境
-   - 创建CLAUDE.md配置文件
-   - 建立智能管理规则
-
-2. 系统分析步骤：
-   - 使用List(.)命令分析主目录结构
-   - 使用Search命令查找关键文件类型（*.py, *.js, *.json等）
-   - 检测开发环境配置（Python, Node.js, Git等）
-   - 读取系统配置文件(.zshrc, .bash_profile等）
-
-3. 配置文件创建：
-   - 创建详细的CLAUDE.md配置文件，包含目录映射和工作流程
-   - 创建智能管理脚本claude_system_manager.py
-   - 生成系统分析报告
-
-4. 完成标志：
-   - 所有TodoList项目标记为完成
-   - 生成最终的初始化总结报告
-   - 确认系统已AI化并准备就绪
-
-请直接执行 /init 命令开始分析，并严格按照上述流程完成初始化。`;
-
-        console.log('📤 [引导发送] 准备发送的引导文字长度:', guidanceText.length);
-        console.log('📤 [引导发送] 引导文字预览:', guidanceText.substring(0, 100) + '...');
-        
-        try {
-            // 发送引导文字
-            const message = JSON.stringify({
-                type: 'input',
-                data: guidanceText + '\r'
-            });
-            
-            console.log('📤 [引导发送] 发送WebSocket消息:', {
-                messageLength: message.length,
-                messageType: 'input',
-                dataLength: guidanceText.length + 1 // +1 for \r
-            });
-            
-            connection.send(message);
-            console.log('✅ [引导发送] WebSocket消息已发送成功');
-            
-        } catch (error) {
-            console.error('❌ [引导发送] 发送WebSocket消息失败:', error);
-            return;
-        }
-
-        // 清理追踪状态
-        console.log('🧹 [引导发送] 清理追踪状态...');
-        this.initializingSessions.delete(sessionId);
-        this.claudeStartupDetected.delete(sessionId);
-        
-        console.log('✅ 初始化引导已发送并清理追踪状态:', sessionId);
-        console.log('✅ [引导发送] 剩余初始化会话:', Array.from(this.initializingSessions));
     }
 }
 
