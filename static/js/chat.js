@@ -93,7 +93,10 @@ class ChatInterface {
         
         // 监听会话选择事件
         document.addEventListener('sessionSelected', (e) => {
-            this.setSelectedSession(e.detail.project, e.detail.session);
+            // 适配不同的事件结构 - 有些事件只传session，有些传project和session
+            const session = e.detail.session;
+            const project = e.detail.project || (session ? {name: session.projectName, path: session.projectPath} : null);
+            this.setSelectedSession(project, session);
         });
         
         // 监听新会话事件
@@ -494,6 +497,25 @@ class ChatInterface {
      * 设置选中的会话
      */
     async setSelectedSession(project, session) {
+        // 参数验证
+        if (!session) {
+            console.warn('setSelectedSession: session is undefined or null');
+            return;
+        }
+        
+        // 如果project未提供，尝试从session中获取
+        if (!project && session.projectName) {
+            project = {
+                name: session.projectName,
+                path: session.projectPath || session.projectName
+            };
+        }
+        
+        if (!project || !project.name) {
+            console.warn('setSelectedSession: project or project.name is undefined');
+            return;
+        }
+        
         this.selectedProject = project;
         this.selectedSession = session;
         this.currentSessionId = session.id;

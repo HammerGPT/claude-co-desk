@@ -53,12 +53,32 @@ app.mount("/assets", StaticFiles(directory="static/assets"), name="assets")
 class EnvironmentChecker:
     """环境检测类"""
     
+    # 缓存已解析的Claude可执行文件路径
+    _cached_claude_path = None
+    
     @staticmethod
-    def check_claude_cli() -> bool:
-        """检测Claude CLI是否已安装"""
+    def get_claude_executable_path() -> Optional[str]:
+        """获取Claude CLI可执行文件的绝对路径，解决随机性问题"""
+        
+        # 如果已缓存，直接返回
+        if EnvironmentChecker._cached_claude_path:
+            # 验证缓存路径是否仍然有效
+            try:
+                if Path(EnvironmentChecker._cached_claude_path).exists():
+                    return EnvironmentChecker._cached_claude_path
+                else:
+                    # 缓存失效，清除缓存
+                    EnvironmentChecker._cached_claude_path = None
+            except Exception:
+                EnvironmentChecker._cached_claude_path = None
+        
         # 首先尝试PATH中的claude
-        if shutil.which('claude') is not None:
-            return True
+        path_claude = shutil.which('claude')
+        if path_claude is not None:
+            # 缓存找到的路径
+            EnvironmentChecker._cached_claude_path = path_claude
+            logger.info(f"✅ 通过PATH找到Claude CLI: {path_claude}")
+            return path_claude
         
         # 备用路径检查 - 常见的Claude CLI安装位置
         common_paths = [
@@ -74,11 +94,20 @@ class EnvironmentChecker:
                     result = subprocess.run([str(path), '--version'], 
                                           capture_output=True, timeout=5)
                     if result.returncode == 0:
-                        return True
+                        # 缓存找到的路径
+                        EnvironmentChecker._cached_claude_path = str(path)
+                        logger.info(f"✅ 通过备用路径找到Claude CLI: {path}")
+                        return str(path)
                 except (subprocess.SubprocessError, FileNotFoundError, PermissionError):
                     continue
         
-        return False
+        logger.error("❌ 未找到可用的Claude CLI可执行文件")
+        return None
+    
+    @staticmethod
+    def check_claude_cli() -> bool:
+        """检测Claude CLI是否已安装"""
+        return EnvironmentChecker.get_claude_executable_path() is not None
     
     @staticmethod
     def check_projects_directory() -> bool:
@@ -97,10 +126,19 @@ class EnvironmentChecker:
         claude_available = cls.check_claude_cli()
         projects_exist = cls.check_projects_directory()
         
+        # 检查系统项目状态
+        try:
+            from projects_manager import SystemProjectManager
+            system_project_status = SystemProjectManager.check_system_project_status()
+        except Exception as e:
+            logger.warning(f"检查系统项目状态时出错: {e}")
+            system_project_status = {'error': str(e)}
+        
         return {
             'claude_cli': claude_available,
             'projects_dir': projects_exist,
             'projects_path': cls.get_projects_path(),
+            'system_project': system_project_status,
             'ready': claude_available and projects_exist,
             'status': 'ready' if (claude_available and projects_exist) else 'incomplete'
         }
@@ -169,6 +207,33 @@ class ConnectionManager:
     
     async def send_personal_message(self, message: dict, websocket: WebSocket):
         await websocket.send_text(json.dumps(message))
+    
+    async def broadcast(self, message: dict, connection_type: str = 'all'):
+        """广播消息到指定类型的WebSocket连接"""
+        connections = self.active_connections
+        if connection_type == 'chat':
+            connections = self.chat_connections
+        elif connection_type == 'shell':
+            connections = self.shell_connections
+        
+        if not connections:
+            logger.warning(f"没有活跃的{connection_type}连接可用于广播")
+            return
+        
+        disconnected_connections = []
+        for connection in connections:
+            try:
+                await connection.send_text(json.dumps(message))
+            except Exception as e:
+                # 连接可能已断开，记录并稍后清理
+                logger.warning(f"广播到WebSocket连接失败: {e}")
+                disconnected_connections.append(connection)
+        
+        # 清理断开的连接
+        for connection in disconnected_connections:
+            self.disconnect(connection)
+            
+        logger.info(f"✅ 已广播消息到 {len(connections) - len(disconnected_connections)}/{len(connections)} 个连接")
 
 # PTY Shell处理器 - 移植自claudecodeui的node-pty逻辑
 class PTYShellHandler:
@@ -209,23 +274,34 @@ class PTYShellHandler:
         self.loop = asyncio.get_running_loop()  # 保存当前事件循环
         
         try:
-            # 构建Claude命令 - 支持初始命令参数
+            # 获取Claude CLI的绝对路径
+            claude_executable = EnvironmentChecker.get_claude_executable_path()
+            if not claude_executable:
+                error_msg = "❌ 未找到Claude CLI可执行文件，请检查安装"
+                logger.error(error_msg)
+                await self.send_output(f"{error_msg}\r\n")
+                return False
+            
+            logger.info(f"🎯 使用Claude CLI路径: {claude_executable}")
+            
+            # 构建Claude命令 - 使用绝对路径，支持初始命令参数
             if initial_command:
-                # 使用传入的初始命令（如 'claude -c'）
-                shell_command = f'cd "{project_path}" && {initial_command}'
-                logger.info(f"🚀 使用初始命令: {initial_command}")
+                # 在初始命令后添加完全自动化参数
+                enhanced_command = f'"{claude_executable}" {initial_command.replace("claude", "").strip()} --dangerously-skip-permissions'
+                shell_command = f'cd "{project_path}" && {enhanced_command}'
+                logger.info(f"🚀 使用增强初始命令: {enhanced_command}")
             elif has_session and session_id:
                 # 优化恢复会话策略：
                 # 1. 首先尝试使用传入的session_id
                 # 2. 如果失败，自动启动新会话
                 # 注：session_id现在优先是文件名(主会话ID)，更可能成功
-                shell_command = f'cd "{project_path}" && (claude --resume {session_id} || claude)'
-                logger.info(f"🔄 恢复会话命令（增强fallback）: claude --resume {session_id} || claude")
+                shell_command = f'cd "{project_path}" && ("{claude_executable}" --resume {session_id} || "{claude_executable}")'
+                logger.info(f"🔄 恢复会话命令（增强fallback）: \"{claude_executable}\" --resume {session_id} || \"{claude_executable}\"")
                 logger.info(f"💡 会话ID类型: {'主会话' if len(session_id.split('-')) == 5 else '子会话'}")
             else:
                 # 直接启动新会话
-                shell_command = f'cd "{project_path}" && claude'
-                logger.info("🆕 启动新Claude会话: claude")
+                shell_command = f'cd "{project_path}" && "{claude_executable}"'
+                logger.info(f"🆕 启动新Claude会话: \"{claude_executable}\"")
             
             # 设置正确的终端环境变量 - 使用实际尺寸和UTF-8编码
             env = os.environ.copy()
@@ -768,20 +844,6 @@ class PTYShellHandler:
             self.master_fd = None
         
         logger.info("✅ PTY Shell资源清理完成")
-    
-    async def broadcast(self, message: dict, connection_type: str = 'all'):
-        connections = self.active_connections
-        if connection_type == 'chat':
-            connections = self.chat_connections
-        elif connection_type == 'shell':
-            connections = self.shell_connections
-        
-        for connection in connections:
-            try:
-                await connection.send_text(json.dumps(message))
-            except:
-                # 连接可能已断开
-                pass
 
 manager = ConnectionManager()
 
@@ -801,11 +863,27 @@ async def build_file_tree(path: Path, max_depth: int = 3, current_depth: int = 0
             '.DS_Store', 'Thumbs.db', '.vscode', '.idea'
         }
         
+        # macOS系统保护目录列表，直接跳过以避免权限错误
+        macos_protected_dirs = {
+            'Accounts', 'AppleMediaServices', 'Autosave Information', 'Biome',
+            'Calendars', 'CallHistoryDB', 'CloudStorage', 'Contacts', 
+            'CoreData', 'CoreDuet', 'CoreFollowUp', 'DataDeliveryServices',
+            'GameKit', 'IdentityServices', 'Insights', 'Mail', 'Messages',
+            'PersonalizationPortrait', 'Photos', 'SafariSafeBrowsing', 
+            'Suggestions', 'Trial', 'com.apple.aiml.instrumentation',
+            'com.apple.assistant.backedup', 'com.apple.internal.ck',
+            'com.apple.passd', 'Metadata', 'MobileMeAccounts'
+        }
+        
         entries = []
         for entry in path.iterdir():
             if entry.name.startswith('.') and entry.name not in {'.gitignore', '.env.example'}:
                 continue
             if entry.name in ignore_patterns:
+                continue
+            # 跳过macOS系统保护目录（主要在Library目录下）
+            if path.name == 'Library' and entry.name in macos_protected_dirs:
+                logger.debug(f"跳过macOS系统保护目录: {entry}")
                 continue
             entries.append(entry)
         
@@ -837,11 +915,21 @@ async def build_file_tree(path: Path, max_depth: int = 3, current_depth: int = 0
                 items.append(item)
                 
             except (PermissionError, OSError) as e:
-                logger.warning(f"无法访问 {entry}: {e}")
+                # 区分正常的macOS系统保护和真正的文件系统错误
+                if 'Operation not permitted' in str(e) or 'Permission denied' in str(e):
+                    # macOS系统保护机制，使用debug级别日志
+                    logger.debug(f"macOS系统保护目录无法访问: {entry}")
+                else:
+                    # 其他文件系统错误
+                    logger.warning(f"无法访问 {entry}: {e}")
                 continue
                 
     except (PermissionError, OSError) as e:
-        logger.error(f"无法读取目录 {path}: {e}")
+        # 区分正常的macOS系统保护和真正的文件系统错误
+        if 'Operation not permitted' in str(e) or 'Permission denied' in str(e):
+            logger.debug(f"macOS系统保护目录无法读取: {path}")
+        else:
+            logger.error(f"无法读取目录 {path}: {e}")
     
     return items
 
@@ -934,6 +1022,113 @@ async def check_environment():
     """环境检测API"""
     env_status = EnvironmentChecker.check_environment()
     return JSONResponse(content=env_status)
+
+# 系统项目管理API
+@app.get("/api/system-project/status")
+async def get_system_project_status():
+    """获取系统项目状态API"""
+    try:
+        from projects_manager import SystemProjectManager
+        status = SystemProjectManager.check_system_project_status()
+        return JSONResponse(content=status)
+    except Exception as e:
+        logger.error(f"获取系统项目状态时出错: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"error": "获取系统项目状态失败", "details": str(e)}
+        )
+
+@app.post("/api/system-project/initialize")
+async def initialize_system_project():
+    """初始化系统项目API"""
+    try:
+        from projects_manager import SystemProjectManager
+        result = await SystemProjectManager.initialize_system_project()
+        return JSONResponse(content=result)
+    except Exception as e:
+        logger.error(f"初始化系统项目时出错: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"error": "初始化系统项目失败", "details": str(e)}
+        )
+
+@app.get("/api/system-project/agents")
+async def get_system_agents_status():
+    """获取系统智能体状态API"""
+    try:
+        from projects_manager import SystemProjectManager
+        agents_status = await SystemProjectManager.get_system_agents_status()
+        return JSONResponse(content=agents_status)
+    except Exception as e:
+        logger.error(f"获取系统智能体状态时出错: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"error": "获取系统智能体状态失败", "details": str(e)}
+        )
+
+@app.post("/api/system-project/deploy-agents")
+async def deploy_system_agents():
+    """部署系统默认智能体API"""
+    try:
+        from projects_manager import SystemProjectManager
+        result = await SystemProjectManager.deploy_default_agents()
+        return JSONResponse(content=result)
+    except Exception as e:
+        logger.error(f"部署系统智能体时出错: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"error": "部署系统智能体失败", "details": str(e)}
+        )
+
+@app.post("/api/agents-deployed")
+async def handle_agents_deployed(request: Request):
+    """处理数字员工部署完成通知API"""
+    try:
+        # 解析请求数据
+        data = await request.json()
+        logger.info(f"收到数字员工部署完成通知: {data}")
+        
+        # 准备广播消息
+        broadcast_message = {
+            "type": "agents_deployed",
+            "status": data.get("status", "success"),
+            "message": data.get("message", "数字员工团队部署完成"),
+            "deployed_agents": data.get("deployed_agents", []),
+            "timestamp": data.get("timestamp"),
+            "agent_count": len(data.get("deployed_agents", []))
+        }
+        
+        # 广播到所有WebSocket连接
+        broadcast_success = True
+        try:
+            await manager.broadcast(broadcast_message)
+            logger.info(f"已广播数字员工部署完成消息到所有连接")
+        except Exception as broadcast_error:
+            logger.error(f"广播消息失败: {broadcast_error}")
+            broadcast_success = False
+            # 继续处理，不因为广播失败而中断
+        
+        # 可选：更新系统状态（如果需要持久化）
+        # await update_system_agents_status()
+        
+        return JSONResponse(content={
+            "status": "success",
+            "message": "部署完成通知已处理",
+            "broadcast": broadcast_success,
+            "agent_count": len(data.get("deployed_agents", [])),
+            "timestamp": data.get("timestamp")
+        })
+        
+    except Exception as e:
+        logger.error(f"处理数字员工部署通知时出错: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={
+                "error": "处理部署通知失败", 
+                "details": str(e),
+                "status": "error"
+            }
+        )
 
 @app.get("/api/projects")
 async def get_projects():
@@ -1269,6 +1464,93 @@ async def write_file(request: Request):
             content={"error": "写入文件失败", "details": str(e)}
         )
 
+# Hook管理API端点
+@app.post("/api/hooks/setup-temporary")
+async def setup_temporary_hook(request: Request):
+    """设置临时的Claude Code hook"""
+    try:
+        data = await request.json()
+        session_identifier = data.get('sessionId', '')
+        
+        # 导入并使用HookManager
+        from setup_hooks import HookManager
+        hook_manager = HookManager()
+        
+        success = hook_manager.setup_temporary_hook(session_identifier)
+        
+        if success:
+            logger.info(f"✅ 临时hook设置成功，会话ID: {session_identifier}")
+            return JSONResponse(content={
+                "success": True,
+                "message": "临时hook配置成功",
+                "sessionId": session_identifier
+            })
+        else:
+            logger.error(f"❌ 临时hook设置失败，会话ID: {session_identifier}")
+            return JSONResponse(
+                status_code=500,
+                content={"error": "临时hook配置失败"}
+            )
+            
+    except Exception as e:
+        logger.error(f"设置临时hook时出错: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"error": "设置临时hook失败", "details": str(e)}
+        )
+
+@app.post("/api/hooks/remove-temporary")
+async def remove_temporary_hook(request: Request):
+    """移除临时的Claude Code hooks"""
+    try:
+        # 导入并使用HookManager
+        from setup_hooks import HookManager
+        hook_manager = HookManager()
+        
+        success = hook_manager.remove_temporary_hooks()
+        
+        if success:
+            logger.info("✅ 临时hooks移除成功")
+            return JSONResponse(content={
+                "success": True,
+                "message": "临时hooks已移除"
+            })
+        else:
+            logger.error("❌ 临时hooks移除失败")
+            return JSONResponse(
+                status_code=500,
+                content={"error": "临时hooks移除失败"}
+            )
+            
+    except Exception as e:
+        logger.error(f"移除临时hooks时出错: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"error": "移除临时hooks失败", "details": str(e)}
+        )
+
+@app.get("/api/hooks/status")
+async def get_hook_status():
+    """获取当前hooks配置状态"""
+    try:
+        # 导入并使用HookManager
+        from setup_hooks import HookManager
+        hook_manager = HookManager()
+        
+        status = hook_manager.check_hook_status()
+        
+        return JSONResponse(content={
+            "success": True,
+            "status": status
+        })
+        
+    except Exception as e:
+        logger.error(f"检查hooks状态时出错: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"error": "检查hooks状态失败", "details": str(e)}
+        )
+
 # WebSocket路由
 @app.websocket("/ws")
 async def chat_websocket_endpoint(websocket: WebSocket):
@@ -1385,10 +1667,8 @@ async def shell_websocket_endpoint(websocket: WebSocket):
                 await pty_handler.resize_terminal(cols, rows)
                 
     except WebSocketDisconnect:
-        logger.info("🔌 Shell WebSocket客户端断开连接 - WebSocketDisconnect异常")
-        logger.info(f"📊 断开连接时的连接状态: isConnected={pty_handler.running if pty_handler else 'N/A'}")
-        import traceback
-        logger.info(f"📍 断开连接调用栈: {traceback.format_exc()}")
+        # 用户关闭页签是正常行为，使用debug级别日志
+        logger.debug("Shell WebSocket客户端断开连接")
         manager.disconnect(websocket)
         pty_handler.cleanup()
     except Exception as e:
@@ -1426,6 +1706,31 @@ if __name__ == "__main__":
     print(f"   项目目录: {'✅' if env_status['projects_dir'] else '❌'}")
     print(f"   状态: {'✅ 就绪' if env_status['ready'] else '⚠️  需要配置'}")
     
+    # 配置Claude hooks for数字员工自动部署
+    print(f"🔧 配置Claude hooks...")
+    try:
+        from setup_hooks import HookManager
+        hook_manager = HookManager()
+        
+        # 检查hooks状态
+        status = hook_manager.check_hook_status()
+        print(f"   Hooks状态: {'✅ 已配置' if status['configured'] else '🔧 需要配置'}")
+        
+        # 如果未配置则自动配置
+        if not status["configured"]:
+            print(f"   正在自动设置Claude hooks...")
+            if hook_manager.setup_claude_hooks():
+                print(f"   ✅ Claude hooks配置成功")
+            else:
+                print(f"   ⚠️ Claude hooks配置失败")
+        else:
+            print(f"   ✅ 数字员工自动部署已就绪")
+            
+    except Exception as e:
+        print(f"   ❌ 配置Claude hooks时出错: {e}")
+        print(f"   ⚠️ 数字员工自动部署功能可能不可用")
+    
+    print(f"🚀 启动Heliki OS服务...")
     uvicorn.run(
         "app:app", 
         host="localhost", 

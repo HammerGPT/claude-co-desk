@@ -35,8 +35,22 @@ class ClaudeCLIIntegration:
         captured_session_id = session_id
         session_created_sent = False
         
-        # 构建Claude CLI命令参数
-        args = ['claude']
+        # 获取Claude CLI的绝对路径，防止"Command not found"随机性问题
+        from app import EnvironmentChecker  # 延迟导入避免循环依赖
+        claude_executable = EnvironmentChecker.get_claude_executable_path()
+        if not claude_executable:
+            error_msg = "未找到Claude CLI可执行文件，请检查安装"
+            logger.error(error_msg)
+            await websocket.send_text(json.dumps({
+                'type': 'claude-error',
+                'error': error_msg
+            }))
+            return
+        
+        logger.info(f"🎯 使用Claude CLI路径: {claude_executable}")
+        
+        # 构建Claude CLI命令参数 - 使用绝对路径
+        args = [claude_executable]
         
         # 添加print标志和命令
         if command and command.strip():
@@ -79,9 +93,10 @@ class ClaudeCLIIntegration:
                 'COLORTERM': 'truecolor',  # 支持真彩色
                 'COLUMNS': '120',          # 固定列数
                 'LINES': '30',             # 固定行数
-                'FORCE_COLOR': '1',        # 强制彩色输出
-                'NO_COLOR': '',            # 清除禁用颜色标志
+                'NO_COLOR': '1',           # 禁用颜色输出，避免警告
             })
+            # 移除可能冲突的FORCE_COLOR
+            env.pop('FORCE_COLOR', None)
             
             # 启动Claude进程
             process = await asyncio.create_subprocess_exec(
@@ -191,10 +206,11 @@ class ClaudeCLIIntegration:
                             error_output = line.decode('utf-8').strip()
                             if error_output:
                                 logger.error(f"🚨 Claude CLI stderr: {error_output}")
-                                await websocket.send_text(json.dumps({
-                                    'type': 'claude-error',
-                                    'error': error_output
-                                }))
+                                if websocket:
+                                    await websocket.send_text(json.dumps({
+                                        'type': 'claude-error',
+                                        'error': error_output
+                                    }))
                         except Exception as e:
                             logger.error(f"❌ 处理stderr时出错: {e}")
                 except Exception as e:
@@ -371,8 +387,22 @@ class ClaudeCLIIntegration:
         
         logger.info(f"启动继续会话 - 项目: {project_name}, 路径: {project_path}, 工作目录: {cwd}")
         
-        # 构建Claude CLI命令参数 - claude -c 是交互式命令，不需要其他参数
-        args = ['claude']
+        # 获取Claude CLI的绝对路径，防止"Command not found"随机性问题
+        from app import EnvironmentChecker  # 延迟导入避免循环依赖
+        claude_executable = EnvironmentChecker.get_claude_executable_path()
+        if not claude_executable:
+            error_msg = "未找到Claude CLI可执行文件，请检查安装"
+            logger.error(error_msg)
+            await websocket.send_text(json.dumps({
+                'type': 'claude-error',
+                'error': error_msg
+            }))
+            return
+        
+        logger.info(f"🎯 继续会话使用Claude CLI路径: {claude_executable}")
+        
+        # 构建Claude CLI命令参数 - 使用绝对路径，claude -c 是交互式命令，不需要其他参数
+        args = [claude_executable]
         
         # 使用工作目录
         working_dir = cwd or os.getcwd()
@@ -398,9 +428,10 @@ class ClaudeCLIIntegration:
                 'COLORTERM': 'truecolor',  # 支持真彩色
                 'COLUMNS': '120',          # 固定列数
                 'LINES': '30',             # 固定行数
-                'FORCE_COLOR': '1',        # 强制彩色输出
-                'NO_COLOR': '',            # 清除禁用颜色标志
+                'NO_COLOR': '1',           # 禁用颜色输出，避免警告
             })
+            # 移除可能冲突的FORCE_COLOR
+            env.pop('FORCE_COLOR', None)
             
             # 启动Claude进程 - 继承标准输入以访问会话历史
             process = await asyncio.create_subprocess_exec(
@@ -483,10 +514,11 @@ class ClaudeCLIIntegration:
                             stderr_output = line.decode('utf-8').strip()
                             if stderr_output:
                                 logger.error(f"📤 Claude继续会话 stderr: {stderr_output}")
-                                await websocket.send_text(json.dumps({
-                                    'type': 'claude-error',
-                                    'error': stderr_output
-                                }))
+                                if websocket:
+                                    await websocket.send_text(json.dumps({
+                                        'type': 'claude-error',
+                                        'error': stderr_output
+                                    }))
                         except Exception as e:
                             logger.error(f"❌ 处理stderr行异常: {e}")
                             
@@ -535,7 +567,8 @@ class ClaudeCLIIntegration:
     @staticmethod
     def check_claude_availability() -> bool:
         """检查Claude CLI是否可用"""
-        return shutil.which('claude') is not None
+        from app import EnvironmentChecker  # 延迟导入避免循环依赖
+        return EnvironmentChecker.get_claude_executable_path() is not None
 
 # 全局实例
 claude_cli = ClaudeCLIIntegration()
