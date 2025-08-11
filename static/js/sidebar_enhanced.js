@@ -734,9 +734,15 @@ class EnhancedSidebar {
         const sessionData = this.activeSessions.get(sessionId);
         if (!sessionData) return;
         
-        // 移除页签
+        // 移除页签（查找当前存在的页签元素）
         if (sessionData.tabElement) {
             sessionData.tabElement.remove();
+        } else if (this.sessionTabs) {
+            // 如果没有保存的tabElement，通过选择器查找
+            const tabElement = this.sessionTabs.querySelector(`[data-session-id="${sessionId}"]`);
+            if (tabElement) {
+                tabElement.remove();
+            }
         }
         
         // 从活跃会话中移除
@@ -1175,6 +1181,66 @@ class EnhancedSidebar {
         if (this.sessionTabs) {
             this.sessionTabs.appendChild(tabElement);
         }
+        
+        return tabElement;
+    }
+
+    /**
+     * 创建任务页签
+     */
+    createTaskTab(taskId, taskName, initialCommand = null, workingDirectory = null) {
+        // 检查是否已存在相同taskId的页签
+        if (this.sessionTabs) {
+            const existingTab = this.sessionTabs.querySelector(`[data-task-id="${taskId}"]`);
+            if (existingTab) {
+                console.log(`⚠️ 任务页签已存在: ${taskId}，切换到现有页签`);
+                this.switchToSession(taskId);
+                return existingTab;
+            }
+        }
+        
+        console.log(`🎯 创建新任务页签: ${taskName} (ID: ${taskId})`);
+        
+        // 为任务创建伪项目会话数据，以便switchToSession能正常工作
+        const taskSessionData = {
+            project: {
+                name: 'task-execution',
+                displayName: '任务执行',
+                path: workingDirectory || ''  // 使用传递的工作目录
+            },
+            sessionId: taskId,
+            sessionName: taskName,
+            isTask: true,
+            initialCommand: initialCommand  // 使用传递的完整任务命令
+        };
+        
+        const tabElement = document.createElement('div');
+        tabElement.className = 'session-tab task-tab';
+        tabElement.setAttribute('data-session-id', taskId); // 使用taskId作为sessionId
+        tabElement.setAttribute('data-task-id', taskId);
+        
+        tabElement.innerHTML = `
+            <div class="session-tab-content" onclick="enhancedSidebar.switchToSession('${taskId}')">
+                <span class="session-tab-title">${this.escapeHtml(taskName)}</span>
+            </div>
+            <button class="session-tab-close" onclick="enhancedSidebar.closeSession('${taskId}')" title="关闭任务">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+            </button>
+        `;
+        
+        if (this.sessionTabs) {
+            this.sessionTabs.appendChild(tabElement);
+        }
+        
+        // 将tabElement引用保存到会话数据中，并注册到活跃会话
+        taskSessionData.tabElement = tabElement;
+        this.activeSessions.set(taskId, taskSessionData);
+        
+        // 立即切换到这个任务页签
+        this.switchToSession(taskId);
         
         return tabElement;
     }

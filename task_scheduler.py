@@ -239,21 +239,22 @@ class TaskScheduler:
     
     def _build_command(self, task: ScheduledTask) -> str:
         """构建Claude CLI命令"""
-        command = task.goal
+        parts = []
         
-        # 添加资源文件信息
+        # 1. 先添加文件引用（使用@语法）
         if task.resources:
-            resources_info = []
             for resource in task.resources:
-                if resource.startswith('/') or '\\' in resource:
-                    resources_info.append(f"参考文件: {resource}")
-                else:
-                    resources_info.append(f"相关文件: {resource}")
-            
-            if resources_info:
-                command += f"\n\n资源文件: {', '.join(resources_info)}"
+                # 使用@语法直接引用文件，Claude能直接读取文件内容
+                parts.append(f"@{resource}")
         
-        return command
+        # 2. 添加空行分隔符
+        if parts:
+            parts.append('')
+        
+        # 3. 添加任务目标描述
+        parts.append(task.goal)
+        
+        return ' '.join(parts)
     
     def get_scheduled_tasks(self) -> List[Dict[str, Any]]:
         """获取所有任务（包括立即执行和定时任务）"""

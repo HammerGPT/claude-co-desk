@@ -1887,34 +1887,77 @@ async def chat_websocket_endpoint(websocket: WebSocket):
                 task_name = message.get('taskName', '未知任务')
                 command = message.get('command', '')
                 skip_permissions = message.get('skipPermissions', False)
+                resources = message.get('resources', [])
                 
                 logger.info(f"任务执行请求: {task_name} (ID: {task_id})")
+                if resources:
+                    logger.info(f"任务资源文件: {', '.join(resources)}")
                 
                 # 构建任务执行选项
                 task_options = {
                     'taskId': task_id,
                     'taskName': task_name,
                     'projectPath': None,  # 任务不绑定特定项目
-                    'permissionMode': 'dangerously-allow-all' if skip_permissions else 'default'
+                    'permissionMode': 'dangerously-allow-all' if skip_permissions else 'default',
+                    'resources': resources
                 }
                 
-                # 通知前端创建任务页签
+                # 构建完整的任务执行命令
+                task_command_parts = ['claude', f'"{command}"']
+                
+                # 添加权限设置
+                if skip_permissions:
+                    task_command_parts.append('--dangerously-skip-permissions')
+                
+                # 添加资源目录
+                if resources:
+                    for resource in resources:
+                        task_command_parts.extend(['--add-dir', resource])
+                
+                # 拼接完整命令
+                full_task_command = ' '.join(task_command_parts)
+                logger.info(f"📋 构建任务命令: {full_task_command}")
+                
+                # 通知前端创建任务页签，同时传递完整的初始命令
                 await manager.broadcast({
                     'type': 'create-task-tab',
                     'taskId': task_id,
                     'taskName': task_name,
+                    'initialCommand': full_task_command,  # 直接传递完整的任务命令
+                    'workingDirectory': os.path.expanduser('~'),  # 传递工作目录
                     'scheduledExecution': message.get('scheduledExecution', False)
                 })
                 
                 try:
-                    # 使用Claude CLI执行任务
-                    await claude_cli.spawn_claude(command, task_options, websocket)
+                    # 验证命令不为空
+                    if not command or not command.strip():
+                        raise ValueError("任务命令不能为空")
+                    
+                    logger.info(f"✅ 任务已通过create-task-tab消息发送到前端执行")
+                    
+                except ValueError as e:
+                    logger.error(f"任务参数错误: {e}")
+                    await manager.send_personal_message({
+                        'type': 'task-error',
+                        'taskId': task_id,
+                        'error': f"任务参数错误: {str(e)}",
+                        'category': 'validation'
+                    }, websocket)
+                except FileNotFoundError as e:
+                    logger.error(f"Claude CLI不可用: {e}")
+                    await manager.send_personal_message({
+                        'type': 'task-error',
+                        'taskId': task_id,
+                        'error': "Claude CLI不可用，请检查安装",
+                        'category': 'system'
+                    }, websocket)
                 except Exception as e:
                     logger.error(f"任务执行错误: {e}")
                     await manager.send_personal_message({
                         'type': 'task-error',
                         'taskId': task_id,
-                        'error': str(e)
+                        'error': f"任务执行失败: {str(e)}",
+                        'category': 'execution'
                     }, websocket)
             elif message.get('type') == 'ping':
                 await manager.send_personal_message({

@@ -518,13 +518,22 @@ class TaskManager {
             // 优先使用现代File System Access API
             if ('showDirectoryPicker' in window) {
                 const dirHandle = await window.showDirectoryPicker();
-                const folderPath = dirHandle.name;
-                if (!this.resources.includes(folderPath)) {
-                    this.resources.push(folderPath);
-                    this.renderResourceList();
+                // 尝试构建相对路径，如果无法获取完整路径，提示用户手动输入
+                const folderName = dirHandle.name;
+                console.log('选择的文件夹:', folderName);
+                
+                // 因为浏览器安全限制，无法直接获取完整路径
+                // 提示用户确认路径或手动输入完整路径
+                const userConfirm = confirm(`已选择文件夹: "${folderName}"\n\n由于浏览器安全限制，请确认：\n1. 如果文件夹在当前工作目录下，点击确定\n2. 如果需要输入完整路径，点击取消后手动输入`);
+                
+                if (userConfirm) {
+                    if (!this.resources.includes(folderName)) {
+                        this.resources.push(folderName);
+                        this.renderResourceList();
+                    }
                 }
             } else {
-                // 回退到webkitdirectory，但正确提取路径
+                // 回退到webkitdirectory API
                 const folderInput = document.createElement('input');
                 folderInput.type = 'file';
                 folderInput.webkitdirectory = true;
@@ -534,11 +543,27 @@ class TaskManager {
                 folderInput.addEventListener('change', (e) => {
                     const files = Array.from(e.target.files);
                     if (files.length > 0) {
-                        // 从webkitRelativePath提取顶级文件夹名
-                        const relativePath = files[0].webkitRelativePath;
-                        const folderName = relativePath.split('/')[0];
-                        if (folderName && !this.resources.includes(folderName)) {
-                            this.resources.push(folderName);
+                        // 获取完整的相对路径
+                        const firstFile = files[0];
+                        let folderPath = '';
+                        
+                        if (firstFile.webkitRelativePath) {
+                            // 从第一个文件的路径提取文件夹路径
+                            const pathParts = firstFile.webkitRelativePath.split('/');
+                            if (pathParts.length > 1) {
+                                // 移除文件名，保留文件夹路径
+                                pathParts.pop();
+                                folderPath = pathParts.join('/');
+                            } else {
+                                folderPath = pathParts[0];
+                            }
+                        } else {
+                            // 如果无法获取路径，使用文件夹名
+                            folderPath = firstFile.name || 'selected_folder';
+                        }
+                        
+                        if (folderPath && !this.resources.includes(folderPath)) {
+                            this.resources.push(folderPath);
                             this.renderResourceList();
                         }
                     }
@@ -643,16 +668,134 @@ class TaskManager {
      */
     async executeSelectedTask() {
         const task = this.tasks.find(t => t.id === this.selectedTaskId);
-        if (!task) return;
+        if (!task) {
+            console.error('❌ 任务不存在:', this.selectedTaskId);
+            alert('任务不存在，请刷新页面重试');
+            return;
+        }
+        
+        // 检查任务是否启用
+        if (!task.enabled) {
+            console.warn('⚠️ 尝试执行已禁用的任务:', task.name);
+            if (!confirm(`任务"${task.name}"当前已禁用，是否要启用并执行？`)) {
+                return;
+            }
+            task.enabled = true;
+        }
+        
+        console.log('🚀 执行任务:', task.name);
+        
+        // 验证资源文件
+        if (task.resources && task.resources.length > 0) {
+            console.log('📁 任务资源文件:', task.resources);
+        }
+        
+        // 检查WebSocket连接
+        if (!window.websocketManager || !window.websocketManager.isConnected) {
+            console.error('❌ WebSocket连接未建立');
+            alert('系统连接异常，请刷新页面重试');
+            return;
+        }
         
         try {
-            // 这里可以实现任务执行逻辑
-            console.log('执行任务:', task);
-            alert(`任务 "${task.name}" 执行功能待实现`);
+            // 更新最后执行时间
+            task.lastRun = new Date().toISOString();
+            // V2版本使用API存储，不需要手动保存到localStorage
+            this.renderTasksList();
+            
+            // 构建Claude CLI命令
+            const command = this.buildClaudeCommand(task);
+            console.log('📝 构建的命令:', command);
+            
+            // 通过WebSocket通知后端创建新页签执行任务
+            const sessionData = {
+                type: 'new-task-session',
+                taskId: task.id,
+                taskName: task.name,
+                command: command,
+                skipPermissions: task.skipPermissions,
+                resources: task.resources
+            };
+            
+            console.log('📡 发送任务执行请求:', sessionData);
+            window.websocketManager.sendMessage(sessionData);
+            
+            // 显示执行反馈
+            this.showExecutionFeedback(task.name);
+            
+            // 关闭模态框
+            this.closeModal();
+            
         } catch (error) {
-            console.error('执行任务失败:', error);
-            alert('执行任务失败: ' + error.message);
+            console.error('❌ 任务执行失败:', error);
+            alert(`任务执行失败: ${error.message}`);
         }
+    }
+    
+    /**
+     * 构建Claude CLI命令
+     */
+    buildClaudeCommand(task) {
+        let parts = [];
+        
+        // 1. 先添加文件引用（使用@语法）
+        if (task.resources && task.resources.length > 0) {
+            task.resources.forEach(resource => {
+                // 使用@语法直接引用文件，Claude能直接读取文件内容
+                parts.push(`@${resource}`);
+            });
+        }
+        
+        // 2. 添加空行分隔符
+        if (parts.length > 0) {
+            parts.push('');
+        }
+        
+        // 3. 添加任务目标描述
+        parts.push(task.goal);
+        
+        return parts.join(' ');
+    }
+    
+    /**
+     * 显示执行反馈
+     */
+    showExecutionFeedback(taskName) {
+        // 创建临时通知元素
+        const notification = document.createElement('div');
+        notification.className = 'task-execution-notification';
+        notification.innerHTML = `
+            <div class="notification-content">
+                <span class="notification-icon">🚀</span>
+                <span class="notification-text">正在执行任务: ${this.escapeHtml(taskName)}</span>
+            </div>
+        `;
+        
+        // 添加样式
+        notification.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 12px 16px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            z-index: 10000;
+            animation: slideInRight 0.3s ease-out;
+        `;
+        
+        document.body.appendChild(notification);
+        
+        // 3秒后自动移除
+        setTimeout(() => {
+            if (notification.parentNode) {
+                notification.style.animation = 'slideOutRight 0.3s ease-out';
+                setTimeout(() => {
+                    notification.remove();
+                }, 300);
+            }
+        }, 3000);
     }
 
     /**

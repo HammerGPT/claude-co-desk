@@ -206,7 +206,94 @@ class WebSocketManager {
                     window.app.markSessionAsActive(data.sessionId);
                 }
                 break;
+                
+            case 'create-task-tab':
+                // 创建任务页签
+                if (data.taskId && data.taskName && window.enhancedSidebar) {
+                    console.log('🎯 创建任务页签:', data.taskName);
+                    console.log('📋 初始命令:', data.initialCommand);
+                    console.log('📁 工作目录:', data.workingDirectory);
+                    window.enhancedSidebar.createTaskTab(data.taskId, data.taskName, data.initialCommand, data.workingDirectory);
+                }
+                break;
+                
+                
+            case 'task-error':
+                // 处理任务错误
+                if (data.taskId && data.error) {
+                    console.error('❌ 任务执行错误:', data);
+                    this._showTaskError(data);
+                }
+                break;
         }
+    }
+
+    /**
+     * 显示任务错误通知
+     */
+    _showTaskError(errorData) {
+        const { taskId, error, category = 'execution' } = errorData;
+        
+        // 获取错误图标
+        const errorIcons = {
+            validation: '⚠️',
+            system: '🚨',
+            execution: '❌'
+        };
+        const icon = errorIcons[category] || '❌';
+        
+        // 创建错误通知元素
+        const notification = document.createElement('div');
+        notification.className = 'task-error-notification';
+        notification.innerHTML = `
+            <div class="notification-content error">
+                <span class="notification-icon">${icon}</span>
+                <div class="notification-details">
+                    <div class="notification-title">任务执行失败</div>
+                    <div class="notification-message">${this._escapeHtml(error)}</div>
+                    <div class="notification-taskid">任务ID: ${taskId}</div>
+                </div>
+                <button class="notification-close" onclick="this.parentElement.remove()">×</button>
+            </div>
+        `;
+        
+        // 添加样式
+        notification.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: var(--destructive);
+            color: var(--destructive-foreground);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 16px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            z-index: 10001;
+            max-width: 400px;
+            animation: slideInRight 0.3s ease-out;
+        `;
+        
+        document.body.appendChild(notification);
+        
+        // 10秒后自动移除
+        setTimeout(() => {
+            if (notification.parentNode) {
+                notification.style.animation = 'slideOutRight 0.3s ease-out';
+                setTimeout(() => {
+                    notification.remove();
+                }, 300);
+            }
+        }, 10000);
+    }
+    
+    /**
+     * HTML转义
+     */
+    _escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
     }
 
     /**
