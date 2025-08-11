@@ -1,0 +1,680 @@
+/**
+ * 任务管理器组件 V2 - 分栏交互版本
+ * 负责每日任务的创建、管理和执行
+ */
+
+class TaskManager {
+    constructor() {
+        console.log('📋 TaskManager V2 初始化开始');
+        this.tasks = [];
+        this.selectedTaskId = null;
+        this.currentView = 'empty'; // 'empty', 'detail', 'form'
+        this.resources = [];
+        this.currentEditingTask = null;
+        
+        this.initElements();
+        this.initEventListeners();
+        console.log('✅ TaskManager V2 初始化完成');
+    }
+
+    /**
+     * 初始化DOM元素引用
+     */
+    initElements() {
+        // 模态框相关
+        this.modal = document.getElementById('daily-tasks-modal');
+        this.modalCloseBtn = document.getElementById('tasks-modal-close');
+        
+        // 分栏布局相关
+        this.tasksList = document.getElementById('tasks-list');
+        this.addTaskBtn = document.getElementById('add-task-btn');
+        this.taskDetailEmpty = document.getElementById('task-detail-empty');
+        this.taskDetailView = document.getElementById('task-detail-view');
+        this.addTaskForm = document.getElementById('add-task-form');
+        
+        // 详情视图相关
+        this.detailTaskName = document.getElementById('detail-task-name');
+        this.detailTaskGoal = document.getElementById('detail-task-goal');
+        this.detailExecutionMode = document.getElementById('detail-execution-mode');
+        this.detailResources = document.getElementById('detail-resources');
+        this.detailStatus = document.getElementById('detail-status');
+        this.editTaskBtn = document.getElementById('edit-task-btn');
+        this.executeTaskBtn = document.getElementById('execute-task-btn');
+        
+        // 表单相关
+        this.taskForm = document.getElementById('task-form');
+        this.cancelAddTaskBtn = document.getElementById('cancel-add-task');
+        this.cancelTaskBtn = document.getElementById('cancel-task');
+        this.cancelEditBtn = document.getElementById('cancel-edit');
+        
+        // 表单字段
+        this.taskNameInput = document.getElementById('task-name');
+        this.taskGoalInput = document.getElementById('task-goal');
+        this.skipPermissionsCheckbox = document.getElementById('skip-permissions');
+        this.resourceList = document.getElementById('resource-list');
+        this.executeImmediateRadio = document.getElementById('execute-immediate');
+        this.executeScheduledRadio = document.getElementById('execute-scheduled');
+        this.scheduleSettings = document.getElementById('schedule-settings');
+        this.scheduleFrequency = document.getElementById('schedule-frequency');
+        this.scheduleTime = document.getElementById('schedule-time');
+        
+        // 资源选择相关
+        this.browseFilesBtn = document.getElementById('browse-files');
+        this.browseFoldersBtn = document.getElementById('browse-folders');
+        this.manualPathInput = document.getElementById('manual-path');
+        this.addManualPathBtn = document.getElementById('add-manual-path');
+        
+        console.log('🔍 TaskManager DOM元素检查:', {
+            modal: !!this.modal,
+            tasksList: !!this.tasksList,
+            addTaskBtn: !!this.addTaskBtn,
+            taskDetailEmpty: !!this.taskDetailEmpty,
+            taskDetailView: !!this.taskDetailView,
+            addTaskForm: !!this.addTaskForm
+        });
+    }
+
+    /**
+     * 初始化事件监听器
+     */
+    initEventListeners() {
+        // 模态框关闭事件
+        if (this.modalCloseBtn) {
+            this.modalCloseBtn.addEventListener('click', () => {
+                this.closeModal();
+            });
+        }
+        
+        // 点击模态框背景关闭
+        if (this.modal) {
+            this.modal.addEventListener('click', (e) => {
+                if (e.target === this.modal) {
+                    this.closeModal();
+                }
+            });
+        }
+        
+        // 新增任务按钮
+        if (this.addTaskBtn) {
+            this.addTaskBtn.addEventListener('click', () => {
+                this.showAddTaskForm();
+            });
+        }
+        
+        // 详情视图操作按钮
+        if (this.editTaskBtn) {
+            this.editTaskBtn.addEventListener('click', () => {
+                this.editSelectedTask();
+            });
+        }
+        
+        if (this.executeTaskBtn) {
+            this.executeTaskBtn.addEventListener('click', () => {
+                this.executeSelectedTask();
+            });
+        }
+        
+        // 表单取消按钮
+        const cancelButtons = [this.cancelAddTaskBtn, this.cancelTaskBtn, this.cancelEditBtn];
+        cancelButtons.forEach(btn => {
+            if (btn) {
+                btn.addEventListener('click', () => {
+                    this.showEmptyView();
+                });
+            }
+        });
+        
+        // 表单提交
+        if (this.taskForm) {
+            this.taskForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                this.saveTask();
+            });
+        }
+        
+        // 执行方式切换
+        if (this.executeImmediateRadio && this.executeScheduledRadio) {
+            this.executeImmediateRadio.addEventListener('change', () => {
+                this.toggleScheduleSettings();
+            });
+            
+            this.executeScheduledRadio.addEventListener('change', () => {
+                this.toggleScheduleSettings();
+            });
+        }
+        
+        // 资源文件操作
+        if (this.browseFilesBtn) {
+            this.browseFilesBtn.addEventListener('click', () => {
+                this.browseFiles();
+            });
+        }
+        
+        if (this.browseFoldersBtn) {
+            this.browseFoldersBtn.addEventListener('click', () => {
+                this.browseFolders();
+            });
+        }
+        
+        if (this.addManualPathBtn) {
+            this.addManualPathBtn.addEventListener('click', () => {
+                this.addManualPath();
+            });
+        }
+    }
+
+    /**
+     * 加载任务列表
+     */
+    async loadTasks() {
+        try {
+            const response = await fetch('/api/tasks');
+            if (response.ok) {
+                const data = await response.json();
+                // 后端返回格式是 {tasks: [...]}，需要提取tasks数组
+                this.tasks = Array.isArray(data.tasks) ? data.tasks : (Array.isArray(data) ? data : []);
+                this.renderTasksList();
+            } else {
+                console.error('加载任务失败:', response.statusText);
+                this.tasks = [];
+                this.renderEmptyTasksList();
+            }
+        } catch (error) {
+            console.error('加载任务失败:', error);
+            this.tasks = [];
+            this.renderEmptyTasksList();
+        }
+    }
+
+    /**
+     * 渲染任务列表
+     */
+    renderTasksList() {
+        if (!this.tasksList) return;
+        
+        if (this.tasks.length === 0) {
+            this.renderEmptyTasksList();
+            return;
+        }
+        
+        this.tasksList.innerHTML = this.tasks.map(task => {
+            // 确保任务对象有完整的属性，适配后端驼峰命名
+            const safeTask = {
+                id: task.id || '',
+                name: task.name || '未命名任务',
+                goal: task.goal || '',
+                enabled: task.enabled !== false,
+                schedule_frequency: task.scheduleFrequency || 'immediate',  // 后端返回驼峰命名
+                resources: Array.isArray(task.resources) ? task.resources : []
+            };
+            
+            return `
+                <div class="task-item" data-task-id="${safeTask.id}" onclick="taskManager.selectTask('${safeTask.id}')">
+                    <div class="task-item-header">
+                        <div class="task-item-name">${this.escapeHtml(safeTask.name)}</div>
+                        <span class="task-item-status ${safeTask.enabled ? 'enabled' : 'disabled'}">
+                            ${safeTask.enabled ? '启用' : '禁用'}
+                        </span>
+                    </div>
+                    <div class="task-item-goal">${this.escapeHtml(safeTask.goal)}</div>
+                    <div class="task-item-meta">
+                        <span>${safeTask.schedule_frequency === 'immediate' ? '立即执行' : '定时执行'}</span>
+                        ${safeTask.resources.length > 0 ? `<span>${safeTask.resources.length} 个资源</span>` : ''}
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    /**
+     * 渲染空任务列表
+     */
+    renderEmptyTasksList() {
+        if (!this.tasksList) return;
+        
+        this.tasksList.innerHTML = `
+            <div class="empty-tasks">
+                <div class="empty-icon">📝</div>
+                <p>尚未设置任何任务</p>
+                <p class="text-muted">点击"新增任务"来创建第一个任务</p>
+            </div>
+        `;
+    }
+
+    /**
+     * 选择任务
+     */
+    selectTask(taskId) {
+        const task = this.tasks.find(t => t.id === taskId);
+        if (!task) return;
+        
+        this.selectedTaskId = taskId;
+        this.updateTaskSelection();
+        this.showTaskDetail(task);
+    }
+
+    /**
+     * 更新任务选中状态
+     */
+    updateTaskSelection() {
+        const taskItems = this.tasksList.querySelectorAll('.task-item');
+        taskItems.forEach(item => {
+            if (item.dataset.taskId === this.selectedTaskId) {
+                item.classList.add('selected');
+            } else {
+                item.classList.remove('selected');
+            }
+        });
+    }
+
+    /**
+     * 显示任务详情
+     */
+    showTaskDetail(task) {
+        this.currentView = 'detail';
+        this.updateViewVisibility();
+        
+        // 确保任务对象有完整的属性，适配后端驼峰命名
+        const safeTask = {
+            name: task.name || '未命名任务',
+            goal: task.goal || '无描述',
+            schedule_frequency: task.scheduleFrequency || 'immediate',        // 后端返回驼峰命名
+            schedule_time: task.scheduleTime || '09:00',                      // 后端返回驼峰命名
+            resources: Array.isArray(task.resources) ? task.resources : [],
+            enabled: task.enabled !== false,
+            skip_permissions: task.skipPermissions || false                   // 后端返回驼峰命名
+        };
+        
+        if (this.detailTaskName) this.detailTaskName.textContent = safeTask.name;
+        if (this.detailTaskGoal) this.detailTaskGoal.textContent = safeTask.goal;
+        if (this.detailExecutionMode) {
+            this.detailExecutionMode.textContent = safeTask.schedule_frequency === 'immediate' 
+                ? '立即执行' 
+                : `定时执行 - ${safeTask.schedule_frequency === 'daily' ? '每日' : '每周'} ${safeTask.schedule_time}`;
+        }
+        if (this.detailResources) {
+            this.detailResources.innerHTML = safeTask.resources.length > 0 
+                ? safeTask.resources.map(resource => `<div class="detail-value code">${this.escapeHtml(resource)}</div>`).join('')
+                : '<span class="text-muted">未设置资源文件</span>';
+        }
+        if (this.detailStatus) {
+            this.detailStatus.innerHTML = `
+                <span class="task-item-status ${safeTask.enabled ? 'enabled' : 'disabled'}">
+                    ${safeTask.enabled ? '启用' : '禁用'}
+                </span>
+                ${safeTask.skip_permissions ? '<span class="detail-value code">危险权限跳过模式</span>' : ''}
+            `;
+        }
+    }
+
+    /**
+     * 显示新增任务表单
+     */
+    showAddTaskForm() {
+        this.currentEditingTask = null;
+        this.currentView = 'form';
+        this.updateViewVisibility();
+        this.resetForm();
+        
+        // 更新表单标题和按钮文本
+        const formTitle = document.getElementById('form-title');
+        if (formTitle) formTitle.textContent = '新增每日任务';
+        
+        const submitBtn = document.getElementById('create-task');
+        if (submitBtn) submitBtn.textContent = '确定创建';
+        
+        // 聚焦到任务名称输入框
+        if (this.taskNameInput) {
+            setTimeout(() => this.taskNameInput.focus(), 100);
+        }
+    }
+
+    /**
+     * 编辑选中的任务
+     */
+    editSelectedTask() {
+        const task = this.tasks.find(t => t.id === this.selectedTaskId);
+        if (!task) return;
+        
+        this.currentEditingTask = task;
+        this.currentView = 'form';
+        this.updateViewVisibility();
+        this.fillFormWithTask(task);
+        
+        // 更新表单标题和按钮文本
+        const formTitle = document.getElementById('form-title');
+        if (formTitle) formTitle.textContent = '编辑任务';
+        
+        const submitBtn = document.getElementById('create-task');
+        if (submitBtn) submitBtn.textContent = '保存修改';
+    }
+
+    /**
+     * 显示空视图
+     */
+    showEmptyView() {
+        this.currentView = 'empty';
+        this.selectedTaskId = null;
+        this.updateViewVisibility();
+        this.updateTaskSelection();
+    }
+
+    /**
+     * 更新视图可见性
+     */
+    updateViewVisibility() {
+        // 隐藏所有视图
+        if (this.taskDetailEmpty) this.taskDetailEmpty.classList.add('hidden');
+        if (this.taskDetailView) this.taskDetailView.classList.add('hidden');
+        if (this.addTaskForm) this.addTaskForm.classList.add('hidden');
+        
+        // 显示当前视图
+        switch (this.currentView) {
+            case 'empty':
+                if (this.taskDetailEmpty) this.taskDetailEmpty.classList.remove('hidden');
+                break;
+            case 'detail':
+                if (this.taskDetailView) this.taskDetailView.classList.remove('hidden');
+                break;
+            case 'form':
+                if (this.addTaskForm) this.addTaskForm.classList.remove('hidden');
+                break;
+        }
+    }
+
+    /**
+     * 用任务数据填充表单
+     */
+    fillFormWithTask(task) {
+        // 确保任务对象有完整的属性，适配后端驼峰命名
+        const safeTask = {
+            name: task.name || '',
+            goal: task.goal || '',
+            skip_permissions: task.skipPermissions || false,                 // 后端返回驼峰命名
+            schedule_frequency: task.scheduleFrequency || 'immediate',       // 后端返回驼峰命名
+            schedule_time: task.scheduleTime || '09:00',                     // 后端返回驼峰命名
+            resources: Array.isArray(task.resources) ? task.resources : []
+        };
+        
+        if (this.taskNameInput) this.taskNameInput.value = safeTask.name;
+        if (this.taskGoalInput) this.taskGoalInput.value = safeTask.goal;
+        if (this.skipPermissionsCheckbox) this.skipPermissionsCheckbox.checked = safeTask.skip_permissions;
+        
+        // 设置执行方式
+        if (safeTask.schedule_frequency === 'immediate') {
+            if (this.executeImmediateRadio) this.executeImmediateRadio.checked = true;
+        } else {
+            if (this.executeScheduledRadio) this.executeScheduledRadio.checked = true;
+            if (this.scheduleFrequency) this.scheduleFrequency.value = safeTask.schedule_frequency;
+            if (this.scheduleTime) this.scheduleTime.value = safeTask.schedule_time;
+        }
+        
+        this.toggleScheduleSettings();
+        
+        // 设置资源文件
+        this.resources = [...safeTask.resources];
+        this.renderResourceList();
+    }
+
+    /**
+     * 重置表单
+     */
+    resetForm() {
+        if (this.taskForm) this.taskForm.reset();
+        this.resources = [];
+        this.renderResourceList();
+        this.toggleScheduleSettings();
+    }
+
+    /**
+     * 切换定时设置显示
+     */
+    toggleScheduleSettings() {
+        if (!this.scheduleSettings) return;
+        
+        const isScheduled = this.executeScheduledRadio && this.executeScheduledRadio.checked;
+        this.scheduleSettings.style.display = isScheduled ? 'block' : 'none';
+    }
+
+    /**
+     * 渲染资源列表
+     */
+    renderResourceList() {
+        if (!this.resourceList) return;
+        
+        if (this.resources.length === 0) {
+            this.resourceList.innerHTML = '<div class="text-muted">未添加资源文件</div>';
+            return;
+        }
+        
+        this.resourceList.innerHTML = this.resources.map((resource, index) => `
+            <div class="resource-item">
+                <span class="resource-path">${this.escapeHtml(resource)}</span>
+                <button type="button" class="btn-link" onclick="taskManager.removeResource(${index})">
+                    移除
+                </button>
+            </div>
+        `).join('');
+    }
+
+    /**
+     * 添加手动路径
+     */
+    addManualPath() {
+        if (!this.manualPathInput) return;
+        
+        const path = this.manualPathInput.value.trim();
+        if (path && !this.resources.includes(path)) {
+            this.resources.push(path);
+            this.renderResourceList();
+            this.manualPathInput.value = '';
+        }
+    }
+
+    /**
+     * 移除资源
+     */
+    removeResource(index) {
+        this.resources.splice(index, 1);
+        this.renderResourceList();
+    }
+
+    /**
+     * 浏览文件
+     */
+    browseFiles() {
+        // 创建隐藏的文件输入元素
+        const fileInput = document.createElement('input');
+        fileInput.type = 'file';
+        fileInput.multiple = true;
+        fileInput.style.display = 'none';
+        
+        fileInput.addEventListener('change', (e) => {
+            const files = Array.from(e.target.files);
+            files.forEach(file => {
+                // 只获取文件名作为路径，用户可以后续手动修改为完整路径
+                const path = file.name;
+                if (!this.resources.includes(path)) {
+                    this.resources.push(path);
+                }
+            });
+            this.renderResourceList();
+            // 清理DOM元素
+            if (document.body.contains(fileInput)) {
+                document.body.removeChild(fileInput);
+            }
+        });
+        
+        // 添加到DOM并触发点击
+        document.body.appendChild(fileInput);
+        fileInput.click();
+    }
+
+    /**
+     * 浏览文件夹
+     */
+    async browseFolders() {
+        try {
+            // 优先使用现代File System Access API
+            if ('showDirectoryPicker' in window) {
+                const dirHandle = await window.showDirectoryPicker();
+                const folderPath = dirHandle.name;
+                if (!this.resources.includes(folderPath)) {
+                    this.resources.push(folderPath);
+                    this.renderResourceList();
+                }
+            } else {
+                // 回退到webkitdirectory，但正确提取路径
+                const folderInput = document.createElement('input');
+                folderInput.type = 'file';
+                folderInput.webkitdirectory = true;
+                folderInput.multiple = true;
+                folderInput.style.display = 'none';
+                
+                folderInput.addEventListener('change', (e) => {
+                    const files = Array.from(e.target.files);
+                    if (files.length > 0) {
+                        // 从webkitRelativePath提取顶级文件夹名
+                        const relativePath = files[0].webkitRelativePath;
+                        const folderName = relativePath.split('/')[0];
+                        if (folderName && !this.resources.includes(folderName)) {
+                            this.resources.push(folderName);
+                            this.renderResourceList();
+                        }
+                    }
+                    // 清理DOM元素
+                    if (document.body.contains(folderInput)) {
+                        document.body.removeChild(folderInput);
+                    }
+                });
+                
+                // 添加到DOM并触发点击
+                document.body.appendChild(folderInput);
+                folderInput.click();
+            }
+        } catch (error) {
+            // 用户取消选择或出现错误，静默处理
+            console.log('文件夹选择被取消或出现错误');
+        }
+    }
+
+    /**
+     * 保存任务
+     */
+    async saveTask() {
+        const taskData = this.collectTaskData();
+        if (!taskData) return;
+        
+        try {
+            const isEdit = !!this.currentEditingTask;
+            const url = isEdit ? `/api/tasks/${this.currentEditingTask.id}` : '/api/tasks';
+            const method = isEdit ? 'PUT' : 'POST';
+            
+            const response = await fetch(url, {
+                method: method,
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(taskData)
+            });
+            
+            if (response.ok) {
+                const savedTask = await response.json();
+                console.log('任务保存成功:', savedTask);
+                
+                // 更新任务列表
+                // 确保this.tasks是数组
+                if (!Array.isArray(this.tasks)) {
+                    this.tasks = [];
+                }
+                
+                if (isEdit) {
+                    const index = this.tasks.findIndex(t => t.id === this.currentEditingTask.id);
+                    if (index !== -1) {
+                        this.tasks[index] = savedTask;
+                    }
+                } else {
+                    this.tasks.push(savedTask);
+                }
+                
+                this.renderTasksList();
+                this.selectTask(savedTask.id);
+                
+            } else {
+                const error = await response.json();
+                alert('保存任务失败: ' + (error.error || '未知错误'));
+            }
+        } catch (error) {
+            console.error('保存任务失败:', error);
+            alert('保存任务失败: ' + error.message);
+        }
+    }
+
+    /**
+     * 收集表单数据
+     */
+    collectTaskData() {
+        const name = this.taskNameInput?.value?.trim();
+        const goal = this.taskGoalInput?.value?.trim();
+        
+        if (!name || !goal) {
+            alert('请填写任务名称和目标');
+            return null;
+        }
+        
+        const skipPermissions = this.skipPermissionsCheckbox?.checked || false;
+        const isImmediate = this.executeImmediateRadio?.checked || false;
+        
+        // 使用后端期望的驼峰命名格式
+        return {
+            name: name,
+            goal: goal,
+            skipPermissions: skipPermissions,                    // 改为驼峰命名
+            resources: [...this.resources],
+            scheduleFrequency: isImmediate ? 'immediate' : (this.scheduleFrequency?.value || 'daily'),  // 改为驼峰命名
+            scheduleTime: isImmediate ? '' : (this.scheduleTime?.value || '09:00'),                    // 改为驼峰命名
+            executionMode: isImmediate ? 'immediate' : 'scheduled',                                    // 新增字段
+            enabled: true
+        };
+    }
+
+    /**
+     * 执行选中的任务
+     */
+    async executeSelectedTask() {
+        const task = this.tasks.find(t => t.id === this.selectedTaskId);
+        if (!task) return;
+        
+        try {
+            // 这里可以实现任务执行逻辑
+            console.log('执行任务:', task);
+            alert(`任务 "${task.name}" 执行功能待实现`);
+        } catch (error) {
+            console.error('执行任务失败:', error);
+            alert('执行任务失败: ' + error.message);
+        }
+    }
+
+    /**
+     * 关闭模态框
+     */
+    closeModal() {
+        if (this.modal) {
+            this.modal.classList.remove('active');
+            this.modal.classList.add('hidden');
+            this.showEmptyView();
+        }
+    }
+
+    /**
+     * HTML转义
+     */
+    escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+}
+
+// 导出到全局作用域
+window.TaskManager = TaskManager;

@@ -13,6 +13,7 @@ import subprocess
 import termios
 import threading
 import logging
+from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Any, Optional
 import uvicorn
@@ -24,6 +25,7 @@ from fastapi.middleware.cors import CORSMiddleware
 # 导入Claude CLI集成和项目管理器
 from claude_cli import claude_cli
 from projects_manager import ProjectManager
+from task_scheduler import TaskScheduler
 import os
 import mimetypes
 import aiofiles
@@ -58,29 +60,188 @@ class EnvironmentChecker:
     
     @staticmethod
     def get_claude_executable_path() -> Optional[str]:
-        """获取Claude CLI可执行文件的绝对路径，解决随机性问题"""
+        """获取Claude CLI可执行文件的绝对路径，增强稳定性和重试机制"""
         
-        # 如果已缓存，直接返回
+        # 验证缓存路径的可用性（更严格的验证）
         if EnvironmentChecker._cached_claude_path:
-            # 验证缓存路径是否仍然有效
-            try:
-                if Path(EnvironmentChecker._cached_claude_path).exists():
-                    return EnvironmentChecker._cached_claude_path
-                else:
-                    # 缓存失效，清除缓存
-                    EnvironmentChecker._cached_claude_path = None
-            except Exception:
+            logger.debug(f"🔍 验证缓存路径: {EnvironmentChecker._cached_claude_path}")
+            if EnvironmentChecker._verify_claude_executable(EnvironmentChecker._cached_claude_path):
+                logger.debug(f"✅ 缓存路径验证通过: {EnvironmentChecker._cached_claude_path}")
+                return EnvironmentChecker._cached_claude_path
+            else:
+                logger.warning(f"⚠️ 缓存路径验证失败，清除缓存: {EnvironmentChecker._cached_claude_path}")
                 EnvironmentChecker._cached_claude_path = None
         
-        # 首先尝试PATH中的claude
-        path_claude = shutil.which('claude')
-        if path_claude is not None:
-            # 缓存找到的路径
-            EnvironmentChecker._cached_claude_path = path_claude
-            logger.info(f"✅ 通过PATH找到Claude CLI: {path_claude}")
-            return path_claude
+        # 检测策略列表，按优先级排序
+        detection_strategies = [
+            ("PATH环境变量", EnvironmentChecker._check_path_env),
+            ("环境变量CLAUDE_CLI_PATH", EnvironmentChecker._check_claude_env_var), 
+            ("常见安装路径", EnvironmentChecker._check_common_paths),
+            ("用户本地路径", EnvironmentChecker._check_user_local_paths),
+            ("系统路径搜索", EnvironmentChecker._check_system_paths),
+        ]
         
-        # 备用路径检查 - 常见的Claude CLI安装位置
+        # 重试机制：每个策略最多重试3次
+        for strategy_name, strategy_func in detection_strategies:
+            logger.debug(f"🔍 尝试检测策略: {strategy_name}")
+            
+            for attempt in range(3):  # 最多重试3次
+                try:
+                    claude_path = strategy_func()
+                    if claude_path:
+                        # 严格验证找到的路径
+                        if EnvironmentChecker._verify_claude_executable(claude_path):
+                            EnvironmentChecker._cached_claude_path = claude_path
+                            logger.info(f"✅ 通过{strategy_name}找到Claude CLI: {claude_path} (尝试 {attempt + 1}/3)")
+                            return claude_path
+                        else:
+                            logger.warning(f"⚠️ {strategy_name}找到的路径验证失败: {claude_path}")
+                    
+                    if attempt == 0:  # 第一次失败时输出详细信息
+                        logger.debug(f"🔄 {strategy_name}第{attempt + 1}次尝试失败，准备重试")
+                    
+                except Exception as e:
+                    logger.warning(f"⚠️ {strategy_name}第{attempt + 1}次尝试出错: {e}")
+                    
+                # 短暂延迟后重试
+                if attempt < 2:
+                    import time
+                    time.sleep(0.1)
+        
+        # 所有策略都失败，输出详细的诊断信息
+        EnvironmentChecker._log_detection_failure()
+        return None
+    
+    @staticmethod
+    def _verify_claude_executable(path: str) -> bool:
+        """严格验证Claude可执行文件的可用性"""
+        try:
+            path_obj = Path(path)
+            
+            # 基础检查
+            if not path_obj.exists():
+                logger.debug(f"❌ 路径不存在: {path}")
+                return False
+                
+            if not path_obj.is_file():
+                logger.debug(f"❌ 不是文件: {path}")
+                return False
+                
+            # 权限检查
+            if not os.access(path, os.X_OK):
+                logger.debug(f"❌ 文件不可执行: {path}")
+                return False
+            
+            # 执行验证（使用--version命令）
+            result = subprocess.run(
+                [str(path), '--version'], 
+                capture_output=True, 
+                text=True,
+                timeout=10,
+                env=dict(os.environ, **{'NO_COLOR': '1'})  # 禁用彩色输出
+            )
+            
+            if result.returncode == 0:
+                version_output = result.stdout.strip()
+                logger.debug(f"✅ Claude CLI版本验证成功: {version_output}")
+                return True
+            else:
+                logger.debug(f"❌ Claude CLI版本验证失败 (返回码 {result.returncode}): {result.stderr}")
+                return False
+                
+        except subprocess.TimeoutExpired:
+            logger.debug(f"❌ Claude CLI版本检查超时: {path}")
+            return False
+        except Exception as e:
+            logger.debug(f"❌ Claude CLI验证过程出错: {path} - {e}")
+            return False
+    
+    @staticmethod 
+    def _check_path_env() -> Optional[str]:
+        """检查PATH环境变量中的claude命令"""
+        logger.debug("🔍 在PATH环境变量中搜索claude命令")
+        claude_path = shutil.which('claude')
+        if claude_path:
+            logger.debug(f"📍 PATH中找到: {claude_path}")
+            return claude_path
+        else:
+            logger.debug("❌ PATH中未找到claude命令")
+            return None
+    
+    @staticmethod
+    def _check_claude_env_var() -> Optional[str]:
+        """检查CLAUDE_CLI_PATH环境变量"""
+        claude_env_path = os.environ.get('CLAUDE_CLI_PATH')
+        if claude_env_path:
+            logger.debug(f"📍 环境变量CLAUDE_CLI_PATH: {claude_env_path}")
+            return claude_env_path
+        return None
+    
+    @staticmethod
+    def _check_common_paths() -> Optional[str]:
+        """检查常见的Claude CLI安装路径"""
+        common_paths = [
+            Path.home() / '.local' / 'bin' / 'claude',
+            Path('/usr/local/bin/claude'),
+            Path('/opt/homebrew/bin/claude'),
+            Path('/usr/bin/claude'),
+            Path('/bin/claude'),
+        ]
+        
+        for path in common_paths:
+            logger.debug(f"🔍 检查常见路径: {path}")
+            if path.exists():
+                logger.debug(f"📍 找到文件: {path}")
+                return str(path)
+        
+        return None
+    
+    @staticmethod
+    def _check_user_local_paths() -> Optional[str]:
+        """检查用户本地安装路径"""
+        user_paths = [
+            Path.home() / 'bin' / 'claude',
+            Path.home() / '.bin' / 'claude', 
+            Path.home() / 'Applications' / 'claude',
+            Path.home() / '.npm-global' / 'bin' / 'claude',
+        ]
+        
+        for path in user_paths:
+            logger.debug(f"🔍 检查用户路径: {path}")
+            if path.exists():
+                logger.debug(f"📍 找到文件: {path}")
+                return str(path)
+        
+        return None
+    
+    @staticmethod
+    def _check_system_paths() -> Optional[str]:
+        """在系统路径中搜索claude"""
+        system_paths = [
+            Path('/Applications/Claude.app/Contents/MacOS/claude'),  # macOS应用
+            Path('/snap/bin/claude'),  # Snap包
+            Path('/flatpak/exports/bin/claude'),  # Flatpak
+        ]
+        
+        for path in system_paths:
+            logger.debug(f"🔍 检查系统路径: {path}")
+            if path.exists():
+                logger.debug(f"📍 找到文件: {path}")
+                return str(path)
+        
+        return None
+    
+    @staticmethod
+    def _log_detection_failure():
+        """输出详细的检测失败诊断信息"""
+        logger.error("❌ 未找到可用的Claude CLI可执行文件")
+        logger.error("🔧 诊断信息:")
+        
+        # PATH环境变量
+        path_env = os.environ.get('PATH', '')
+        logger.error(f"   PATH环境变量: {path_env[:200]}{'...' if len(path_env) > 200 else ''}")
+        
+        # 检查常见路径的存在性
         common_paths = [
             Path.home() / '.local' / 'bin' / 'claude',
             Path('/usr/local/bin/claude'),
@@ -88,21 +249,21 @@ class EnvironmentChecker:
         ]
         
         for path in common_paths:
-            if path.exists() and path.is_file():
-                try:
-                    # 验证文件可执行
-                    result = subprocess.run([str(path), '--version'], 
-                                          capture_output=True, timeout=5)
-                    if result.returncode == 0:
-                        # 缓存找到的路径
-                        EnvironmentChecker._cached_claude_path = str(path)
-                        logger.info(f"✅ 通过备用路径找到Claude CLI: {path}")
-                        return str(path)
-                except (subprocess.SubprocessError, FileNotFoundError, PermissionError):
-                    continue
+            exists = path.exists()
+            logger.error(f"   {path}: {'存在' if exists else '不存在'}")
         
-        logger.error("❌ 未找到可用的Claude CLI可执行文件")
-        return None
+        # 环境变量检查
+        claude_env = os.environ.get('CLAUDE_CLI_PATH')
+        if claude_env:
+            logger.error(f"   CLAUDE_CLI_PATH: {claude_env}")
+        else:
+            logger.error("   CLAUDE_CLI_PATH: 未设置")
+        
+        logger.error("💡 解决建议:")
+        logger.error("   1. 确认Claude CLI已正确安装: pip install claude-ai")
+        logger.error("   2. 检查PATH环境变量是否包含Claude CLI安装路径")
+        logger.error("   3. 设置CLAUDE_CLI_PATH环境变量指向Claude CLI可执行文件")
+        logger.error("   4. 重新启动终端或重新加载环境变量")
     
     @staticmethod
     def check_claude_cli() -> bool:
@@ -847,6 +1008,9 @@ class PTYShellHandler:
 
 manager = ConnectionManager()
 
+# 初始化任务调度器
+task_scheduler = TaskScheduler(websocket_manager=manager)
+
 # 文件管理辅助函数
 async def build_file_tree(path: Path, max_depth: int = 3, current_depth: int = 0) -> List[Dict[str, Any]]:
     """构建文件树结构"""
@@ -1551,6 +1715,136 @@ async def get_hook_status():
             content={"error": "检查hooks状态失败", "details": str(e)}
         )
 
+# 任务管理API
+@app.get("/api/tasks")
+async def get_tasks():
+    """获取任务列表API"""
+    try:
+        tasks = task_scheduler.get_scheduled_tasks()
+        return JSONResponse(content={"tasks": tasks})
+    except Exception as e:
+        logger.error(f"获取任务列表时出错: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"error": "获取任务列表失败", "details": str(e)}
+        )
+
+@app.post("/api/tasks")
+async def create_task(request: Request):
+    """创建任务API"""
+    try:
+        task_data = await request.json()
+        
+        # 验证必需字段
+        required_fields = ['name', 'goal']
+        for field in required_fields:
+            if not task_data.get(field):
+                return JSONResponse(
+                    status_code=400,
+                    content={"error": f"缺少必需字段: {field}"}
+                )
+        
+        # 生成任务ID和创建时间
+        task_data['id'] = f"task_{int(datetime.now().timestamp())}_{len(task_data['name'])}"
+        task_data['createdAt'] = datetime.now().isoformat()
+        
+        # 确保数据完整性
+        if 'enabled' not in task_data:
+            task_data['enabled'] = True
+        if 'resources' not in task_data:
+            task_data['resources'] = []
+        
+        # 添加任务到调度器（无论是立即执行还是定时执行）
+        success = task_scheduler.add_scheduled_task(task_data)
+        if not success:
+            logger.warning(f"任务 {task_data['name']} 未添加到调度器，但仍返回成功响应")
+        
+        # 返回完整的任务对象
+        return JSONResponse(content=task_data)
+        
+    except Exception as e:
+        logger.error(f"创建任务时出错: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"error": "创建任务失败", "details": str(e)}
+        )
+
+@app.put("/api/tasks/{task_id}")
+async def update_task(task_id: str, request: Request):
+    """更新任务API"""
+    try:
+        task_data = await request.json()
+        task_data['id'] = task_id
+        
+        success = task_scheduler.update_scheduled_task(task_data)
+        if success:
+            # 获取更新后的任务数据
+            all_tasks = task_scheduler.get_scheduled_tasks()
+            updated_task = next((task for task in all_tasks if task['id'] == task_id), None)
+            
+            if updated_task:
+                return JSONResponse(content=updated_task)
+            else:
+                return JSONResponse(
+                    status_code=500,
+                    content={"error": "任务更新成功但无法获取更新后的数据"}
+                )
+        else:
+            return JSONResponse(
+                status_code=400,
+                content={"error": "更新任务失败"}
+            )
+        
+    except Exception as e:
+        logger.error(f"更新任务时出错: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"error": "更新任务失败", "details": str(e)}
+        )
+
+@app.delete("/api/tasks/{task_id}")
+async def delete_task(task_id: str):
+    """删除任务API"""
+    try:
+        success = task_scheduler.remove_scheduled_task(task_id)
+        if success:
+            return JSONResponse(content={"success": True})
+        else:
+            return JSONResponse(
+                status_code=404,
+                content={"error": "任务不存在"}
+            )
+        
+    except Exception as e:
+        logger.error(f"删除任务时出错: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"error": "删除任务失败", "details": str(e)}
+        )
+
+@app.post("/api/tasks/{task_id}/toggle")
+async def toggle_task(task_id: str, request: Request):
+    """启用/禁用任务API"""
+    try:
+        data = await request.json()
+        enabled = data.get('enabled', True)
+        
+        success = task_scheduler.toggle_task(task_id, enabled)
+        if success:
+            return JSONResponse(content={"success": True})
+        else:
+            return JSONResponse(
+                status_code=404,
+                content={"error": "任务不存在"}
+            )
+        
+    except Exception as e:
+        logger.error(f"切换任务状态时出错: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"error": "切换任务状态失败", "details": str(e)}
+        )
+
 # WebSocket路由
 @app.websocket("/ws")
 async def chat_websocket_endpoint(websocket: WebSocket):
@@ -1587,6 +1881,41 @@ async def chat_websocket_endpoint(websocket: WebSocket):
                     'sessionId': session_id,
                     'success': success
                 }, websocket)
+            elif message.get('type') == 'new-task-session':
+                # 处理任务执行请求
+                task_id = message.get('taskId')
+                task_name = message.get('taskName', '未知任务')
+                command = message.get('command', '')
+                skip_permissions = message.get('skipPermissions', False)
+                
+                logger.info(f"任务执行请求: {task_name} (ID: {task_id})")
+                
+                # 构建任务执行选项
+                task_options = {
+                    'taskId': task_id,
+                    'taskName': task_name,
+                    'projectPath': None,  # 任务不绑定特定项目
+                    'permissionMode': 'dangerously-allow-all' if skip_permissions else 'default'
+                }
+                
+                # 通知前端创建任务页签
+                await manager.broadcast({
+                    'type': 'create-task-tab',
+                    'taskId': task_id,
+                    'taskName': task_name,
+                    'scheduledExecution': message.get('scheduledExecution', False)
+                })
+                
+                try:
+                    # 使用Claude CLI执行任务
+                    await claude_cli.spawn_claude(command, task_options, websocket)
+                except Exception as e:
+                    logger.error(f"任务执行错误: {e}")
+                    await manager.send_personal_message({
+                        'type': 'task-error',
+                        'taskId': task_id,
+                        'error': str(e)
+                    }, websocket)
             elif message.get('type') == 'ping':
                 await manager.send_personal_message({
                     'type': 'pong'
@@ -1731,14 +2060,24 @@ if __name__ == "__main__":
         print(f"   ⚠️ 数字员工自动部署功能可能不可用")
     
     print(f"🚀 启动Heliki OS服务...")
-    uvicorn.run(
-        "app:app", 
-        host="localhost", 
-        port=3005, 
-        reload=True,
-        log_level="info",
-        # WebSocket长连接配置 - 设置极长超时时间实现静默连接
-        timeout_keep_alive=86400*7,  # 7天保持连接
-        ws_ping_interval=0,          # 禁用服务器端ping
-        ws_ping_timeout=86400*7      # WebSocket ping超时7天
-    )
+    
+    # 启动任务调度器
+    print(f"🕐 启动任务调度器...")
+    task_scheduler.start()
+    
+    try:
+        uvicorn.run(
+            "app:app", 
+            host="localhost", 
+            port=3005, 
+            reload=True,
+            log_level="info",
+            # WebSocket长连接配置 - 设置极长超时时间实现静默连接
+            timeout_keep_alive=86400*7,  # 7天保持连接
+            ws_ping_interval=0,          # 禁用服务器端ping
+            ws_ping_timeout=86400*7      # WebSocket ping超时7天
+        )
+    finally:
+        # 停止任务调度器
+        print(f"⏹️ 停止任务调度器...")
+        task_scheduler.stop()
