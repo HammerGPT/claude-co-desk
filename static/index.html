@@ -120,9 +120,9 @@
                         <div class="employees-section">
                             <div class="section-header">
                                 <h3>数字员工团队</h3>
-                                <button id="system-status-btn" class="system-status-btn" title="系统状态">
+                                <button id="daily-tasks-btn" class="daily-tasks-btn" title="每日任务">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>
                                     </svg>
                                 </button>
                             </div>
@@ -292,6 +292,175 @@
                 </div>
             </div>
         </div>
+        
+        <!-- 每日任务管理弹窗 -->
+        <div id="daily-tasks-modal" class="modal-overlay hidden">
+            <div class="modal-content large-modal">
+                <div class="modal-header">
+                    <h3>每日任务管理</h3>
+                    <button id="tasks-modal-close" class="modal-close">×</button>
+                </div>
+                <div class="modal-body tasks-management-layout">
+                    <!-- 左侧：任务列表区域 -->
+                    <div class="tasks-list-panel">
+                        <div class="panel-header">
+                            <h4>任务列表</h4>
+                            <button id="add-task-btn" class="btn btn-primary btn-sm">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                                </svg>
+                                新增任务
+                            </button>
+                        </div>
+                        <div id="tasks-list" class="tasks-list">
+                            <!-- 动态填充任务列表 -->
+                            <div class="empty-tasks">
+                                <p>尚未设置任何任务</p>
+                                <p class="text-muted">点击"新增任务"来创建第一个任务</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 右侧：任务详情/编辑区域 -->
+                    <div class="task-detail-panel">
+                        <!-- 默认空状态 -->
+                        <div id="task-detail-empty" class="detail-empty-state">
+                            <div class="empty-icon">📋</div>
+                            <h4>选择或创建任务</h4>
+                            <p>从左侧列表选择一个任务查看详情，或点击"新增任务"创建新的每日任务</p>
+                        </div>
+                        
+                        <!-- 任务详情显示区域 -->
+                        <div id="task-detail-view" class="task-detail-view hidden">
+                            <div class="detail-header">
+                                <h4 id="detail-task-name">任务名称</h4>
+                                <div class="detail-actions">
+                                    <button id="edit-task-btn" class="btn btn-outline btn-sm">编辑</button>
+                                    <button id="execute-task-btn" class="btn btn-primary btn-sm">执行</button>
+                                </div>
+                            </div>
+                            <div class="detail-content">
+                                <div class="detail-item">
+                                    <label>任务目标</label>
+                                    <div id="detail-task-goal" class="detail-value"></div>
+                                </div>
+                                <div class="detail-item">
+                                    <label>执行模式</label>
+                                    <div id="detail-execution-mode" class="detail-value"></div>
+                                </div>
+                                <div class="detail-item">
+                                    <label>资源文件</label>
+                                    <div id="detail-resources" class="detail-value"></div>
+                                </div>
+                                <div class="detail-item">
+                                    <label>状态信息</label>
+                                    <div id="detail-status" class="detail-value"></div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- 任务创建/编辑表单 -->
+                        <div id="add-task-form" class="add-task-form hidden">
+                        <div class="form-header">
+                            <h4 id="form-title">新增每日任务</h4>
+                            <button id="cancel-add-task" class="btn-link">取消</button>
+                        </div>
+                        
+                        <form id="task-form">
+                            <div class="form-group">
+                                <label for="task-name">任务名称</label>
+                                <input type="text" id="task-name" class="form-control" placeholder="例如：信息收集任务" required>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="task-goal">任务目标</label>
+                                <textarea id="task-goal" class="form-control" rows="4" placeholder="描述任务的具体目标和要求..." required></textarea>
+                            </div>
+                            
+                            <div class="form-group">
+                                <div class="checkbox-group">
+                                    <input type="checkbox" id="skip-permissions" name="skip-permissions">
+                                    <label for="skip-permissions">启用危险权限跳过模式 (--dangerously-skip-permissions)</label>
+                                </div>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label>资源文件</label>
+                                <div class="resource-help">
+                                    <p class="text-muted">为任务指定需要处理的文件或文件夹，支持多种添加方式：</p>
+                                </div>
+                                <div id="resource-selector" class="resource-selector">
+                                    <div class="resource-list" id="resource-list">
+                                        <!-- 动态添加的资源文件 -->
+                                    </div>
+                                    <div class="resource-add-methods">
+                                        <div class="add-method-group">
+                                            <h6>快速选择</h6>
+                                            <div class="resource-actions">
+                                                <button type="button" class="btn btn-outline btn-sm" id="browse-files">
+                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                                    </svg>
+                                                    选择文件
+                                                </button>
+                                                <button type="button" class="btn btn-outline btn-sm" id="browse-folders">
+                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/>
+                                                    </svg>
+                                                    选择文件夹
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div class="add-method-group">
+                                            <h6>手动输入路径</h6>
+                                            <div class="manual-path">
+                                                <input type="text" id="manual-path" class="form-control" placeholder="例如: /Users/username/Documents/project">
+                                                <button type="button" id="add-manual-path" class="btn btn-outline btn-sm">
+                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                                                    </svg>
+                                                    添加
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label>执行方式</label>
+                                <div class="radio-group">
+                                    <div class="radio-item">
+                                        <input type="radio" id="execute-immediate" name="execution-mode" value="immediate" checked>
+                                        <label for="execute-immediate">立即执行</label>
+                                    </div>
+                                    <div class="radio-item">
+                                        <input type="radio" id="execute-scheduled" name="execution-mode" value="scheduled">
+                                        <label for="execute-scheduled">定时执行</label>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="form-group" id="schedule-settings" style="display: none;">
+                                <label for="schedule-time">定时设置</label>
+                                <div class="schedule-input">
+                                    <select id="schedule-frequency" class="form-control">
+                                        <option value="daily">每日</option>
+                                        <option value="weekly">每周</option>
+                                    </select>
+                                    <input type="time" id="schedule-time" class="form-control" value="09:00">
+                                </div>
+                            </div>
+                            
+                            <div class="form-actions">
+                                <button type="button" id="cancel-task" class="btn btn-secondary">取消</button>
+                                <button type="submit" id="create-task" class="btn btn-primary">确定创建</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- xterm.js 脚本 -->
@@ -308,6 +477,7 @@
     <script src="/static/js/websocket.js"></script>
     <script src="/static/js/syntax_highlighter.js"></script>
     <script src="/static/js/system_init_modal.js"></script>
+    <script src="/static/js/task_manager_v2.js"></script>
     <script src="/static/js/employees_manager.js"></script>
     <script src="/static/js/sidebar_enhanced.js"></script>
     <script src="/static/js/files_drawer.js"></script>
