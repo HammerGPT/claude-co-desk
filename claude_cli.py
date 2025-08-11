@@ -31,6 +31,8 @@ class ClaudeCLIIntegration:
         resume = options.get('resume', False)
         tools_settings = options.get('toolsSettings', {})
         permission_mode = options.get('permissionMode', 'default')
+        resources = options.get('resources', [])
+        task_id = options.get('taskId')  # 任务ID，用于区分任务执行
         
         captured_session_id = session_id
         session_created_sent = False
@@ -49,34 +51,51 @@ class ClaudeCLIIntegration:
         
         logger.info(f"🎯 使用Claude CLI路径: {claude_executable}")
         
-        # 构建Claude CLI命令参数 - 使用绝对路径
-        args = [claude_executable]
+        # 构建Claude CLI命令参数 - 使用claude命令而非绝对路径
+        args = ['claude']
         
-        # 添加print标志和命令
+        # 先添加查询内容（如果有）
         if command and command.strip():
-            args.extend(['--print', command])
+            args.append(f'"{command}"')
         
-        # 使用工作目录
-        working_dir = cwd or os.getcwd()
+        # 使用根目录作为工作目录（任务都在根目录执行）
+        working_dir = "/"
         
         # 处理会话恢复
         if resume and session_id:
             args.extend(['--resume', session_id])
         
-        # 添加基础标志
-        args.extend(['--output-format', 'stream-json', '--verbose'])
+        # 添加基础标志 - 暂时注释掉减少命令长度
+        # args.extend(['--output-format', 'stream-json'])
         
         # 检查MCP配置
         await self._add_mcp_config_if_available(args)
         
-        # 添加模型参数（仅新会话）
-        if not resume:
-            args.extend(['--model', 'sonnet'])
+        # 添加模型参数（仅新会话）- 暂时注释掉减少命令长度
+        # if not resume:
+        #     args.extend(['--model', 'sonnet'])
         
-        # 添加权限模式
-        if permission_mode and permission_mode != 'default':
+        # 添加权限设置
+        if permission_mode == 'dangerously-allow-all':
+            args.append('--dangerously-skip-permissions')
+            logger.info("使用危险跳过权限模式")
+        elif permission_mode and permission_mode != 'default':
             args.extend(['--permission-mode', permission_mode])
             logger.info(f"使用权限模式: {permission_mode}")
+        
+        # 添加资源目录
+        if resources:
+            for resource in resources:
+                # 检查资源是否为目录
+                resource_path = os.path.abspath(os.path.join(working_dir, resource))
+                if os.path.isdir(resource_path):
+                    args.extend(['--add-dir', resource_path])
+                    logger.info(f"添加资源目录: {resource_path}")
+                elif os.path.isfile(resource_path):
+                    # 对于单个文件，我们让@语法在命令中处理
+                    logger.info(f"资源文件将通过@语法引用: {resource}")
+                else:
+                    logger.warning(f"资源文件不存在: {resource_path}")
         
         # 添加工具设置
         self._add_tools_settings(args, tools_settings, permission_mode)
@@ -98,10 +117,13 @@ class ClaudeCLIIntegration:
             # 移除可能冲突的FORCE_COLOR
             env.pop('FORCE_COLOR', None)
             
-            # 启动Claude进程
+            # 构建完整的shell命令字符串（使用与PTY Shell相同的方式）
+            shell_command = f'cd "{working_dir}" && {" ".join(args)}'
+            logger.info(f"🐚 Shell命令: {shell_command}")
+            
+            # 启动Claude进程 - 使用bash -c方式（与PTY Shell保持一致）
             process = await asyncio.create_subprocess_exec(
-                *args,
-                cwd=working_dir,
+                'bash', '-c', shell_command,
                 stdin=asyncio.subprocess.PIPE,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
@@ -154,8 +176,8 @@ class ClaudeCLIIntegration:
                                             del self.active_processes[process_key]
                                         self.active_processes[captured_session_id] = process
                                     
-                                    # 发送session-created事件（仅新会话）
-                                    if not session_id and not session_created_sent:
+                                    # 发送session-created事件（仅新会话，不包括任务执行）
+                                    if not session_id and not session_created_sent and not task_id:
                                         session_created_sent = True
                                         await websocket.send_text(json.dumps({
                                             'type': 'session-created',
@@ -401,8 +423,8 @@ class ClaudeCLIIntegration:
         
         logger.info(f"🎯 继续会话使用Claude CLI路径: {claude_executable}")
         
-        # 构建Claude CLI命令参数 - 使用绝对路径，claude -c 是交互式命令，不需要其他参数
-        args = [claude_executable]
+        # 构建Claude CLI命令参数 - 使用claude命令，claude -c 是交互式命令，不需要其他参数
+        args = ['claude']
         
         # 使用工作目录
         working_dir = cwd or os.getcwd()
