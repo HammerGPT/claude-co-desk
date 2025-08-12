@@ -18,6 +18,7 @@ from pathlib import Path
 from typing import Dict, List, Any, Optional
 import uvicorn
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request
+from contextlib import asynccontextmanager
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -34,7 +35,30 @@ import aiofiles
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title="Heliki OS", description="基于Claude Code的AI操作系统")
+# 定义生命周期管理器
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # 启动时执行
+    logger.info("🚀 应用启动中...")
+    
+    # 启动任务调度器
+    logger.info("🕐 启动任务调度器...")
+    task_scheduler.start()
+    
+    yield  # 应用运行期间
+    
+    # 关闭时执行
+    logger.info("⏹️ 应用关闭中...")
+    
+    # 停止任务调度器
+    logger.info("🛑 停止任务调度器...")
+    task_scheduler.stop()
+
+app = FastAPI(
+    title="Heliki OS", 
+    description="基于Claude Code的AI操作系统",
+    lifespan=lifespan
+)
 
 # 允许跨域请求
 app.add_middleware(
@@ -1729,6 +1753,19 @@ async def get_tasks():
             content={"error": "获取任务列表失败", "details": str(e)}
         )
 
+@app.get("/api/tasks/scheduler-status")
+async def get_scheduler_status():
+    """获取任务调度器状态API"""
+    try:
+        status = task_scheduler.get_scheduler_status()
+        return JSONResponse(content=status)
+    except Exception as e:
+        logger.error(f"获取调度器状态时出错: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"error": "获取调度器状态失败", "details": str(e)}
+        )
+
 @app.post("/api/tasks")
 async def create_task(request: Request):
     """创建任务API"""
@@ -2104,9 +2141,8 @@ if __name__ == "__main__":
     
     print(f"🚀 启动Heliki OS服务...")
     
-    # 启动任务调度器
-    print(f"🕐 启动任务调度器...")
-    task_scheduler.start()
+    # 任务调度器现在通过lifespan事件自动管理
+    print(f"🕐 任务调度器将通过应用生命周期自动启动...")
     
     try:
         uvicorn.run(
@@ -2121,6 +2157,5 @@ if __name__ == "__main__":
             ws_ping_timeout=86400*7      # WebSocket ping超时7天
         )
     finally:
-        # 停止任务调度器
-        print(f"⏹️ 停止任务调度器...")
-        task_scheduler.stop()
+        # 任务调度器现在通过lifespan事件自动管理
+        print(f"⏹️ 任务调度器将通过应用生命周期自动停止...")
