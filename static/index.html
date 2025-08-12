@@ -116,33 +116,64 @@
                     
                     <!-- 侧边栏内容 -->
                     <div class="sidebar-content">
-                        <!-- 员工团队区域 -->
-                        <div class="employees-section">
-                            <div class="section-header">
-                                <h3>数字员工团队</h3>
-                                <button id="daily-tasks-btn" class="daily-tasks-btn" title="每日任务">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>
-                                    </svg>
-                                </button>
+                        <!-- 任务抽屉区域 -->
+                        <div class="drawer-section" data-drawer="tasks">
+                            <div class="drawer-header" onclick="sidebarDrawers.toggleDrawer('tasks')">
+                                <div class="drawer-content-info">
+                                    <h3>任务</h3>
+                                    <span id="tasks-count" class="item-count">0 个任务</span>
+                                </div>
+                                <div class="drawer-actions">
+                                    <button id="sidebar-create-task-btn" class="sidebar-create-task-btn" onclick="event.stopPropagation(); window.taskManager && window.taskManager.showQuickAddTask()" title="创建新任务">
+                                        创建新任务
+                                    </button>
+                                    <button id="agents-team-btn" class="agents-team-btn" onclick="event.stopPropagation(); window.employeesManager && window.employeesManager.showAgentsModal()" title="数字员工团队">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
+                                        </svg>
+                                    </button>
+                                    <button class="expand-btn" title="展开/折叠">
+                                        <svg class="expand-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <polyline points="6,9 12,15 18,9"></polyline>
+                                        </svg>
+                                    </button>
+                                </div>
                             </div>
-                            <div id="employees-list" class="employees-list">
-                                <!-- 动态填充员工列表 -->
+                            <div class="drawer-content" id="tasks-drawer-content">
+                                <div id="tasks-list" class="tasks-list">
+                                    <!-- 动态填充任务列表 -->
+                                    <div class="empty-tasks">
+                                        <p>暂无任务</p>
+                                        <button class="create-first-task-btn" onclick="window.taskManager && window.taskManager.showQuickAddTask()">创建新任务</button>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                         
-                        <!-- 项目列表 -->
-                        <div class="projects-section">
-                            <div class="section-header">
-                                <h3>项目</h3>
-                                <button id="new-project" class="new-project-btn">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-                                    </svg>
-                                </button>
+                        <!-- 项目抽屉区域 -->
+                        <div class="drawer-section" data-drawer="projects">
+                            <div class="drawer-header" onclick="sidebarDrawers.toggleDrawer('projects')">
+                                <div class="drawer-content-info">
+                                    <h3>项目</h3>
+                                    <span id="projects-count" class="item-count">0 个项目</span>
+                                </div>
+                                <div class="drawer-actions">
+                                    <button id="new-project" class="new-project-btn" onclick="event.stopPropagation();" title="新建项目">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                                        </svg>
+                                    </button>
+                                    <button class="expand-btn" title="展开/折叠">
+                                        <svg class="expand-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <polyline points="6,9 12,15 18,9"></polyline>
+                                        </svg>
+                                    </button>
+                                </div>
                             </div>
-                            <div id="projects-list" class="projects-list">
-                                <!-- 动态填充项目列表 -->
+                            <div class="drawer-content" id="projects-drawer-content">
+                                <div id="projects-list" class="projects-list">
+                                    <!-- 动态填充项目列表 -->
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -199,7 +230,13 @@
                                     <div class="session-actions" style="width: 1px; height: 1px; overflow: hidden;"></div>
                                 </div>
                                 <div id="session-terminal-wrapper" class="session-terminal-wrapper">
-                                    <div class="empty-terminal-state">
+                                    <!-- 任务管理器仪表板 -->
+                                    <div id="task-manager-dashboard" class="task-manager-dashboard">
+                                        <!-- 动态填充任务管理器仪表板内容 -->
+                                    </div>
+                                    
+                                    <!-- 原有的空状态（备用） -->
+                                    <div class="empty-terminal-state" style="display: none;">
                                         <p>请选择一个项目会话开始工作</p>
                                     </div>
                                 </div>
@@ -259,6 +296,249 @@
         
         <!-- 移动端侧边栏遮罩 -->
         <div id="sidebar-overlay" class="sidebar-overlay"></div>
+        
+        <!-- 独立的新建任务弹窗 -->
+        <div id="standalone-add-task-modal" class="modal-overlay hidden">
+            <div class="modal-content large-modal">
+                <div class="modal-header">
+                    <h3>新建任务</h3>
+                    <button id="standalone-add-task-close" class="modal-close">×</button>
+                </div>
+                <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
+                    <div class="add-task-form">
+                        <form id="standalone-task-form">
+                            <div class="form-group">
+                                <label for="standalone-task-name">任务名称</label>
+                                <input type="text" id="standalone-task-name" class="form-control" placeholder="例如：信息收集任务" required>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="standalone-task-goal">任务目标</label>
+                                <textarea id="standalone-task-goal" class="form-control" rows="4" placeholder="描述任务的具体目标和要求..." required></textarea>
+                            </div>
+                            
+                            <div class="form-group">
+                                <div class="checkbox-group">
+                                    <input type="checkbox" id="standalone-skip-permissions" name="skip-permissions">
+                                    <label for="standalone-skip-permissions">启用危险权限跳过模式 (--dangerously-skip-permissions)</label>
+                                </div>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label>资源文件</label>
+                                <div class="resource-help">
+                                    <p class="text-muted">为任务指定需要处理的文件或文件夹，支持多种添加方式：</p>
+                                </div>
+                                <div id="standalone-resource-selector" class="resource-selector">
+                                    <div class="resource-list" id="standalone-resource-list">
+                                        <!-- 动态添加的资源文件 -->
+                                    </div>
+                                    <div class="resource-add-methods">
+                                        <div class="add-method-group">
+                                            <h6>快速选择</h6>
+                                            <div class="resource-actions">
+                                                <button type="button" class="btn btn-outline btn-sm" id="standalone-browse-files">
+                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                                    </svg>
+                                                    选择文件
+                                                </button>
+                                                <button type="button" class="btn btn-outline btn-sm" id="standalone-browse-folders">
+                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/>
+                                                    </svg>
+                                                    选择文件夹
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div class="add-method-group">
+                                            <h6>手动输入路径</h6>
+                                            <div class="manual-path">
+                                                <input type="text" id="standalone-manual-path" class="form-control" placeholder="例如: /Users/username/Documents/project">
+                                                <button type="button" id="standalone-add-manual-path" class="btn btn-outline btn-sm">
+                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                                                    </svg>
+                                                    添加
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label>执行方式</label>
+                                <div class="radio-group">
+                                    <div class="radio-item">
+                                        <input type="radio" id="standalone-execute-immediate" name="standalone-execution-mode" value="immediate" checked>
+                                        <label for="standalone-execute-immediate">立即执行</label>
+                                    </div>
+                                    <div class="radio-item">
+                                        <input type="radio" id="standalone-execute-scheduled" name="standalone-execution-mode" value="scheduled">
+                                        <label for="standalone-execute-scheduled">定时执行</label>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="form-group" id="standalone-schedule-settings" style="display: none;">
+                                <label for="standalone-schedule-time">定时设置</label>
+                                <div class="schedule-input">
+                                    <select id="standalone-schedule-frequency" class="form-control">
+                                        <option value="daily">每日</option>
+                                        <option value="weekly">每周</option>
+                                    </select>
+                                    <input type="time" id="standalone-schedule-time" class="form-control" value="09:00">
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button id="standalone-cancel-task" class="btn btn-secondary">取消</button>
+                    <button id="standalone-create-task" class="btn btn-primary">创建任务</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 独立的任务详情弹窗 -->
+        <div id="standalone-task-detail-modal" class="modal-overlay hidden">
+            <div class="modal-content large-modal">
+                <div class="modal-header">
+                    <h3 id="standalone-detail-title">任务详情</h3>
+                    <button id="standalone-task-detail-close" class="modal-close">×</button>
+                </div>
+                <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
+                    <!-- 任务详情显示区域 -->
+                    <div id="standalone-task-detail-view" class="task-detail-view">
+                        <div class="detail-header">
+                            <h4 id="standalone-detail-task-name">任务名称</h4>
+                            <div class="detail-actions">
+                                <button id="standalone-edit-task-btn" class="btn btn-outline btn-sm">编辑</button>
+                                <button id="standalone-execute-task-btn" class="btn btn-primary btn-sm">执行</button>
+                            </div>
+                        </div>
+                        <div class="detail-content">
+                            <div class="detail-item">
+                                <label>任务目标</label>
+                                <div id="standalone-detail-task-goal" class="detail-value"></div>
+                            </div>
+                            <div class="detail-item">
+                                <label>执行模式</label>
+                                <div id="standalone-detail-execution-mode" class="detail-value"></div>
+                            </div>
+                            <div class="detail-item">
+                                <label>资源文件</label>
+                                <div id="standalone-detail-resources" class="detail-value"></div>
+                            </div>
+                            <div class="detail-item">
+                                <label>状态信息</label>
+                                <div id="standalone-detail-status" class="detail-value"></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 任务编辑表单 -->
+                    <div id="standalone-edit-task-form" class="add-task-form hidden">
+                        <form id="standalone-edit-form">
+                            <div class="form-group">
+                                <label for="standalone-edit-task-name">任务名称</label>
+                                <input type="text" id="standalone-edit-task-name" class="form-control" placeholder="例如：信息收集任务" required>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="standalone-edit-task-goal">任务目标</label>
+                                <textarea id="standalone-edit-task-goal" class="form-control" rows="4" placeholder="描述任务的具体目标和要求..." required></textarea>
+                            </div>
+                            
+                            <div class="form-group">
+                                <div class="checkbox-group">
+                                    <input type="checkbox" id="standalone-edit-skip-permissions" name="skip-permissions">
+                                    <label for="standalone-edit-skip-permissions">启用危险权限跳过模式 (--dangerously-skip-permissions)</label>
+                                </div>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label>资源文件</label>
+                                <div class="resource-help">
+                                    <p class="text-muted">为任务指定需要处理的文件或文件夹，支持多种添加方式：</p>
+                                </div>
+                                <div id="standalone-edit-resource-selector" class="resource-selector">
+                                    <div class="resource-list" id="standalone-edit-resource-list">
+                                        <!-- 动态添加的资源文件 -->
+                                    </div>
+                                    <div class="resource-add-methods">
+                                        <div class="add-method-group">
+                                            <h6>快速选择</h6>
+                                            <div class="resource-actions">
+                                                <button type="button" class="btn btn-outline btn-sm" id="standalone-edit-browse-files">
+                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                                    </svg>
+                                                    选择文件
+                                                </button>
+                                                <button type="button" class="btn btn-outline btn-sm" id="standalone-edit-browse-folders">
+                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/>
+                                                    </svg>
+                                                    选择文件夹
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div class="add-method-group">
+                                            <h6>手动输入路径</h6>
+                                            <div class="manual-path">
+                                                <input type="text" id="standalone-edit-manual-path" class="form-control" placeholder="例如: /Users/username/Documents/project">
+                                                <button type="button" id="standalone-edit-add-manual-path" class="btn btn-outline btn-sm">
+                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                                                    </svg>
+                                                    添加
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label>执行方式</label>
+                                <div class="radio-group">
+                                    <div class="radio-item">
+                                        <input type="radio" id="standalone-edit-execute-immediate" name="standalone-edit-execution-mode" value="immediate" checked>
+                                        <label for="standalone-edit-execute-immediate">立即执行</label>
+                                    </div>
+                                    <div class="radio-item">
+                                        <input type="radio" id="standalone-edit-execute-scheduled" name="standalone-edit-execution-mode" value="scheduled">
+                                        <label for="standalone-edit-execute-scheduled">定时执行</label>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="form-group" id="standalone-edit-schedule-settings" style="display: none;">
+                                <label for="standalone-edit-schedule-time">定时设置</label>
+                                <div class="schedule-input">
+                                    <select id="standalone-edit-schedule-frequency" class="form-control">
+                                        <option value="daily">每日</option>
+                                        <option value="weekly">每周</option>
+                                    </select>
+                                    <input type="time" id="standalone-edit-schedule-time" class="form-control" value="09:00">
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <div id="standalone-detail-footer" class="modal-footer-buttons">
+                        <button id="standalone-cancel-detail" class="btn btn-secondary">关闭</button>
+                    </div>
+                    <div id="standalone-edit-footer" class="modal-footer-buttons hidden">
+                        <button id="standalone-cancel-edit" class="btn btn-secondary">取消</button>
+                        <button id="standalone-save-edit" class="btn btn-primary">保存修改</button>
+                    </div>
+                </div>
+            </div>
+        </div>
         
         <!-- 系统初始化进度弹窗 -->
         <div id="system-init-modal" class="modal-overlay hidden">
@@ -463,6 +743,7 @@
         </div>
     </div>
 
+
     <!-- xterm.js 脚本 -->
     <script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.js"></script>
@@ -477,12 +758,30 @@
     <script src="/static/js/websocket.js"></script>
     <script src="/static/js/syntax_highlighter.js"></script>
     <script src="/static/js/system_init_modal.js"></script>
+    <script src="/static/js/dashboard.js"></script>
+    <script src="/static/js/sidebar_drawers.js"></script>
     <script src="/static/js/task_manager_v2.js"></script>
     <script src="/static/js/employees_manager.js"></script>
     <script src="/static/js/sidebar_enhanced.js"></script>
     <script src="/static/js/files_drawer.js"></script>
     <script src="/static/js/session_terminal.js"></script>
     <script src="/static/js/chat.js"></script>
+    
+    <!-- 初始化TaskManager实例 -->
+    <script>
+        // 等待DOM加载完成后创建TaskManager全局实例
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => {
+                window.taskManagerV2 = new TaskManager(); // V2版本任务管理器
+                window.taskManager = window.taskManagerV2; // 统一引用
+            });
+        } else {
+            // DOM已经加载完成
+            window.taskManagerV2 = new TaskManager();
+            window.taskManager = window.taskManagerV2; // 统一引用
+        }
+    </script>
+    
     <script src="/static/js/app.js"></script>
 </body>
 </html>
