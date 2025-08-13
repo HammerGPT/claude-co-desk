@@ -64,84 +64,22 @@ class EmployeesManager {
                 this.systemProjectStatus = await systemResponse.json();
             }
 
-            // 如果系统已初始化，获取员工状态
-            if (this.systemProjectStatus && !this.systemProjectStatus.needs_initialization) {
-                const agentsResponse = await fetch('/api/system-project/agents');
-                if (agentsResponse.ok) {
-                    const agentsData = await agentsResponse.json();
-                    this.employees = this.processEmployeesData(agentsData);
-                    this.isInitialized = true;
-                }
+            // 直接获取已部署的智能体信息
+            const agentsResponse = await fetch('/api/system-project/agents');
+            if (agentsResponse.ok) {
+                const agentsData = await agentsResponse.json();
+                this.employees = agentsData.agents || []; // 直接使用API返回的数据
+                this.isInitialized = this.employees.length > 0;
             }
 
-            // 员工数据已加载完成，不需要渲染到侧边栏
             console.log('✅ 员工数据加载完成:', this.employees.length, '个员工');
         } catch (error) {
             console.error('加载员工状态失败:', error);
-            // renderError不再需要，因为没有固定的显示区域
+            this.employees = [];
         }
     }
 
-    /**
-     * 处理员工数据
-     */
-    processEmployeesData(agentsData) {
-        const employeeConfigs = [
-            {
-                id: 'document-manager',
-                name: '文档管理员',
-                role: '专业文件整理专家',
-                avatar: '📁'
-            },
-            {
-                id: 'work-assistant', 
-                name: '工作助理',
-                role: '专业行政助理',
-                avatar: '💼'
-            },
-            {
-                id: 'finance-assistant',
-                name: '财务助理', 
-                role: '专业财务管理专家',
-                avatar: '💰'
-            },
-            {
-                id: 'info-collector',
-                name: '信息收集员',
-                role: '专业情报分析师',
-                avatar: '🔍'
-            },
-            {
-                id: 'fullstack-engineer',
-                name: '全栈工程师',
-                role: '高级软件工程师',
-                avatar: '⚡'
-            }
-        ];
 
-        return employeeConfigs.map(config => {
-            const agentData = agentsData.agents && agentsData.agents.find(a => a.id === config.id);
-            return {
-                ...config,
-                status: this.determineEmployeeStatus(agentData),
-                deployed: agentData?.deployed || false,
-                lastActive: agentData?.lastActive || null
-            };
-        });
-    }
-
-    /**
-     * 确定员工状态
-     */
-    determineEmployeeStatus(agentData) {
-        if (!agentData || !agentData.deployed) {
-            return 'offline';
-        }
-        
-        // 这里可以根据实际需求扩展状态逻辑
-        // 目前简化为已部署=在线，未部署=离线
-        return 'online';
-    }
 
     /**
      * 显示智能体团队管理弹窗
@@ -160,16 +98,7 @@ class EmployeesManager {
                     <h3>数字员工团队管理</h3>
                     <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">×</button>
                 </div>
-                <div class="modal-body">
-                    <div id="agents-modal-content" class="agents-modal-content">
-                        ${this.renderAgentsContent()}
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button class="btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">关闭</button>
-                    ${this.systemProjectStatus && this.systemProjectStatus.needs_initialization ? 
-                        '<button class="btn btn-primary" onclick="employeesManager.initializeSystem()">初始化系统</button>' : ''}
-                </div>
+                ${this.renderAgentsContent()}
             </div>
         `;
         
@@ -214,56 +143,153 @@ class EmployeesManager {
             `;
         }
 
-        // 渲染员工列表
+        // 渲染智能体左右分栏布局 - 直接返回sidebar和detail，不需要包装容器
         return `
-            <div class="agents-grid">
-                ${this.employees.map(employee => `
-                    <div class="agent-card" data-employee-id="${employee.id}">
-                        <div class="agent-avatar">${employee.avatar}</div>
-                        <div class="agent-info">
-                            <div class="agent-name">${employee.name}</div>
-                            <div class="agent-role">${employee.role}</div>
+            <div class="agents-sidebar">
+                <div class="agents-list">
+                    ${this.employees.map(agent => `
+                        <div class="agent-item" data-agent-id="${agent.id}" onclick="employeesManager.selectAgent('${agent.id}')">
+                            <div class="agent-header">
+                                <div class="agent-name">${agent.name || agent.id}</div>
+                                <div class="agent-status-indicator ${agent.color || 'default'}"></div>
+                            </div>
+                            <div class="agent-description">${agent.description || 'No description available'}</div>
+                            ${agent.model ? `<div class="agent-model">Model: ${agent.model}</div>` : ''}
                         </div>
-                        <div class="agent-status">
-                            <div class="status-indicator ${employee.status}"></div>
-                            <div class="status-text">${this.getStatusText(employee.status)}</div>
-                        </div>
-                        <div class="agent-actions">
-                            <button class="btn btn-sm btn-outline" onclick="employeesManager.viewAgentDetails('${employee.id}')">详情</button>
-                            <button class="btn btn-sm btn-primary" onclick="employeesManager.startAgentChat('${employee.id}')">对话</button>
-                        </div>
-                    </div>
-                `).join('')}
+                    `).join('')}
+                </div>
+            </div>
+            <div class="agents-detail">
+                <div class="agent-detail-placeholder">
+                    <div class="placeholder-icon">👥</div>
+                    <div class="placeholder-text">Select an agent to view details</div>
+                </div>
             </div>
         `;
     }
 
     /**
-     * 查看智能体详情
+     * 选择智能体并显示详情
      */
-    viewAgentDetails(agentId) {
+    selectAgent(agentId) {
         const agent = this.employees.find(emp => emp.id === agentId);
         if (!agent) return;
 
-        console.log('查看智能体详情:', agent.name);
+        console.log('选择智能体:', agent.name || agent.id);
         
-        // 这里可以扩展为显示详细的智能体信息
-        alert(`${agent.avatar} ${agent.name}\n\n职责: ${agent.role}\n状态: ${this.getStatusText(agent.status)}`);
+        // 更新选中状态
+        document.querySelectorAll('.agent-item').forEach(item => {
+            item.classList.remove('selected');
+        });
+        document.querySelector(`[data-agent-id="${agentId}"]`).classList.add('selected');
+        
+        // 渲染详情区域
+        this.renderAgentDetail(agent);
     }
 
     /**
-     * 开始与智能体对话
+     * 渲染智能体详情区域
      */
-    startAgentChat(agentId) {
-        const agent = this.employees.find(emp => emp.id === agentId);
-        if (!agent) return;
+    renderAgentDetail(agent) {
+        const detailContainer = document.querySelector('.agents-detail');
+        if (!detailContainer) return;
 
-        console.log('开始与智能体对话:', agent.name);
-        
-        // 这里可以扩展为启动专门的智能体对话会话
-        // 例如：创建一个专门与该智能体对话的页签
-        alert(`即将启动与 ${agent.avatar} ${agent.name} 的对话会话\n\n该功能将在后续版本中实现`);
+        // 直接显示文件内容
+        this.loadAndDisplayAgentFile(agent, detailContainer);
     }
+
+    /**
+     * 加载并显示智能体文件内容
+     */
+    async loadAndDisplayAgentFile(agent, container) {
+        if (!agent || !agent.file_path) {
+            container.innerHTML = `
+                <div class="agent-detail-placeholder">
+                    <div class="placeholder-icon">❌</div>
+                    <div class="placeholder-text">No file path available for this agent</div>
+                </div>
+            `;
+            return;
+        }
+
+        // 显示加载状态
+        container.innerHTML = `
+            <div class="agent-detail-placeholder">
+                <div class="placeholder-icon">⏳</div>
+                <div class="placeholder-text">Loading agent documentation...</div>
+            </div>
+        `;
+
+        try {
+            // 使用现有的文件读取API
+            const response = await fetch(`/api/files/read?file_path=${encodeURIComponent(agent.file_path)}&project_path=${encodeURIComponent(agent.file_path)}`);
+            
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+
+            const fileData = await response.json();
+            
+            // 渲染文件内容
+            this.renderFileContent(agent, fileData.content, container);
+            
+        } catch (error) {
+            console.error('读取智能体文件失败:', error);
+            container.innerHTML = `
+                <div class="agent-detail-placeholder">
+                    <div class="placeholder-icon">❌</div>
+                    <div class="placeholder-text">Failed to load agent documentation</div>
+                    <div style="font-size: 12px; margin-top: 8px; opacity: 0.7;">Error: ${error.message}</div>
+                </div>
+            `;
+        }
+    }
+
+    /**
+     * 渲染文件内容
+     */
+    renderFileContent(agent, content, container) {
+        const filename = agent.file_path.split('/').pop();
+        
+        // 获取语法高亮器
+        const language = window.syntaxHighlighter ? 
+            window.syntaxHighlighter.getLanguageFromExtension(filename) : 'markdown';
+        
+        container.innerHTML = `
+            <div class="agent-file-viewer">
+                <div class="agent-file-header">
+                    <div class="file-info">
+                        <div class="file-name">📄 ${filename}</div>
+                        <div class="agent-info">
+                            <span class="agent-name">${agent.name || agent.id}</span>
+                            ${agent.color ? `<span class="agent-color-dot" style="background-color: ${agent.color}"></span>` : ''}
+                        </div>
+                    </div>
+                </div>
+                <div class="agent-file-content">
+                    <pre><code class="language-${language}">${this.escapeHtml(content)}</code></pre>
+                </div>
+            </div>
+        `;
+
+        // 应用语法高亮
+        if (window.syntaxHighlighter && window.syntaxHighlighter.highlightElement) {
+            const codeElement = container.querySelector('code');
+            if (codeElement) {
+                window.syntaxHighlighter.highlightElement(codeElement);
+            }
+        }
+    }
+
+    /**
+     * HTML转义
+     */
+    escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
 
     /**
      * 处理初始化按钮点击事件
@@ -308,63 +334,7 @@ class EmployeesManager {
         }
     }
 
-    /**
-     * 获取状态文本
-     */
-    getStatusText(status) {
-        const statusTexts = {
-            'online': '在线',
-            'offline': '离线',
-            'working': '工作中',
-            'idle': '待机'
-        };
-        return statusTexts[status] || '未知';
-    }
 
-    /**
-     * 添加员工点击事件监听器
-     */
-    addEmployeeClickListeners() {
-        const employeeItems = this.employeesList.querySelectorAll('.employee-item');
-        employeeItems.forEach(item => {
-            item.addEventListener('click', () => {
-                const employeeId = item.dataset.employeeId;
-                this.handleEmployeeClick(employeeId);
-            });
-        });
-    }
-
-    /**
-     * 处理员工点击事件
-     */
-    handleEmployeeClick(employeeId) {
-        const employee = this.employees.find(emp => emp.id === employeeId);
-        if (!employee) return;
-
-        // 显示员工详情或启动与该员工的对话
-        console.log('点击员工:', employee.name);
-        
-        // 这里可以扩展为显示员工详情面板或启动专门的对话会话
-        // 例如：启动一个专门与该员工对话的聊天窗口
-    }
-
-    /**
-     * 处理系统状态按钮点击
-     */
-    handleDailyTasksClick() {
-        console.log('🎯 打开每日任务管理界面');
-        // 显示每日任务管理模态框
-        const modal = document.getElementById('daily-tasks-modal');
-        if (modal) {
-            modal.classList.remove('hidden');
-            modal.classList.add('active');
-            // 初始化任务管理器
-            if (!window.taskManager) {
-                window.taskManager = new TaskManager();
-            }
-            window.taskManager.loadTasks();
-        }
-    }
 
     /**
      * 初始化系统 - 使用页签机制

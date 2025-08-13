@@ -193,7 +193,7 @@ class TaskManagerDashboard {
             }
 
             // 获取智能体数量
-            const agentsResponse = await fetch('/api/agents-count');
+            const agentsResponse = await fetch('/api/system-project/agents');
             if (agentsResponse.ok) {
                 const agentsData = await agentsResponse.json();
                 this.agentsCount = agentsData.count || 0;
