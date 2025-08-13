@@ -432,20 +432,39 @@ class TaskScheduler:
             # 通过WebSocket通知前端创建新页签执行任务
             # 完全复用手动任务的命令构建和消息格式
             if self.websocket_manager:
-                # 复用app.py中的命令构建逻辑
-                task_command_parts = [enhanced_command]  # 增强的任务目标
+                # 复用app.py中的命令构建逻辑 - 正确处理命令和参数分离
+                import re
+                
+                # 构建基础任务命令
+                base_command_parts = [enhanced_command]
                 
                 # 添加权限模式
                 if task.skip_permissions:
-                    task_command_parts.append('--dangerously-skip-permissions')
+                    base_command_parts.append('--dangerously-skip-permissions')
                 
                 # 添加资源文件引用
                 if task.resources:
                     for resource in task.resources:
-                        task_command_parts.extend(['--add-dir', resource])
+                        base_command_parts.extend(['--add-dir', resource])
                 
-                # 拼接完整命令
-                full_task_command = ' '.join(task_command_parts)
+                # 拼接基础命令
+                full_command_content = ' '.join(base_command_parts)
+                
+                # 应用与app.py相同的命令分离逻辑
+                # 查找所有--参数的位置
+                param_matches = list(re.finditer(r'\s(--\S+)', full_command_content))
+                
+                if param_matches:
+                    # 找到第一个参数的位置
+                    first_param_pos = param_matches[0].start()
+                    main_command = full_command_content[:first_param_pos].strip()
+                    remaining_params = full_command_content[first_param_pos:].strip()
+                    # 关键修复：用双引号包围主命令内容
+                    full_task_command = f'"{main_command}" {remaining_params}'
+                else:
+                    # 没有参数，直接用双引号包围整个命令
+                    full_task_command = f'"{full_command_content}"'
+                
                 logger.info(f"📋 定时任务构建命令: {full_task_command}")
                 
                 # 使用与手动任务完全相同的消息格式
