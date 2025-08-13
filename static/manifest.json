@@ -23,31 +23,5 @@
       "purpose": "any maskable"
     }
   ],
-  "categories": ["productivity", "developer", "utilities"],
-  "shortcuts": [
-    {
-      "name": "新建对话",
-      "short_name": "新对话",
-      "description": "开始新的Claude对话",
-      "url": "/?tab=chat",
-      "icons": [
-        {
-          "src": "/static/assets/icons/icon-96x96.png",
-          "sizes": "96x96"
-        }
-      ]
-    },
-    {
-      "name": "终端",
-      "short_name": "终端",
-      "description": "打开Claude终端",
-      "url": "/?tab=terminal",
-      "icons": [
-        {
-          "src": "/static/assets/icons/icon-96x96.png",
-          "sizes": "96x96"
-        }
-      ]
-    }
-  ]
+  "categories": ["productivity", "developer", "utilities"]
 }

@@ -481,44 +481,66 @@ class TaskManager {
                     <button class="create-first-task-btn" onclick="window.taskManager && window.taskManager.showQuickAddTask()">创建新任务</button>
                 </div>
             `;
-            return;
-        }
+        } else {
+            // 只显示前5个任务，保持侧边栏简洁
+            const displayTasks = this.tasks.slice(0, 5);
+            
+            sidebarTasksList.innerHTML = displayTasks.map(task => {
+                const safeTask = {
+                    id: task.id || '',
+                    name: task.name || '未命名任务',
+                    goal: task.goal || '',
+                    enabled: task.enabled !== false,
+                    status: task.status || 'pending'
+                };
 
-        // 只显示前5个任务，保持侧边栏简洁
-        const displayTasks = this.tasks.slice(0, 5);
-        
-        sidebarTasksList.innerHTML = displayTasks.map(task => {
-            const safeTask = {
-                id: task.id || '',
-                name: task.name || '未命名任务',
-                goal: task.goal || '',
-                enabled: task.enabled !== false,
-                status: task.status || 'pending'
-            };
-
-            return `
-                <div class="task-item ${safeTask.enabled ? 'enabled' : 'disabled'} ${safeTask.status}" 
-                     data-task-id="${safeTask.id}" 
-                     onclick="window.taskManager && window.taskManager.showTaskDetails('${safeTask.id}')">
-                    <div class="task-name">${this.escapeHtml(safeTask.name)}</div>
-                    <div class="task-status">
-                        <span class="status-dot ${safeTask.status}"></span>
-                        ${safeTask.enabled ? '启用' : '禁用'}
+                return `
+                    <div class="task-item ${safeTask.enabled ? 'enabled' : 'disabled'} ${safeTask.status}" 
+                         data-task-id="${safeTask.id}" 
+                         onclick="window.taskManager && window.taskManager.showTaskDetails('${safeTask.id}')">
+                        <div class="task-name">${this.escapeHtml(safeTask.name)}</div>
+                        <div class="task-status">
+                            <span class="status-dot ${safeTask.status}"></span>
+                            ${safeTask.enabled ? '启用' : '禁用'}
+                        </div>
                     </div>
-                </div>
-            `;
-        }).join('');
+                `;
+            }).join('');
 
-        // 如果任务数量超过5个，显示"查看更多"
-        if (this.tasks.length > 5) {
-            sidebarTasksList.innerHTML += `
-                <div class="view-more-tasks">
-                    <button class="view-more-btn" onclick="window.taskManager && window.taskManager.showAllTasks()">
-                        查看全部 ${this.tasks.length} 个任务
-                    </button>
-                </div>
-            `;
+            // 如果任务数量超过5个，显示"查看更多"
+            if (this.tasks.length > 5) {
+                sidebarTasksList.innerHTML += `
+                    <div class="view-more-tasks">
+                        <button class="view-more-btn" onclick="window.taskManager && window.taskManager.showAllTasks()">
+                            查看全部 ${this.tasks.length} 个任务
+                        </button>
+                    </div>
+                `;
+            }
         }
+
+        // 任务板块不再使用动态高度控制，改为CSS默认布局
+        console.log('📋 任务列表渲染完成，任务板块使用CSS默认布局');
+    }
+
+    /**
+     * 通知抽屉管理器更新高度
+     */
+    notifyDrawerHeightUpdate(drawerName) {
+        // 使用短延迟确保DOM更新完成
+        setTimeout(() => {
+            if (window.sidebarDrawers) {
+                window.sidebarDrawers.recalculateDrawerHeight(drawerName);
+                console.log(`📋 已通知抽屉管理器重新计算 ${drawerName} 抽屉高度`);
+            }
+        }, 50);
+        
+        // 二次确认，确保高度计算正确
+        setTimeout(() => {
+            if (window.sidebarDrawers) {
+                window.sidebarDrawers.recalculateDrawerHeight(drawerName);
+            }
+        }, 200);
     }
 
     /**

@@ -184,6 +184,9 @@
     flex: 1;
     position: relative;
     overflow: hidden;
+    display: flex;
+    justify-content: center;
+    align-items: center;
 }
 
 .session-terminal-instance {

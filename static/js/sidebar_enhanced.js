@@ -181,6 +181,11 @@ class EnhancedSidebar {
                 this.projects = data.projects || [];
                 this.renderProjects();
                 
+                // 通知抽屉管理器更新项目数量
+                document.dispatchEvent(new CustomEvent('projectsUpdated', {
+                    detail: { projects: this.projects }
+                }));
+                
                 // 项目加载完成，不自动选择项目
             } else {
                 console.error('加载项目失败:', response.statusText);
@@ -323,6 +328,10 @@ class EnhancedSidebar {
             const projectEl = this.createProjectElement(project);
             this.projectsList.appendChild(projectEl);
         });
+
+        // 渲染完成后，通知抽屉管理器重新计算高度
+        console.log('🎯 项目列表渲染完成，通知抽屉管理器重新计算高度');
+        this.notifyDrawerHeightUpdate('projects');
     }
 
     /**
@@ -843,6 +852,9 @@ class EnhancedSidebar {
         // 通知其他组件
         this.notifySessionSwitch(sessionData);
         
+        // 通知页签状态变化
+        this.notifyTabStateChange();
+        
         // 更新项目列表显示
         this.renderProjects();
         
@@ -889,6 +901,26 @@ class EnhancedSidebar {
     }
 
     /**
+     * 通知页签状态变化
+     */
+    notifyTabStateChange() {
+        const hasActiveSessions = this.activeSessions.size > 0;
+        
+        document.dispatchEvent(new CustomEvent('tabStateChanged', {
+            detail: {
+                hasActiveSessions: hasActiveSessions,
+                activeSessionCount: this.activeSessions.size,
+                activeSessionId: this.activeSessionId
+            }
+        }));
+        
+        console.log('📋 通知页签状态变化:', {
+            hasActiveSessions,
+            activeSessionCount: this.activeSessions.size
+        });
+    }
+
+    /**
      * 显示空状态
      */
     showEmptyState() {
@@ -901,6 +933,9 @@ class EnhancedSidebar {
         if (currentSessionName) {
             currentSessionName.textContent = '';
         }
+        
+        // 通知页签状态变化，确保dashboard显示
+        this.notifyTabStateChange();
     }
 
     /**
@@ -1386,7 +1421,10 @@ class EnhancedSidebar {
         // 4. 更新页签状态
         this.updateTabStates();
         
-        // 5. 更新localStorage状态
+        // 5. 通知页签状态变化
+        this.notifyTabStateChange();
+        
+        // 6. 更新localStorage状态
         this.updateConnectionState();
         
         console.log('✅ [SIDEBAR] 会话页签关闭完成:', {
@@ -1423,6 +1461,26 @@ class EnhancedSidebar {
      */
     hasActiveSessions() {
         return this.activeSessions.size > 0;
+    }
+
+    /**
+     * 通知抽屉管理器更新高度
+     */
+    notifyDrawerHeightUpdate(drawerName) {
+        // 使用短延迟确保DOM更新完成
+        setTimeout(() => {
+            if (window.sidebarDrawers) {
+                window.sidebarDrawers.recalculateDrawerHeight(drawerName);
+                console.log(`🎯 已通知抽屉管理器重新计算 ${drawerName} 抽屉高度`);
+            }
+        }, 50);
+        
+        // 二次确认，确保高度计算正确
+        setTimeout(() => {
+            if (window.sidebarDrawers) {
+                window.sidebarDrawers.recalculateDrawerHeight(drawerName);
+            }
+        }, 200);
     }
 
     /**
