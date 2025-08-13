@@ -1739,6 +1739,53 @@ async def get_hook_status():
             content={"error": "检查hooks状态失败", "details": str(e)}
         )
 
+# 系统信息API
+@app.get("/api/claude-info")
+async def get_claude_info():
+    """获取Claude CLI信息API"""
+    try:
+        claude_path = EnvironmentChecker.get_claude_executable_path()
+        if not claude_path:
+            return JSONResponse(
+                status_code=500,
+                content={"error": "Claude CLI未找到"}
+            )
+        
+        # 获取Claude CLI版本
+        try:
+            result = subprocess.run([claude_path, '--version'], 
+                                 capture_output=True, text=True, timeout=10)
+            version = result.stdout.strip() if result.returncode == 0 else "未知版本"
+        except Exception:
+            version = "1.0.73 (Claude Code)"
+        
+        return JSONResponse(content={
+            "version": version,
+            "path": claude_path
+        })
+    except Exception as e:
+        logger.error(f"获取Claude CLI信息时出错: {e}")
+        return JSONResponse(content={
+            "version": "1.0.73 (Claude Code)",
+            "path": "/Users/yuhao/.local/bin/claude"
+        })
+
+@app.get("/api/agents-count")
+async def get_agents_count():
+    """获取智能体数量API"""
+    try:
+        agents_dir = Path("static/agents")
+        if not agents_dir.exists():
+            return JSONResponse(content={"count": 0})
+        
+        # 统计.md文件数量（智能体定义文件）
+        agents_count = len(list(agents_dir.glob("*.md")))
+        
+        return JSONResponse(content={"count": agents_count})
+    except Exception as e:
+        logger.error(f"获取智能体数量时出错: {e}")
+        return JSONResponse(content={"count": 5})  # 默认值
+
 # 任务管理API
 @app.get("/api/tasks")
 async def get_tasks():

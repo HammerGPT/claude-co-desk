@@ -26,19 +26,12 @@ class EmployeesManager {
      * 初始化DOM元素引用
      */
     initElements() {
-        this.employeesList = document.getElementById('employees-list');
-        this.systemStatusBtn = document.getElementById('system-status-btn');
+        // 现在员工管理通过弹窗显示，不再需要固定的DOM元素
+        this.agentsTeamBtn = document.getElementById('agents-team-btn');
         
         console.log('🔍 DOM元素检查:', {
-            employeesList: !!this.employeesList,
-            systemStatusBtn: !!this.systemStatusBtn
+            agentsTeamBtn: !!this.agentsTeamBtn
         });
-        
-        // 确保元素存在
-        if (!this.employeesList) {
-            console.error('❌ 员工列表容器不存在');
-            return;
-        }
         
         console.log('✅ DOM元素初始化成功');
     }
@@ -47,11 +40,8 @@ class EmployeesManager {
      * 初始化事件监听器
      */
     initEventListeners() {
-        if (this.systemStatusBtn) {
-            this.systemStatusBtn.addEventListener('click', () => {
-                this.handleSystemStatusClick();
-            });
-        }
+        // 智能体团队按钮事件将在按钮创建时绑定
+        // 这里主要监听全局事件
 
         // 监听全局系统项目状态更新
         document.addEventListener('systemProjectStatusUpdated', (event) => {
@@ -84,10 +74,11 @@ class EmployeesManager {
                 }
             }
 
-            this.renderEmployees();
+            // 员工数据已加载完成，不需要渲染到侧边栏
+            console.log('✅ 员工数据加载完成:', this.employees.length, '个员工');
         } catch (error) {
             console.error('加载员工状态失败:', error);
-            this.renderError();
+            // renderError不再需要，因为没有固定的显示区域
         }
     }
 
@@ -153,82 +144,125 @@ class EmployeesManager {
     }
 
     /**
-     * 渲染员工列表
+     * 显示智能体团队管理弹窗
      */
-    renderEmployees() {
-        if (!this.employeesList) return;
+    showAgentsModal() {
+        console.log('👥 显示智能体团队管理弹窗');
+        
+        // 创建弹窗容器
+        const modal = document.createElement('div');
+        modal.className = 'modal-overlay agents-modal';
+        modal.id = 'agents-management-modal';
+        
+        modal.innerHTML = `
+            <div class="modal-content large-modal">
+                <div class="modal-header">
+                    <h3>数字员工团队管理</h3>
+                    <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">×</button>
+                </div>
+                <div class="modal-body">
+                    <div id="agents-modal-content" class="agents-modal-content">
+                        ${this.renderAgentsContent()}
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">关闭</button>
+                    ${this.systemProjectStatus && this.systemProjectStatus.needs_initialization ? 
+                        '<button class="btn btn-primary" onclick="employeesManager.initializeSystem()">初始化系统</button>' : ''}
+                </div>
+            </div>
+        `;
+        
+        // 添加到页面
+        document.body.appendChild(modal);
+        
+        // 显示弹窗
+        modal.classList.add('active');
+        
+        // 点击背景关闭
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                modal.remove();
+            }
+        });
+    }
 
-        // 如果系统需要初始化，显示初始化提示
+    /**
+     * 渲染智能体内容
+     */
+    renderAgentsContent() {
+        // 如果系统需要初始化
         if (this.systemProjectStatus && this.systemProjectStatus.needs_initialization) {
-            this.renderInitializationPrompt();
-            return;
+            return `
+                <div class="system-init-prompt">
+                    <div class="icon">👥</div>
+                    <div class="title">数字员工团队未初始化</div>
+                    <div class="description">
+                        将在您的主目录初始化Claude项目，
+                        5位专业数字员工将能够管理您的整个系统
+                    </div>
+                </div>
+            `;
         }
 
         // 如果没有员工数据，显示加载状态
         if (!this.employees.length) {
-            this.employeesList.innerHTML = `
+            return `
                 <div class="loading-employees">
                     <div class="loading-text">正在加载员工团队...</div>
                 </div>
             `;
-            return;
         }
 
         // 渲染员工列表
-        this.employeesList.innerHTML = this.employees.map(employee => `
-            <div class="employee-item" data-employee-id="${employee.id}">
-                <div class="employee-info">
-                    <div class="employee-name">
-                        ${employee.avatar} ${employee.name}
+        return `
+            <div class="agents-grid">
+                ${this.employees.map(employee => `
+                    <div class="agent-card" data-employee-id="${employee.id}">
+                        <div class="agent-avatar">${employee.avatar}</div>
+                        <div class="agent-info">
+                            <div class="agent-name">${employee.name}</div>
+                            <div class="agent-role">${employee.role}</div>
+                        </div>
+                        <div class="agent-status">
+                            <div class="status-indicator ${employee.status}"></div>
+                            <div class="status-text">${this.getStatusText(employee.status)}</div>
+                        </div>
+                        <div class="agent-actions">
+                            <button class="btn btn-sm btn-outline" onclick="employeesManager.viewAgentDetails('${employee.id}')">详情</button>
+                            <button class="btn btn-sm btn-primary" onclick="employeesManager.startAgentChat('${employee.id}')">对话</button>
+                        </div>
                     </div>
-                    <div class="employee-role">${employee.role}</div>
-                </div>
-                <div class="employee-status">
-                    <div class="status-indicator ${employee.status}"></div>
-                    <div class="status-text">${this.getStatusText(employee.status)}</div>
-                </div>
+                `).join('')}
             </div>
-        `).join('');
-
-        // 添加点击事件
-        this.addEmployeeClickListeners();
+        `;
     }
 
     /**
-     * 渲染初始化提示
+     * 查看智能体详情
      */
-    renderInitializationPrompt() {
-        this.employeesList.innerHTML = `
-            <div class="system-init-prompt">
-                <div class="icon">👥</div>
-                <div class="title">数字员工团队未初始化</div>
-                <div class="description">
-                    将在您的主目录初始化Claude项目，
-                    5位专业数字员工将能够管理您的整个系统
-                </div>
-                <button class="init-system-btn" id="init-employees-btn">
-                    初始化员工团队
-                </button>
-            </div>
-        `;
+    viewAgentDetails(agentId) {
+        const agent = this.employees.find(emp => emp.id === agentId);
+        if (!agent) return;
 
-        // 添加初始化按钮事件 - 使用setTimeout确保DOM更新完成
-        setTimeout(() => {
-            const initBtn = document.getElementById('init-employees-btn');
-            console.log('🔘 初始化按钮查找结果:', !!initBtn);
-            
-            if (initBtn) {
-                // 移除已存在的事件监听器（防止重复绑定）
-                initBtn.removeEventListener('click', this.handleInitClick);
-                
-                // 绑定事件监听器（使用已绑定的实例方法）
-                initBtn.addEventListener('click', this.handleInitClick);
-                console.log('✅ 初始化按钮事件已绑定');
-                
-            } else {
-                console.error('❌ 初始化按钮不存在，无法绑定事件');
-            }
-        }, 100);
+        console.log('查看智能体详情:', agent.name);
+        
+        // 这里可以扩展为显示详细的智能体信息
+        alert(`${agent.avatar} ${agent.name}\n\n职责: ${agent.role}\n状态: ${this.getStatusText(agent.status)}`);
+    }
+
+    /**
+     * 开始与智能体对话
+     */
+    startAgentChat(agentId) {
+        const agent = this.employees.find(emp => emp.id === agentId);
+        if (!agent) return;
+
+        console.log('开始与智能体对话:', agent.name);
+        
+        // 这里可以扩展为启动专门的智能体对话会话
+        // 例如：创建一个专门与该智能体对话的页签
+        alert(`即将启动与 ${agent.avatar} ${agent.name} 的对话会话\n\n该功能将在后续版本中实现`);
     }
 
     /**
@@ -317,11 +351,18 @@ class EmployeesManager {
     /**
      * 处理系统状态按钮点击
      */
-    handleSystemStatusClick() {
-        if (this.systemProjectStatus) {
-            console.log('系统项目状态:', this.systemProjectStatus);
-            // 这里可以显示详细的系统状态面板
-            alert(`系统根目录: ${this.systemProjectStatus.root_directory}\n已初始化: ${!this.systemProjectStatus.needs_initialization}`);
+    handleDailyTasksClick() {
+        console.log('🎯 打开每日任务管理界面');
+        // 显示每日任务管理模态框
+        const modal = document.getElementById('daily-tasks-modal');
+        if (modal) {
+            modal.classList.remove('hidden');
+            modal.classList.add('active');
+            // 初始化任务管理器
+            if (!window.taskManager) {
+                window.taskManager = new TaskManager();
+            }
+            window.taskManager.loadTasks();
         }
     }
 

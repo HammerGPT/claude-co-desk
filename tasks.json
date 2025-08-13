@@ -1,18 +1,5 @@
 [
   {
-    "id": "task_1754924871_13",
-    "name": "收集AI行业每天的热点新闻",
-    "goal": "收集AI行业每天的热点新闻",
-    "skipPermissions": true,
-    "resources": [],
-    "scheduleFrequency": "daily",
-    "scheduleTime": "12:07",
-    "enabled": true,
-    "createdAt": "2025-08-11T23:07:51.360582",
-    "lastRun": "2025-08-12T12:07:25.005014",
-    "executionMode": "scheduled"
-  },
-  {
     "id": "task_1754971688_9",
     "name": "深度研究上下文工程",
     "goal": "为了更好的在项目中用上“上下文工程”，了解是否需要在目前的Heliki DeepResearch项目引入该技术。但是不知道目前该技术整个实现的逻辑以及架构，需要整理一份详细的研究报告",
@@ -22,6 +9,45 @@
     "scheduleTime": "",
     "enabled": true,
     "createdAt": "2025-08-12T12:08:08.473925",
+    "lastRun": null,
+    "executionMode": "immediate"
+  },
+  {
+    "id": "task_1754924871_13",
+    "name": "收集AI行业每天的热点新闻",
+    "goal": "收集AI行业每天的热点新闻，将整理的结果发送至我的邮箱381679611@qq.com",
+    "skipPermissions": true,
+    "resources": [],
+    "scheduleFrequency": "daily",
+    "scheduleTime": "12:07",
+    "enabled": true,
+    "createdAt": "2025-08-11T23:07:51.360582",
+    "lastRun": null,
+    "executionMode": "scheduled"
+  },
+  {
+    "id": "task_1755004901_8",
+    "name": "甲方故意拖欠尾款",
+    "goal": "甲方如果在软件交付项目中故意找理由拖欠尾款不予支付，应该如何准备证据？",
+    "skipPermissions": false,
+    "resources": [],
+    "scheduleFrequency": "immediate",
+    "scheduleTime": "",
+    "enabled": true,
+    "createdAt": "2025-08-12T21:21:41.793202",
+    "lastRun": null,
+    "executionMode": "immediate"
+  },
+  {
+    "id": "task_1755014226_3",
+    "name": "测试1",
+    "goal": "测试1",
+    "skipPermissions": false,
+    "resources": [],
+    "scheduleFrequency": "immediate",
+    "scheduleTime": "",
+    "enabled": true,
+    "createdAt": "2025-08-12T23:57:06.182822",
     "lastRun": null,
     "executionMode": "immediate"
   }
