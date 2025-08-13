@@ -60,21 +60,6 @@
     "executionMode": "immediate"
   },
   {
-    "id": "task_1755070978_35",
-    "name": "甲方如果在软件交付项目中故意找理由拖欠尾款不予支付，应该如何准备证据？",
-    "goal": "甲方如果在软件交付项目中故意找理由拖欠尾款不予支付，应该如何准备证据？",
-    "skipPermissions": false,
-    "resources": [],
-    "scheduleFrequency": "immediate",
-    "scheduleTime": "",
-    "enabled": true,
-    "createdAt": "2025-08-13T15:42:58.403921",
-    "lastRun": null,
-    "workDirectory": "/Users/yuhao/Documents/Heliki/Heliki_OS/mission/task_1755070978_35_ep41yu",
-    "deleted": false,
-    "executionMode": "immediate"
-  },
-  {
     "id": "task_1755072614_3",
     "name": "测试1",
     "goal": "测试1",
@@ -160,7 +145,37 @@
     "enabled": true,
     "createdAt": "2025-08-13T17:32:33.704477",
     "lastRun": null,
-    "workDirectory": "/Users/yuhao/Documents/Heliki/Heliki_OS/mission/task_1755077553_6_sk0wc7",
+    "workDirectory": "/Users/yuhao/Documents/Heliki/Heliki_OS/mission/task_1755077553_6_shzu9s",
+    "deleted": false,
+    "executionMode": "immediate"
+  },
+  {
+    "id": "task_1755087511_4",
+    "name": "天气预报",
+    "goal": "查询一下今天北京天气如何，将结果保存到工作文件夹中",
+    "skipPermissions": true,
+    "resources": [],
+    "scheduleFrequency": "immediate",
+    "scheduleTime": "",
+    "enabled": true,
+    "createdAt": "2025-08-13T20:18:31.073032",
+    "lastRun": null,
+    "workDirectory": "/Users/yuhao/Documents/Heliki/Heliki_OS/mission/task_1755087511_4_8jqptc",
+    "deleted": false,
+    "executionMode": "immediate"
+  },
+  {
+    "id": "task_1755070978_35",
+    "name": "甲方如果在软件交付项目中故意找理由拖欠尾款不予支付，应该如何准备证据？",
+    "goal": "甲方如果在软件交付项目中故意找理由拖欠尾款不予支付，应该如何准备证据？",
+    "skipPermissions": true,
+    "resources": [],
+    "scheduleFrequency": "immediate",
+    "scheduleTime": "",
+    "enabled": true,
+    "createdAt": "2025-08-13T15:42:58.403921",
+    "lastRun": null,
+    "workDirectory": "/Users/yuhao/Documents/Heliki/Heliki_OS/mission/task_1755070978_35_m987lq",
     "deleted": false,
     "executionMode": "immediate"
   }

@@ -139,11 +139,16 @@ class FilesDrawer {
     isCurrentTabTaskTab() {
         // 检查当前页签类型
         const activeTab = document.querySelector('.session-tab.active');
-        if (!activeTab) return false;
+        if (!activeTab) {
+            console.log('🔍 isCurrentTabTaskTab: 没有找到活跃页签');
+            return false;
+        }
         
         // 通过页签ID判断是否为任务页签
         const tabId = activeTab.id;
-        return tabId && tabId.startsWith('tab_task_');
+        const isTaskTab = tabId && tabId.startsWith('tab_task_');
+        console.log(`🔍 isCurrentTabTaskTab: 页签ID=${tabId}, 是否为任务页签=${isTaskTab}`);
+        return isTaskTab;
     }
     
     /**
@@ -183,11 +188,16 @@ class FilesDrawer {
         this.setLoading(true);
         
         try {
-            if (this.isCurrentTabTaskTab()) {
+            const isTaskTab = this.isCurrentTabTaskTab();
+            console.log(`📁 加载文件列表 - 是否为任务页签: ${isTaskTab}`);
+            
+            if (isTaskTab) {
                 // 任务页签 - 加载任务文件
+                console.log('🎯 加载任务文件');
                 await this.loadTaskFiles();
             } else {
                 // 项目页签 - 加载项目文件
+                console.log('📂 加载项目文件');
                 await this.loadProjectFiles();
             }
         } catch (error) {
@@ -220,14 +230,19 @@ class FilesDrawer {
      */
     async loadTaskFiles() {
         const taskId = this.getCurrentTaskId();
+        console.log(`🎯 loadTaskFiles: 当前任务ID=${taskId}`);
+        
         if (!taskId) {
+            console.error('🎯 loadTaskFiles: 无法获取任务ID');
             this.showError('无法获取任务信息');
             return;
         }
         
+        console.log(`🎯 loadTaskFiles: 请求 /api/task-files/${taskId}`);
         const response = await fetch(`/api/task-files/${taskId}`);
         if (response.ok) {
             const data = await response.json();
+            console.log('🎯 loadTaskFiles: API响应成功', data);
             this.files = data.files || [];
             this.currentTaskInfo = {
                 taskId: data.taskId,
@@ -236,7 +251,7 @@ class FilesDrawer {
             };
             this.renderFiles();
         } else {
-            console.error('加载任务文件失败:', response.statusText);
+            console.error('🎯 loadTaskFiles: API响应失败', response.status, response.statusText);
             this.showError('加载任务文件失败');
         }
     }
@@ -247,16 +262,8 @@ class FilesDrawer {
     renderFiles() {
         if (!this.drawerContent) return;
 
-        // 如果是任务文件视图，添加任务信息
+        // 移除任务信息显示，直接渲染文件列表
         let html = '';
-        if (this.isCurrentTabTaskTab() && this.currentTaskInfo) {
-            html += `
-                <div class="task-info">
-                    <h4>${this.currentTaskInfo.taskName}</h4>
-                    <p class="task-dir">工作目录: ${this.currentTaskInfo.workDirectory}</p>
-                </div>
-            `;
-        }
 
         if (this.files.length === 0) {
             const emptyMessage = this.isCurrentTabTaskTab() ? '任务暂未生成文件' : '此项目暂无文件';
@@ -347,8 +354,15 @@ class FilesDrawer {
             // 显示加载状态
             this.showFileLoading(filePath);
             
+            // 根据是否为任务页签选择正确的项目路径
+            const projectPath = this.isCurrentTabTaskTab() && this.currentTaskInfo 
+                ? this.currentTaskInfo.workDirectory 
+                : this.currentProject.path;
+            
+            console.log(`📂 openFile: 文件路径=${filePath}, 项目路径=${projectPath}`);
+            
             // 先检查文件大小和内容
-            const response = await fetch(`/api/files/read?file_path=${encodeURIComponent(filePath)}&project_path=${encodeURIComponent(this.currentProject.path)}`);
+            const response = await fetch(`/api/files/read?file_path=${encodeURIComponent(filePath)}&project_path=${encodeURIComponent(projectPath)}`);
             
             if (!response.ok) {
                 const error = await response.json();
@@ -509,6 +523,11 @@ class FilesDrawer {
      */
     async openWithSystemApp(filePath) {
         try {
+            // 根据是否为任务页签选择正确的项目路径
+            const projectPath = this.isCurrentTabTaskTab() && this.currentTaskInfo 
+                ? this.currentTaskInfo.workDirectory 
+                : this.currentProject.path;
+                
             const response = await fetch('/api/files/open-system', {
                 method: 'POST',
                 headers: {
@@ -516,7 +535,7 @@ class FilesDrawer {
                 },
                 body: JSON.stringify({
                     filePath: filePath,
-                    projectPath: this.currentProject.path
+                    projectPath: projectPath
                 })
             });
 
@@ -543,8 +562,13 @@ class FilesDrawer {
         this.closeLargeFileDialog();
         
         try {
+            // 根据是否为任务页签选择正确的项目路径
+            const projectPath = this.isCurrentTabTaskTab() && this.currentTaskInfo 
+                ? this.currentTaskInfo.workDirectory 
+                : this.currentProject.path;
+                
             // 强制读取大文件内容
-            const response = await fetch(`/api/files/read?file_path=${encodeURIComponent(filePath)}&project_path=${encodeURIComponent(this.currentProject.path)}`);
+            const response = await fetch(`/api/files/read?file_path=${encodeURIComponent(filePath)}&project_path=${encodeURIComponent(projectPath)}`);
             
             if (response.ok) {
                 const fileData = await response.json();
@@ -683,6 +707,11 @@ class FilesDrawer {
         if (!textarea) return;
 
         try {
+            // 根据是否为任务页签选择正确的项目路径
+            const projectPath = this.isCurrentTabTaskTab() && this.currentTaskInfo 
+                ? this.currentTaskInfo.workDirectory 
+                : this.currentProject.path;
+                
             const response = await fetch('/api/files/write', {
                 method: 'POST',
                 headers: {
@@ -691,7 +720,7 @@ class FilesDrawer {
                 body: JSON.stringify({
                     filePath: this.selectedFile.path,
                     content: textarea.value,
-                    projectPath: this.currentProject.path
+                    projectPath: projectPath
                 })
             });
 

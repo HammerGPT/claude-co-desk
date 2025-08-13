@@ -1556,29 +1556,34 @@ async def read_file(file_path: str, project_path: str):
     try:
         # 安全检查：确保文件在项目目录内
         project_path = Path(project_path).resolve()
-        file_path = Path(file_path).resolve()
         
-        if not str(file_path).startswith(str(project_path)):
+        # 正确处理相对路径：如果是相对路径，相对于project_path解析
+        file_path_obj = Path(file_path)
+        if not file_path_obj.is_absolute():
+            file_path_obj = project_path / file_path
+        file_path_resolved = file_path_obj.resolve()
+        
+        if not str(file_path_resolved).startswith(str(project_path)):
             return JSONResponse(
                 status_code=403,
                 content={"error": "访问被拒绝：文件不在项目目录内"}
             )
         
-        if not file_path.exists():
+        if not file_path_resolved.exists():
             return JSONResponse(
                 status_code=404,
                 content={"error": "文件不存在"}
             )
         
         # 检查是否为二进制文件
-        if is_binary_file(file_path):
+        if is_binary_file(file_path_resolved):
             return JSONResponse(
                 status_code=400,
                 content={"error": "无法读取二进制文件"}
             )
         
         # 检查文件大小（10MB限制）
-        file_size = file_path.stat().st_size
+        file_size = file_path_resolved.stat().st_size
         MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
         
         if file_size > MAX_FILE_SIZE:
@@ -1602,19 +1607,19 @@ async def read_file(file_path: str, project_path: str):
                     "maxSize": MAX_FILE_SIZE,
                     "maxSizeFormatted": format_file_size(MAX_FILE_SIZE),
                     "canOpenWithSystem": True,
-                    "filePath": str(file_path)
+                    "filePath": str(file_path_resolved)
                 }
             )
         
         # 读取文件内容
-        async with aiofiles.open(file_path, 'r', encoding='utf-8') as f:
+        async with aiofiles.open(file_path_resolved, 'r', encoding='utf-8') as f:
             content = await f.read()
         
         return JSONResponse(content={
             "content": content,
-            "path": str(file_path),
+            "path": str(file_path_resolved),
             "size": file_size,
-            "modified": file_path.stat().st_mtime
+            "modified": file_path_resolved.stat().st_mtime
         })
         
     except Exception as e:

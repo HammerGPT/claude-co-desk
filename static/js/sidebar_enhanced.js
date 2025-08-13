@@ -1259,6 +1259,7 @@ class EnhancedSidebar {
         
         const tabElement = document.createElement('div');
         tabElement.className = 'session-tab task-tab';
+        tabElement.id = `tab_task_${taskId}`; // 设置ID以便isCurrentTabTaskTab()正确识别
         tabElement.setAttribute('data-session-id', taskId); // 使用taskId作为sessionId
         tabElement.setAttribute('data-task-id', taskId);
         
