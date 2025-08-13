@@ -1241,32 +1241,93 @@ async def initialize_system_project():
         )
 
 @app.get("/api/system-project/agents")
-async def get_system_agents_status():
-    """获取系统智能体状态API"""
+async def get_system_agents():
+    """获取已部署智能体信息 - 统一API"""
     try:
-        from projects_manager import SystemProjectManager
-        agents_status = await SystemProjectManager.get_system_agents_status()
-        return JSONResponse(content=agents_status)
+        import yaml
+        import re
+        
+        def extract_yaml_fields(content):
+            """使用正则表达式提取YAML字段"""
+            # 提取YAML front matter部分
+            yaml_match = re.search(r'---\n(.*?)\n---', content, re.DOTALL)
+            if not yaml_match:
+                return None
+            
+            yaml_text = yaml_match.group(1)
+            
+            # 简单提取各个字段（只提取第一行的值）
+            name_match = re.search(r'name:\s*(.+)', yaml_text)
+            description_match = re.search(r'description:\s*(.+)', yaml_text)
+            model_match = re.search(r'model:\s*(.+)', yaml_text)
+            color_match = re.search(r'color:\s*(.+)', yaml_text)
+            
+            # 对于description，如果包含复杂内容，只取第一行简单部分
+            description = None
+            if description_match:
+                desc_text = description_match.group(1).strip()
+                # 如果描述过长或包含特殊字符，截取前100个字符
+                if len(desc_text) > 100 or '\\n' in desc_text:
+                    description = desc_text[:100] + '...'
+                else:
+                    description = desc_text
+            
+            return {
+                'name': name_match.group(1).strip() if name_match else None,
+                'description': description,
+                'model': model_match.group(1).strip() if model_match else None,
+                'color': color_match.group(1).strip() if color_match else None
+            }
+        
+        # 动态获取用户Claude目录，支持多环境
+        claude_dir = Path.home() / ".claude" / "agents"
+        
+        if not claude_dir.exists():
+            return JSONResponse(content={"count": 0, "agents": []})
+        
+        agents = []
+        for md_file in claude_dir.glob("*.md"):
+            try:
+                # 解析YAML front matter
+                with open(md_file, 'r', encoding='utf-8') as f:
+                    content = f.read()
+                
+                # 使用正则表达式提取YAML字段，避免严格解析问题
+                agent_info = extract_yaml_fields(content)
+                if agent_info:
+                    agent_info['id'] = md_file.stem
+                    agent_info['file_path'] = str(md_file)
+                    agent_info['deployed'] = True  # 文件存在即为已部署
+                    agents.append(agent_info)
+                else:
+                    # 如果无法提取YAML，使用文件名创建基本信息
+                    agent_info = {
+                        'id': md_file.stem,
+                        'name': md_file.stem.replace('-', ' ').title(),
+                        'description': 'Agent configuration file',
+                        'model': 'unknown',
+                        'color': 'default',
+                        'file_path': str(md_file),
+                        'deployed': True
+                    }
+                    agents.append(agent_info)
+                        
+            except Exception as e:
+                logger.warning(f"解析智能体文件 {md_file} 失败: {e}")
+                continue
+        
+        return JSONResponse(content={
+            "count": len(agents),
+            "agents": agents
+        })
+        
     except Exception as e:
-        logger.error(f"获取系统智能体状态时出错: {e}")
+        logger.error(f"获取智能体信息时出错: {e}")
         return JSONResponse(
             status_code=500,
-            content={"error": "获取系统智能体状态失败", "details": str(e)}
+            content={"count": 0, "agents": [], "error": str(e)}
         )
 
-@app.post("/api/system-project/deploy-agents")
-async def deploy_system_agents():
-    """部署系统默认智能体API"""
-    try:
-        from projects_manager import SystemProjectManager
-        result = await SystemProjectManager.deploy_default_agents()
-        return JSONResponse(content=result)
-    except Exception as e:
-        logger.error(f"部署系统智能体时出错: {e}")
-        return JSONResponse(
-            status_code=500,
-            content={"error": "部署系统智能体失败", "details": str(e)}
-        )
 
 @app.post("/api/agents-deployed")
 async def handle_agents_deployed(request: Request):
@@ -1770,21 +1831,6 @@ async def get_claude_info():
             "path": "/Users/yuhao/.local/bin/claude"
         })
 
-@app.get("/api/agents-count")
-async def get_agents_count():
-    """获取智能体数量API"""
-    try:
-        agents_dir = Path("static/agents")
-        if not agents_dir.exists():
-            return JSONResponse(content={"count": 0})
-        
-        # 统计.md文件数量（智能体定义文件）
-        agents_count = len(list(agents_dir.glob("*.md")))
-        
-        return JSONResponse(content={"count": agents_count})
-    except Exception as e:
-        logger.error(f"获取智能体数量时出错: {e}")
-        return JSONResponse(content={"count": 5})  # 默认值
 
 # 任务管理API
 @app.get("/api/tasks")

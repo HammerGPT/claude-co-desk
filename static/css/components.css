@@ -3984,3 +3984,332 @@ div.session-header div.session-actions button.action-btn:hover {
     padding: 12px 20px;
   }
 }
+
+/* 智能体管理弹窗样式 */
+.agents-modal .modal-content {
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  grid-template-rows: auto 1fr;
+  height: 100%;
+  gap: 1px;
+  background: hsl(var(--border));
+}
+
+.agents-modal .modal-header {
+  grid-column: 1 / -1;
+}
+
+.agents-modal .agents-sidebar {
+  width: auto; /* 覆盖固定宽度，使用Grid的列宽 */
+}
+
+.agents-modal .agents-detail {
+  width: auto; /* 确保使用Grid的列宽 */
+}
+
+
+.agents-layout {
+  display: flex;
+  height: 100%;
+  gap: 1px;
+  background: hsl(var(--border));
+}
+
+.agents-sidebar {
+  width: 300px;
+  background: hsl(var(--card));
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.agents-list {
+  padding: 16px;
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+}
+
+.agent-item {
+  padding: 12px;
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius);
+  margin-bottom: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background: hsl(var(--background));
+}
+
+.agent-item:hover {
+  background: hsl(var(--muted));
+  border-color: hsl(var(--ring));
+}
+
+.agent-item.selected {
+  background: hsl(var(--primary) / 0.1);
+  border-color: hsl(var(--primary));
+}
+
+.agent-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.agent-name {
+  font-weight: 600;
+  font-size: 14px;
+  color: hsl(var(--foreground));
+}
+
+.agent-status-indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #10b981;
+}
+
+.agent-status-indicator.orange {
+  background: #f59e0b;
+}
+
+.agent-status-indicator.red {
+  background: #ef4444;
+}
+
+.agent-status-indicator.blue {
+  background: #3b82f6;
+}
+
+.agent-status-indicator.yellow {
+  background: #eab308;
+}
+
+.agent-status-indicator.default {
+  background: #6b7280;
+}
+
+.agent-description {
+  font-size: 12px;
+  color: hsl(var(--muted-foreground));
+  line-height: 1.4;
+  margin-bottom: 4px;
+}
+
+.agent-model {
+  font-size: 11px;
+  color: hsl(var(--muted-foreground));
+  font-style: italic;
+}
+
+.agents-detail {
+  flex: 1;
+  background: hsl(var(--card));
+  padding: 20px;
+  overflow-y: auto;
+}
+
+.agent-detail-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  text-align: center;
+  color: hsl(var(--muted-foreground));
+}
+
+.placeholder-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+  opacity: 0.5;
+}
+
+.placeholder-text {
+  font-size: 16px;
+}
+
+.agent-detail-content {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.agent-detail-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid hsl(var(--border));
+}
+
+.agent-detail-header h3 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: hsl(var(--foreground));
+}
+
+.agent-color-badge {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid hsl(var(--border));
+}
+
+.agent-detail-info {
+  flex: 1;
+  margin-bottom: 20px;
+}
+
+.info-item {
+  margin-bottom: 16px;
+}
+
+.info-item strong {
+  display: block;
+  margin-bottom: 4px;
+  color: hsl(var(--foreground));
+  font-size: 14px;
+}
+
+.info-item p {
+  margin: 0;
+  color: hsl(var(--muted-foreground));
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.agent-detail-actions {
+  display: flex;
+  gap: 12px;
+  padding-top: 16px;
+  border-top: 1px solid hsl(var(--border));
+}
+
+.agent-detail-actions .btn {
+  flex: 1;
+}
+
+/* 智能体文件查看器样式 */
+.agent-file-viewer {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.agent-file-header {
+  padding: 16px;
+  border-bottom: 1px solid hsl(var(--border));
+  background: hsl(var(--muted) / 0.5);
+}
+
+.file-info {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.file-name {
+  font-family: monospace;
+  font-size: 14px;
+  color: hsl(var(--foreground));
+  font-weight: 600;
+}
+
+.agent-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.agent-name {
+  font-size: 12px;
+  color: hsl(var(--muted-foreground));
+  font-weight: 500;
+}
+
+.agent-color-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 1px solid hsl(var(--border));
+}
+
+.agent-file-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0;
+}
+
+.agent-file-content pre {
+  margin: 0;
+  padding: 16px;
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  font-size: 13px;
+  line-height: 1.5;
+  overflow: visible;
+  height: auto;
+  color: hsl(var(--foreground));
+}
+
+.agent-file-content code {
+  background: transparent;
+  padding: 0;
+  font-size: inherit;
+  line-height: inherit;
+  color: hsl(var(--foreground)) !important;
+}
+
+/* 确保语法高亮的标记有正确的颜色 */
+.agent-file-content .token.comment,
+.agent-file-content .token.prolog,
+.agent-file-content .token.doctype,
+.agent-file-content .token.cdata {
+  color: hsl(var(--muted-foreground));
+}
+
+.agent-file-content .token.punctuation {
+  color: hsl(var(--foreground));
+}
+
+.agent-file-content .token.property,
+.agent-file-content .token.tag,
+.agent-file-content .token.boolean,
+.agent-file-content .token.number,
+.agent-file-content .token.constant,
+.agent-file-content .token.symbol,
+.agent-file-content .token.deleted {
+  color: hsl(var(--primary));
+}
+
+.agent-file-content .token.selector,
+.agent-file-content .token.attr-name,
+.agent-file-content .token.string,
+.agent-file-content .token.char,
+.agent-file-content .token.builtin,
+.agent-file-content .token.inserted {
+  color: #22c55e;
+}
+
+.agent-file-content .token.operator,
+.agent-file-content .token.entity,
+.agent-file-content .token.url,
+.agent-file-content .language-css .token.string,
+.agent-file-content .style .token.string {
+  color: #f59e0b;
+}
+
+.agent-file-content .token.atrule,
+.agent-file-content .token.attr-value,
+.agent-file-content .token.keyword {
+  color: #3b82f6;
+}
+
+.agent-file-content .token.function,
+.agent-file-content .token.class-name {
+  color: #8b5cf6;
+}
