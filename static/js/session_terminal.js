@@ -1294,43 +1294,8 @@ class SessionTerminal {
             console.log('✅ [强制样式] 主题切换按钮样式已设置');
         }
 
-        // 设置按钮 - 蓝色
-        const settingsBtn = document.getElementById('session-settings');
-        if (settingsBtn) {
-            settingsBtn.style.cssText = `
-                background: #1e40af !important;
-                border: 1px solid #1d4ed8 !important;
-                color: white !important;
-                padding: 8px !important;
-                border-radius: 6px !important;
-                min-width: 32px !important;
-                min-height: 32px !important;
-                display: flex !important;
-                align-items: center !important;
-                justify-content: center !important;
-                cursor: pointer !important;
-                transition: all 0.2s ease !important;
-                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2) !important;
-            `;
-            
-            settingsBtn.onmouseenter = function() {
-                this.style.background = '#2563eb';
-                this.style.borderColor = '#3b82f6';
-                this.style.transform = 'translateY(-1px) scale(1.05)';
-                this.style.boxShadow = '0 4px 12px rgba(37, 99, 235, 0.4)';
-            };
-            settingsBtn.onmouseleave = function() {
-                this.style.background = '#1e40af';
-                this.style.borderColor = '#1d4ed8';
-                this.style.transform = 'none';
-                this.style.boxShadow = '0 2px 4px rgba(0, 0, 0, 0.2)';
-            };
-            
-            console.log('✅ [强制样式] 设置按钮样式已设置');
-        }
-
         // 强制设置SVG图标样式
-        const buttons = [filesBtn, themeBtn, settingsBtn].filter(Boolean);
+        const buttons = [filesBtn, themeBtn].filter(Boolean);
         buttons.forEach(btn => {
             const svg = btn.querySelector('svg');
             if (svg) {

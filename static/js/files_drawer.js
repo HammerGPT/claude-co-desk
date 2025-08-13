@@ -89,7 +89,10 @@ class FilesDrawer {
         // 加载文件列表
         this.loadFiles();
         
-        console.log('打开文件抽屉:', this.currentProject.name);
+        // 更新抽屉标题
+        this.updateDrawerTitle();
+        
+        console.log('打开文件抽屉:', this.isCurrentTabTaskTab() ? '任务文件' : this.currentProject.name);
     }
 
     /**
@@ -131,28 +134,110 @@ class FilesDrawer {
     }
 
     /**
+     * 判断当前活跃页签是否为任务页签
+     */
+    isCurrentTabTaskTab() {
+        // 检查当前页签类型
+        const activeTab = document.querySelector('.session-tab.active');
+        if (!activeTab) return false;
+        
+        // 通过页签ID判断是否为任务页签
+        const tabId = activeTab.id;
+        return tabId && tabId.startsWith('tab_task_');
+    }
+    
+    /**
+     * 获取当前任务ID
+     */
+    getCurrentTaskId() {
+        const activeTab = document.querySelector('.session-tab.active');
+        if (!activeTab) return null;
+        
+        const tabId = activeTab.id;
+        if (tabId && tabId.startsWith('tab_task_')) {
+            // 从tab_task_xxx提取任务ID
+            return tabId.replace('tab_task_', '');
+        }
+        return null;
+    }
+    
+    /**
+     * 更新抽屉标题
+     */
+    updateDrawerTitle() {
+        if (!this.drawerTitle) return;
+        
+        if (this.isCurrentTabTaskTab()) {
+            this.drawerTitle.textContent = '任务文件';
+        } else if (this.currentProject) {
+            this.drawerTitle.textContent = `${this.currentProject.name} 文件`;
+        } else {
+            this.drawerTitle.textContent = '文件浏览器';
+        }
+    }
+
+    /**
      * 加载文件列表
      */
     async loadFiles() {
-        if (!this.currentProject) return;
-        
         this.setLoading(true);
         
         try {
-            const response = await fetch(`/api/projects/${this.currentProject.name}/files`);
-            if (response.ok) {
-                const data = await response.json();
-                this.files = data.files || [];
-                this.renderFiles();
+            if (this.isCurrentTabTaskTab()) {
+                // 任务页签 - 加载任务文件
+                await this.loadTaskFiles();
             } else {
-                console.error('加载文件失败:', response.statusText);
-                this.showError('加载文件失败');
+                // 项目页签 - 加载项目文件
+                await this.loadProjectFiles();
             }
         } catch (error) {
             console.error('加载文件错误:', error);
             this.showError('网络错误，无法加载文件');
         } finally {
             this.setLoading(false);
+        }
+    }
+    
+    /**
+     * 加载项目文件（原有逻辑）
+     */
+    async loadProjectFiles() {
+        if (!this.currentProject) return;
+        
+        const response = await fetch(`/api/projects/${this.currentProject.name}/files`);
+        if (response.ok) {
+            const data = await response.json();
+            this.files = data.files || [];
+            this.renderFiles();
+        } else {
+            console.error('加载项目文件失败:', response.statusText);
+            this.showError('加载项目文件失败');
+        }
+    }
+    
+    /**
+     * 加载任务文件（新增逻辑）
+     */
+    async loadTaskFiles() {
+        const taskId = this.getCurrentTaskId();
+        if (!taskId) {
+            this.showError('无法获取任务信息');
+            return;
+        }
+        
+        const response = await fetch(`/api/task-files/${taskId}`);
+        if (response.ok) {
+            const data = await response.json();
+            this.files = data.files || [];
+            this.currentTaskInfo = {
+                taskId: data.taskId,
+                taskName: data.taskName,
+                workDirectory: data.workDirectory
+            };
+            this.renderFiles();
+        } else {
+            console.error('加载任务文件失败:', response.statusText);
+            this.showError('加载任务文件失败');
         }
     }
 
@@ -162,16 +247,29 @@ class FilesDrawer {
     renderFiles() {
         if (!this.drawerContent) return;
 
-        if (this.files.length === 0) {
-            this.drawerContent.innerHTML = `
-                <div class="empty-files">
-                    <p>此项目暂无文件</p>
+        // 如果是任务文件视图，添加任务信息
+        let html = '';
+        if (this.isCurrentTabTaskTab() && this.currentTaskInfo) {
+            html += `
+                <div class="task-info">
+                    <h4>${this.currentTaskInfo.taskName}</h4>
+                    <p class="task-dir">工作目录: ${this.currentTaskInfo.workDirectory}</p>
                 </div>
             `;
+        }
+
+        if (this.files.length === 0) {
+            const emptyMessage = this.isCurrentTabTaskTab() ? '任务暂未生成文件' : '此项目暂无文件';
+            html += `
+                <div class="empty-files">
+                    <p>${emptyMessage}</p>
+                </div>
+            `;
+            this.drawerContent.innerHTML = html;
             return;
         }
 
-        let html = '<div class="files-tree">';
+        html += '<div class="files-tree">';
         html += this.renderFileTree(this.files, '');
         html += '</div>';
         

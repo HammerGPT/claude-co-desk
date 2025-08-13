@@ -14,6 +14,7 @@ import threading
 import schedule
 import time as time_module
 from tasks_storage import TasksStorage
+from mission_manager import MissionManager
 
 logger = logging.getLogger(__name__)
 
@@ -30,6 +31,8 @@ class ScheduledTask:
     enabled: bool
     created_at: str
     last_run: Optional[str] = None
+    work_directory: str = ""  # 任务工作目录
+    deleted: bool = False     # 软删除标记
 
 class TaskScheduler:
     """定时任务调度器"""
@@ -41,6 +44,7 @@ class TaskScheduler:
         self.scheduler_thread = None
         self.running = False
         self.storage = TasksStorage()  # 初始化存储管理器
+        self.mission_manager = MissionManager()  # 初始化任务目录管理器
         self.main_loop = None  # 保存主事件循环引用
         
         logger.info("🕐 TaskScheduler 初始化完成")
@@ -97,6 +101,14 @@ class TaskScheduler:
     def add_scheduled_task(self, task_data: Dict[str, Any]) -> bool:
         """添加定时任务"""
         try:
+            # 如果没有工作目录，自动创建一个
+            work_directory = task_data.get('workDirectory', '')
+            if not work_directory:
+                work_directory = self.mission_manager.create_task_directory(
+                    task_data['id'], 
+                    task_data['name']
+                )
+            
             task = ScheduledTask(
                 id=task_data['id'],
                 name=task_data['name'],
@@ -106,7 +118,9 @@ class TaskScheduler:
                 schedule_frequency=task_data.get('scheduleFrequency', 'daily'),
                 schedule_time=task_data.get('scheduleTime', '09:00'),
                 enabled=task_data.get('enabled', True),
-                created_at=task_data.get('createdAt', datetime.now().isoformat())
+                created_at=task_data.get('createdAt', datetime.now().isoformat()),
+                work_directory=work_directory,
+                deleted=task_data.get('deleted', False)
             )
             
             # 保存所有任务到all_tasks
@@ -244,9 +258,13 @@ class TaskScheduler:
             logger.error(f"移除任务调度失败: {e}")
     
     def get_scheduled_tasks(self) -> List[Dict[str, Any]]:
-        """获取所有任务（包括立即执行和定时任务）"""
+        """获取所有任务（包括立即执行和定时任务），过滤已删除任务"""
         tasks = []
         for task in self.all_tasks.values():
+            # 过滤已删除的任务
+            if task.deleted:
+                continue
+                
             tasks.append({
                 'id': task.id,
                 'name': task.name,
@@ -257,9 +275,36 @@ class TaskScheduler:
                 'scheduleTime': task.schedule_time,
                 'enabled': task.enabled,
                 'createdAt': task.created_at,
-                'lastRun': task.last_run
+                'lastRun': task.last_run,
+                'workDirectory': task.work_directory,
+                'deleted': task.deleted
             })
         return tasks
+    
+    def delete_task(self, task_id: str) -> bool:
+        """软删除任务"""
+        try:
+            if task_id in self.all_tasks:
+                task = self.all_tasks[task_id]
+                task.deleted = True
+                
+                # 如果是定时任务，从调度器中移除
+                if task_id in self.scheduled_tasks:
+                    self._unschedule_task(task)
+                    del self.scheduled_tasks[task_id]
+                
+                # 保存更改
+                self._save_tasks_to_storage()
+                
+                logger.info(f"🗑️ 任务已标记为删除: {task.name}")
+                return True
+                
+            logger.warning(f"⚠️ 要删除的任务不存在: {task_id}")
+            return False
+            
+        except Exception as e:
+            logger.error(f"❌ 删除任务失败: {task_id} - {e}")
+            return False
     
     def get_next_run_times(self) -> Dict[str, str]:
         """获取下次执行时间"""
@@ -310,7 +355,9 @@ class TaskScheduler:
                         schedule_time=task_data.get('scheduleTime', '09:00'),
                         enabled=task_data.get('enabled', True),
                         created_at=task_data.get('createdAt', datetime.now().isoformat()),
-                        last_run=task_data.get('lastRun')
+                        last_run=task_data.get('lastRun'),
+                        work_directory=task_data.get('workDirectory', ''),
+                        deleted=task_data.get('deleted', False)
                     )
                     
                     # 添加到all_tasks
@@ -350,6 +397,8 @@ class TaskScheduler:
                     'enabled': task.enabled,
                     'createdAt': task.created_at,
                     'lastRun': task.last_run,
+                    'workDirectory': task.work_directory,
+                    'deleted': task.deleted,
                     'executionMode': execution_mode
                 }
                 tasks_data.append(task_data)
@@ -372,14 +421,19 @@ class TaskScheduler:
             task.last_run = datetime.now().isoformat()
             self._save_tasks_to_storage()  # 保存更新时间
             
-            # 获取任务目标作为基础命令
+            # 获取任务目标作为基础命令，添加工作目录提示
             command = task.goal
+            if task.work_directory:
+                work_dir_instruction = f" [特别要求]本地任务你新建的任何资料/代码/文档以后收集的信息都存入{task.work_directory}，如果是智能体产生的结果，文件名携带智能体名称前缀"
+                enhanced_command = f"{command} {work_dir_instruction}"
+            else:
+                enhanced_command = command
             
             # 通过WebSocket通知前端创建新页签执行任务
             # 完全复用手动任务的命令构建和消息格式
             if self.websocket_manager:
                 # 复用app.py中的命令构建逻辑
-                task_command_parts = [command]  # 基础命令（任务目标）
+                task_command_parts = [enhanced_command]  # 增强的任务目标
                 
                 # 添加权限模式
                 if task.skip_permissions:

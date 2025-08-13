@@ -471,8 +471,24 @@ class PTYShellHandler:
             
             # 构建Claude命令 - 使用绝对路径，支持初始命令参数
             if initial_command:
-                # 在初始命令后添加完全自动化参数
-                enhanced_command = f'"{claude_executable}" {initial_command.replace("claude", "").strip()} --dangerously-skip-permissions'
+                # 正确处理：分离主命令和参数，只给主命令加引号
+                command_content = initial_command.replace("claude", "").strip()
+                
+                # 查找最后一个以--开头的参数位置来分离主命令和参数
+                import re
+                # 查找所有--参数的位置
+                param_matches = list(re.finditer(r'\s(--\S+)', command_content))
+                
+                if param_matches:
+                    # 找到第一个参数的位置
+                    first_param_pos = param_matches[0].start()
+                    main_command = command_content[:first_param_pos].strip()
+                    remaining_params = command_content[first_param_pos:].strip()
+                    enhanced_command = f'"{claude_executable}" {main_command} {remaining_params}'
+                else:
+                    # 没有参数
+                    enhanced_command = f'"{claude_executable}" {command_content}'
+                
                 shell_command = f'cd "{project_path}" && {enhanced_command}'
                 logger.info(f"🚀 使用增强初始命令: {enhanced_command}")
             elif has_session and session_id:
@@ -1889,6 +1905,49 @@ async def create_task(request: Request):
         if not success:
             logger.warning(f"任务 {task_data['name']} 未添加到调度器，但仍返回成功响应")
         
+        # 如果是立即执行任务，直接创建页签执行
+        if task_data.get('executionMode') == 'immediate':
+            try:
+                # 获取刚创建的任务对象以获取工作目录
+                created_task = task_scheduler.all_tasks.get(task_data['id'])
+                if created_task:
+                    # 构建完整的执行命令，添加工作目录提示
+                    work_dir_instruction = f" [特别要求]本地任务你新建的任何资料/代码/文档以后收集的信息都存入{created_task.work_directory}，如果是智能体产生的结果，文件名携带智能体名称前缀"
+                    enhanced_goal = f"{task_data['goal']} {work_dir_instruction}"
+                    
+                    task_command_parts = [enhanced_goal]  # 增强的任务目标
+                    
+                    # 添加权限模式
+                    if task_data.get('skipPermissions', False):
+                        task_command_parts.append('--dangerously-skip-permissions')
+                    
+                    # 添加资源文件引用
+                    if task_data.get('resources'):
+                        for resource in task_data['resources']:
+                            task_command_parts.extend(['--add-dir', resource])
+                    
+                    # 拼接完整命令
+                    full_task_command = ' '.join(task_command_parts)
+                    
+                    # 发送创建页签消息给前端
+                    session_data = {
+                        'type': 'create-task-tab',
+                        'taskId': task_data['id'],
+                        'taskName': f"📋 {task_data['name']}",
+                        'initialCommand': full_task_command,
+                        'workingDirectory': os.path.expanduser('~'),
+                        'immediateExecution': True
+                    }
+                    
+                    # 通过WebSocket广播给所有连接的客户端
+                    await manager.broadcast(session_data)
+                    logger.info(f"✅ 立即执行任务 {task_data['name']} 页签创建请求已发送")
+                else:
+                    logger.warning(f"⚠️ 未找到刚创建的任务: {task_data['id']}")
+                    
+            except Exception as e:
+                logger.error(f"❌ 创建立即执行任务页签失败: {e}")
+        
         # 返回完整的任务对象
         return JSONResponse(content=task_data)
         
@@ -1934,11 +1993,11 @@ async def update_task(task_id: str, request: Request):
 
 @app.delete("/api/tasks/{task_id}")
 async def delete_task(task_id: str):
-    """删除任务API"""
+    """删除任务API（软删除）"""
     try:
-        success = task_scheduler.remove_scheduled_task(task_id)
+        success = task_scheduler.delete_task(task_id)
         if success:
-            return JSONResponse(content={"success": True})
+            return JSONResponse(content={"success": True, "message": "任务已删除"})
         else:
             return JSONResponse(
                 status_code=404,
@@ -1950,6 +2009,40 @@ async def delete_task(task_id: str):
         return JSONResponse(
             status_code=500,
             content={"error": "删除任务失败", "details": str(e)}
+        )
+
+@app.get("/api/task-files/{task_id}")
+async def get_task_files(task_id: str):
+    """获取任务文件列表API"""
+    try:
+        # 从调度器中获取任务信息
+        if task_id not in task_scheduler.all_tasks:
+            return JSONResponse(
+                status_code=404,
+                content={"error": "任务不存在"}
+            )
+        
+        task = task_scheduler.all_tasks[task_id]
+        work_directory = task.work_directory
+        
+        if not work_directory:
+            return JSONResponse(content={"files": [], "message": "任务未分配工作目录"})
+        
+        # 使用MissionManager获取文件列表
+        files = task_scheduler.mission_manager.list_task_files(work_directory)
+        
+        return JSONResponse(content={
+            "files": files,
+            "workDirectory": work_directory,
+            "taskId": task_id,
+            "taskName": task.name
+        })
+        
+    except Exception as e:
+        logger.error(f"获取任务文件时出错: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"error": "获取任务文件失败", "details": str(e)}
         )
 
 @app.post("/api/tasks/{task_id}/toggle")
@@ -2023,6 +2116,11 @@ async def chat_websocket_endpoint(websocket: WebSocket):
                 if resources:
                     logger.info(f"任务资源文件: {', '.join(resources)}")
                 
+                # 获取任务工作目录信息
+                task_work_dir = ""
+                if task_id in task_scheduler.all_tasks:
+                    task_work_dir = task_scheduler.all_tasks[task_id].work_directory
+                
                 # 构建任务执行选项
                 task_options = {
                     'taskId': task_id,
@@ -2032,8 +2130,13 @@ async def chat_websocket_endpoint(websocket: WebSocket):
                     'resources': resources
                 }
                 
-                # 构建完整的任务执行命令
-                task_command_parts = ['claude', f'"{command}"']
+                # 构建完整的任务执行命令，添加工作目录提示
+                enhanced_command = command
+                if task_work_dir:
+                    work_dir_instruction = f"请将所有创建的文件保存到 {task_work_dir} 目录，文件名请加上智能体类型前缀。"
+                    enhanced_command = f"{command} {work_dir_instruction}"
+                
+                task_command_parts = ['claude', f'"{enhanced_command}"']
                 
                 # 添加权限设置
                 if skip_permissions:
