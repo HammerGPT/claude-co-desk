@@ -3,6 +3,30 @@
  * 支持三种视图模式：简单、紧凑、详细
  */
 
+/* 任务信息区域 */
+.task-info {
+  padding: 1rem;
+  margin-bottom: 1rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+}
+
+.task-info h4 {
+  margin: 0 0 0.5rem 0;
+  color: var(--text);
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.task-dir {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  font-family: var(--font-mono, monospace);
+  word-break: break-all;
+}
+
 /* 文件树容器 */
 .file-tree {
   height: 100%;

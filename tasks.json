@@ -10,6 +10,8 @@
     "enabled": true,
     "createdAt": "2025-08-12T12:08:08.473925",
     "lastRun": null,
+    "workDirectory": "",
+    "deleted": true,
     "executionMode": "immediate"
   },
   {
@@ -23,7 +25,9 @@
     "enabled": true,
     "createdAt": "2025-08-11T23:07:51.360582",
     "lastRun": "2025-08-13T12:07:47.571298",
-    "executionMode": "scheduled"
+    "workDirectory": "",
+    "deleted": true,
+    "executionMode": "immediate"
   },
   {
     "id": "task_1755004901_8",
@@ -36,6 +40,8 @@
     "enabled": true,
     "createdAt": "2025-08-12T21:21:41.793202",
     "lastRun": null,
+    "workDirectory": "",
+    "deleted": true,
     "executionMode": "immediate"
   },
   {
@@ -49,6 +55,113 @@
     "enabled": true,
     "createdAt": "2025-08-12T23:57:06.182822",
     "lastRun": null,
+    "workDirectory": "",
+    "deleted": true,
+    "executionMode": "immediate"
+  },
+  {
+    "id": "task_1755070978_35",
+    "name": "甲方如果在软件交付项目中故意找理由拖欠尾款不予支付，应该如何准备证据？",
+    "goal": "甲方如果在软件交付项目中故意找理由拖欠尾款不予支付，应该如何准备证据？",
+    "skipPermissions": false,
+    "resources": [],
+    "scheduleFrequency": "immediate",
+    "scheduleTime": "",
+    "enabled": true,
+    "createdAt": "2025-08-13T15:42:58.403921",
+    "lastRun": null,
+    "workDirectory": "/Users/yuhao/Documents/Heliki/Heliki_OS/mission/task_1755070978_35_ep41yu",
+    "deleted": false,
+    "executionMode": "immediate"
+  },
+  {
+    "id": "task_1755072614_3",
+    "name": "测试1",
+    "goal": "测试1",
+    "skipPermissions": false,
+    "resources": [],
+    "scheduleFrequency": "immediate",
+    "scheduleTime": "",
+    "enabled": true,
+    "createdAt": "2025-08-13T16:10:14.416183",
+    "lastRun": null,
+    "workDirectory": "/Users/yuhao/Documents/Heliki/Heliki_OS/mission/task_1755072614_3_a8nh1t",
+    "deleted": true,
+    "executionMode": "immediate"
+  },
+  {
+    "id": "task_1755072633_3",
+    "name": "测试2",
+    "goal": "测试2",
+    "skipPermissions": false,
+    "resources": [],
+    "scheduleFrequency": "daily",
+    "scheduleTime": "09:00",
+    "enabled": true,
+    "createdAt": "2025-08-13T16:10:33.230468",
+    "lastRun": null,
+    "workDirectory": "/Users/yuhao/Documents/Heliki/Heliki_OS/mission/task_1755072633_3_so68tw",
+    "deleted": true,
+    "executionMode": "immediate"
+  },
+  {
+    "id": "task_1755073451_6",
+    "name": "收集专业信息",
+    "goal": "收集最新的关于“上下文工程”的行业知识，整理成报告发送到我的邮箱：381679611@qq.com",
+    "skipPermissions": true,
+    "resources": [],
+    "scheduleFrequency": "immediate",
+    "scheduleTime": "",
+    "enabled": true,
+    "createdAt": "2025-08-13T16:24:11.682741",
+    "lastRun": null,
+    "workDirectory": "/Users/yuhao/Documents/Heliki/Heliki_OS/mission/task_1755073451_6_g07epk",
+    "deleted": true,
+    "executionMode": "immediate"
+  },
+  {
+    "id": "task_1755073856_6",
+    "name": "收集专业信息",
+    "goal": "收集最新的关于“上下文工程”的行业知识，整理成报告发送到我的邮箱：381679611@qq.com",
+    "skipPermissions": true,
+    "resources": [],
+    "scheduleFrequency": "immediate",
+    "scheduleTime": "",
+    "enabled": true,
+    "createdAt": "2025-08-13T16:30:56.688799",
+    "lastRun": null,
+    "workDirectory": "/Users/yuhao/Documents/Heliki/Heliki_OS/mission/task_1755073856_6_jqcl5y",
+    "deleted": true,
+    "executionMode": "immediate"
+  },
+  {
+    "id": "task_1755077133_6",
+    "name": "收集专业信息",
+    "goal": "收集最新的关于“上下文工程”的行业知识，整理成报告发送到我的邮箱：381679611@qq.com",
+    "skipPermissions": true,
+    "resources": [],
+    "scheduleFrequency": "immediate",
+    "scheduleTime": "",
+    "enabled": true,
+    "createdAt": "2025-08-13T17:25:33.739060",
+    "lastRun": null,
+    "workDirectory": "/Users/yuhao/Documents/Heliki/Heliki_OS/mission/task_1755077133_6_kf4g9i",
+    "deleted": true,
+    "executionMode": "immediate"
+  },
+  {
+    "id": "task_1755077553_6",
+    "name": "收集专业信息",
+    "goal": "收集最新的关于“上下文工程”的行业知识，整理成报告发送到我的邮箱：381679611@qq.com",
+    "skipPermissions": true,
+    "resources": [],
+    "scheduleFrequency": "immediate",
+    "scheduleTime": "",
+    "enabled": true,
+    "createdAt": "2025-08-13T17:32:33.704477",
+    "lastRun": null,
+    "workDirectory": "/Users/yuhao/Documents/Heliki/Heliki_OS/mission/task_1755077553_6_sk0wc7",
+    "deleted": false,
     "executionMode": "immediate"
   }
 ]

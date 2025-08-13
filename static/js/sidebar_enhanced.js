@@ -377,6 +377,7 @@ class EnhancedSidebar {
                 </div>
             </div>
             
+            ${isExpanded ? this.createSessionActions(project) : ''}
             ${isExpanded ? this.createSessionsList(project) : ''}
         `;
 
@@ -475,8 +476,18 @@ class EnhancedSidebar {
             `;
         }
 
-        // 会话操作按钮区域
-        sessionsHtml += `
+
+        sessionsHtml += '</div>';
+        return sessionsHtml;
+    }
+
+    /**
+     * 创建会话操作按钮区域
+     */
+    createSessionActions(project) {
+        const allSessions = this.getAllSessions(project);
+        
+        return `
             <div class="session-actions-row">
                 <button class="new-session-btn" onclick="enhancedSidebar.showNewSessionModal('${project.name}')">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -497,9 +508,6 @@ class EnhancedSidebar {
                 </button>
             </div>
         `;
-
-        sessionsHtml += '</div>';
-        return sessionsHtml;
     }
 
     /**

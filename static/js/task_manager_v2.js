@@ -299,6 +299,19 @@ class TaskManager {
             });
         }
 
+        // 详情视图的删除按钮
+        const deleteBtn = document.getElementById('standalone-delete-task-btn');
+        if (deleteBtn) {
+            deleteBtn.addEventListener('click', () => {
+                if (this.selectedTaskId) {
+                    this.deleteTask(this.selectedTaskId).then(() => {
+                        // 删除成功后关闭详情面板
+                        this.closeStandaloneDetailModal();
+                    });
+                }
+            });
+        }
+
         // 详情页脚关闭按钮
         const cancelDetailBtn = document.getElementById('standalone-cancel-detail');
         if (cancelDetailBtn) {
@@ -434,13 +447,22 @@ class TaskManager {
                 resources: Array.isArray(task.resources) ? task.resources : []
             };
             
+            const taskStatus = this.getTaskStatus(safeTask);
+            
             return `
                 <div class="task-item" data-task-id="${safeTask.id}" onclick="taskManager.selectTask('${safeTask.id}')">
                     <div class="task-item-header">
                         <div class="task-item-name">${this.escapeHtml(safeTask.name)}</div>
-                        <span class="task-item-status ${safeTask.enabled ? 'enabled' : 'disabled'}">
-                            ${safeTask.enabled ? '启用' : '禁用'}
-                        </span>
+                        <div class="task-item-actions">
+                            <span class="task-item-status ${taskStatus.class}">
+                                ${taskStatus.text}
+                            </span>
+                            <button class="delete-task-btn" onclick="event.stopPropagation(); taskManager.deleteTask('${safeTask.id}')" title="删除任务">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6h14ZM10 11v6M14 11v6"/>
+                                </svg>
+                            </button>
+                        </div>
                     </div>
                     <div class="task-item-goal">${this.escapeHtml(safeTask.goal)}</div>
                     <div class="task-item-meta">
@@ -450,6 +472,77 @@ class TaskManager {
                 </div>
             `;
         }).join('');
+    }
+
+    /**
+     * 获取任务状态
+     */
+    getTaskStatus(task) {
+        // 检查是否有对应的页签在运行
+        if (this.isTaskRunning(task.id)) {
+            return {
+                text: '进行中',
+                class: 'running'
+            };
+        }
+        
+        // 定时任务显示"定时"
+        if (task.schedule_frequency !== 'immediate') {
+            return {
+                text: '定时',
+                class: 'scheduled'
+            };
+        }
+        
+        // 立即执行任务且无页签则显示"完成"
+        return {
+            text: '完成',
+            class: 'completed'
+        };
+    }
+
+    /**
+     * 检查任务是否正在运行（通过页签判断）
+     */
+    isTaskRunning(taskId) {
+        // 查找是否有对应的任务页签
+        const taskTab = document.querySelector(`#tab_task_${taskId}`);
+        return taskTab !== null;
+    }
+
+    /**
+     * 删除任务
+     */
+    async deleteTask(taskId) {
+        const task = this.tasks.find(t => t.id === taskId);
+        if (!task) {
+            console.error('要删除的任务不存在');
+            return;
+        }
+
+        // 确认对话框
+        if (!confirm(`确定要删除任务"${task.name}"吗？`)) {
+            return;
+        }
+
+        try {
+            const response = await fetch(`/api/tasks/${taskId}`, {
+                method: 'DELETE'
+            });
+
+            if (response.ok) {
+                console.log('✅ 任务删除成功');
+                // 重新加载任务列表
+                this.loadTasks();
+            } else {
+                const errorData = await response.json();
+                console.error('❌ 删除任务失败:', errorData.error);
+                alert(`删除失败: ${errorData.error}`);
+            }
+        } catch (error) {
+            console.error('❌ 删除任务出错:', error);
+            alert('删除任务时发生网络错误');
+        }
     }
 
     /**
@@ -491,17 +584,29 @@ class TaskManager {
                     name: task.name || '未命名任务',
                     goal: task.goal || '',
                     enabled: task.enabled !== false,
-                    status: task.status || 'pending'
+                    status: task.status || 'pending',
+                    schedule_frequency: task.scheduleFrequency || 'immediate'
                 };
 
+                const taskStatus = this.getTaskStatus(safeTask);
+
                 return `
-                    <div class="task-item ${safeTask.enabled ? 'enabled' : 'disabled'} ${safeTask.status}" 
+                    <div class="task-item" 
                          data-task-id="${safeTask.id}" 
                          onclick="window.taskManager && window.taskManager.showTaskDetails('${safeTask.id}')">
-                        <div class="task-name">${this.escapeHtml(safeTask.name)}</div>
-                        <div class="task-status">
-                            <span class="status-dot ${safeTask.status}"></span>
-                            ${safeTask.enabled ? '启用' : '禁用'}
+                        <div class="task-item-header">
+                            <div class="task-name">${this.escapeHtml(safeTask.name)}</div>
+                            <div class="task-header-actions">
+                                <div class="task-status">
+                                    <span class="status-dot ${taskStatus.class}"></span>
+                                    ${taskStatus.text}
+                                </div>
+                                <button class="delete-task-btn" onclick="event.stopPropagation(); taskManager.deleteTask('${safeTask.id}')" title="删除任务">
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6h14ZM10 11v6M14 11v6"/>
+                                    </svg>
+                                </button>
+                            </div>
                         </div>
                     </div>
                 `;
@@ -600,9 +705,10 @@ class TaskManager {
                 : '<span class="text-muted">未设置资源文件</span>';
         }
         if (this.detailStatus) {
+            const taskStatus = this.getTaskStatus(safeTask);
             this.detailStatus.innerHTML = `
-                <span class="task-item-status ${safeTask.enabled ? 'enabled' : 'disabled'}">
-                    ${safeTask.enabled ? '启用' : '禁用'}
+                <span class="task-item-status ${taskStatus.class}">
+                    ${taskStatus.text}
                 </span>
                 ${safeTask.skip_permissions ? '<span class="detail-value code">危险权限跳过模式</span>' : ''}
             `;
@@ -1240,9 +1346,10 @@ class TaskManager {
                 : '<span class="text-muted">未设置资源文件</span>';
         }
         if (statusEl) {
+            const taskStatus = this.getTaskStatus(safeTask);
             statusEl.innerHTML = `
-                <span class="task-item-status ${safeTask.enabled ? 'enabled' : 'disabled'}">
-                    ${safeTask.enabled ? '启用' : '禁用'}
+                <span class="task-item-status ${taskStatus.class}">
+                    ${taskStatus.text}
                 </span>
                 ${safeTask.skip_permissions ? '<span class="detail-value code">危险权限跳过模式</span>' : ''}
             `;
