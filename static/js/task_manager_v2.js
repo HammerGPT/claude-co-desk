@@ -404,6 +404,19 @@ class TaskManager {
                 const data = await response.json();
                 // 后端返回格式是 {tasks: [...]}，需要提取tasks数组
                 this.tasks = Array.isArray(data.tasks) ? data.tasks : (Array.isArray(data) ? data : []);
+                
+                console.log('📋 任务加载成功，数量:', this.tasks.length);
+                
+                // 详细检查每个任务的sessionId
+                this.tasks.forEach((task, index) => {
+                    console.log(`🔍 任务${index + 1} [${task.id}] ${task.name}:`, {
+                        sessionId: task.sessionId,
+                        hasSessionId: !!task.sessionId,
+                        lastRun: task.lastRun,
+                        workDirectory: task.workDirectory
+                    });
+                });
+                
                 this.renderTasksList();
                 this.renderSidebarTasksList();
                 
@@ -1324,7 +1337,8 @@ class TaskManager {
             schedule_time: task.scheduleTime || '09:00',
             resources: Array.isArray(task.resources) ? task.resources : [],
             enabled: task.enabled !== false,
-            skip_permissions: task.skipPermissions || false
+            skip_permissions: task.skipPermissions || false,
+            session_id: task.sessionId || null  // 添加session_id信息
         };
         
         const nameEl = document.getElementById('standalone-detail-task-name');
@@ -1353,6 +1367,29 @@ class TaskManager {
                 </span>
                 ${safeTask.skip_permissions ? '<span class="detail-value code">危险权限跳过模式</span>' : ''}
             `;
+        }
+        
+        // 动态更新执行按钮文本
+        const executeBtn = document.getElementById('standalone-execute-task-btn');
+        if (executeBtn) {
+            // 添加详细调试日志
+            console.log('🔍 按钮更新调试:', {
+                taskId: task.id,
+                taskName: task.name,
+                originalSessionId: task.sessionId,
+                safeTaskSessionId: safeTask.session_id,
+                taskFullData: task
+            });
+            
+            if (safeTask.session_id) {
+                executeBtn.textContent = '继续任务';
+                executeBtn.title = '恢复之前的Claude CLI会话继续此任务';
+                console.log('✅ 按钮设置为"继续任务"，sessionId:', safeTask.session_id);
+            } else {
+                executeBtn.textContent = '重新执行';
+                executeBtn.title = '重新开始执行此任务';
+                console.log('❌ 按钮设置为"重新执行"，无sessionId');
+            }
         }
     }
 
@@ -1717,25 +1754,53 @@ class TaskManager {
             // 更新最后执行时间
             task.lastRun = new Date().toISOString();
             
-            // 构建Claude CLI命令
-            const command = this.buildClaudeCommand(task);
-            console.log('📝 构建的命令:', command);
+            let sessionData;
             
-            // 通过WebSocket通知后端创建新页签执行任务
-            const sessionData = {
-                type: 'new-task-session',
-                taskId: task.id,
-                taskName: task.name,
-                command: command,
-                skipPermissions: task.skipPermissions,
-                resources: task.resources
-            };
+            if (task.sessionId) {
+                // 继续任务：使用恢复会话机制
+                console.log('🔄 继续任务，使用session_id:', task.sessionId);
+                sessionData = {
+                    type: 'resume-task-session',
+                    taskId: task.id,
+                    taskName: task.name,
+                    sessionId: task.sessionId,
+                    workDirectory: '/Users/yuhao'  // 固定使用用户家目录，确保能找到会话文件
+                };
+                this.showExecutionFeedback(`继续任务: ${task.name}`);
+            } else {
+                // 重新执行：使用原有逻辑
+                console.log('🚀 重新执行任务');
+                const command = this.buildClaudeCommand(task);
+                console.log('📝 构建的命令:', command);
+                
+                sessionData = {
+                    type: 'new-task-session',
+                    taskId: task.id,
+                    taskName: task.name,
+                    command: command,
+                    skipPermissions: task.skipPermissions,
+                    resources: task.resources
+                };
+                this.showExecutionFeedback(`重新执行任务: ${task.name}`);
+            }
             
             console.log('📡 发送任务执行请求:', sessionData);
             window.websocketManager.sendMessage(sessionData);
             
-            // 显示执行反馈
-            this.showExecutionFeedback(task.name);
+            // 延迟刷新任务数据，以便获取更新后的session_id
+            setTimeout(async () => {
+                console.log('🔄 刷新任务数据以获取最新session_id');
+                await this.loadTasks();
+                
+                // 如果当前显示的就是这个任务，重新显示详情以更新按钮状态
+                if (this.selectedTaskId === task.id) {
+                    const updatedTask = this.tasks.find(t => t.id === task.id);
+                    if (updatedTask) {
+                        console.log('🔄 更新任务详情显示，sessionId:', updatedTask.sessionId);
+                        this.showStandaloneTaskDetail(updatedTask);
+                    }
+                }
+            }, 3000); // 3秒后刷新，给文件监控足够时间捕获session_id
             
             // 关闭弹窗
             this.closeStandaloneDetailModal();

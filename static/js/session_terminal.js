@@ -52,8 +52,13 @@ class SessionTerminal {
     initEventListeners() {
         // 监听会话切换事件
         document.addEventListener('sessionSwitch', (event) => {
-            const { sessionId, project, sessionName, originalSession, initialCommand } = event.detail;
-            this.switchToSession(sessionId, project, sessionName, originalSession, initialCommand);
+            const { sessionId, project, sessionName, originalSession, initialCommand, resumeSession, originalSessionId } = event.detail;
+            // 如果是恢复会话，创建一个特殊的originalSession对象
+            let sessionToRestore = originalSession;
+            if (resumeSession && originalSessionId) {
+                sessionToRestore = { id: originalSessionId };
+            }
+            this.switchToSession(sessionId, project, sessionName, sessionToRestore, initialCommand);
         });
 
         // 监听终端命令事件（来自文件抽屉）
@@ -294,12 +299,17 @@ class SessionTerminal {
                 console.log(`🔍 会话状态: hasSession=${hasSession}, originalSessionId=${originalSession?.id}`, sessionId);
                 console.log(`🚀 初始命令: ${initialCommand || 'claude'}`, sessionId);
                 
+                // 检查是否为任务执行（sessionId以task_开头）
+                const isTaskExecution = sessionId && sessionId.startsWith('task_');
+                const taskId = isTaskExecution ? sessionId : null;
+                
                 ws.send(JSON.stringify({
                     type: 'init',
                     projectPath: project.path || project.fullPath,
                     sessionId: originalSession?.id || sessionId, // 使用原始会话ID或当前sessionId
                     hasSession: hasSession,
                     initialCommand: initialCommand, // 传递初始命令
+                    taskId: taskId, // 传递任务ID用于session_id捕获
                     cols: fixedCols,
                     rows: fixedRows
                 }));

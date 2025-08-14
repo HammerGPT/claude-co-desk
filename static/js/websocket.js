@@ -213,7 +213,18 @@ class WebSocketManager {
                     console.log('🎯 创建任务页签:', data.taskName);
                     console.log('📋 初始命令:', data.initialCommand);
                     console.log('📁 工作目录:', data.workingDirectory);
-                    window.enhancedSidebar.createTaskTab(data.taskId, data.taskName, data.initialCommand, data.workingDirectory);
+                    console.log('🔄 恢复会话:', data.resumeSession);
+                    console.log('🆔 会话ID:', data.sessionId);
+                    
+                    // 传递所有必要参数给createTaskTab
+                    window.enhancedSidebar.createTaskTab(
+                        data.taskId, 
+                        data.taskName, 
+                        data.initialCommand, 
+                        data.workingDirectory,
+                        data.resumeSession,
+                        data.sessionId
+                    );
                 }
                 break;
                 
@@ -223,6 +234,21 @@ class WebSocketManager {
                 if (data.taskId && data.error) {
                     console.error('❌ 任务执行错误:', data);
                     this._showTaskError(data);
+                }
+                break;
+                
+            case 'task-session-captured':
+                // 处理任务会话捕获成功，刷新任务数据
+                if (data.taskId && data.sessionId) {
+                    console.log('🆔 任务会话已捕获:', data);
+                    console.log('🔄 刷新任务列表以更新按钮状态');
+                    
+                    // 通知任务管理器刷新数据
+                    if (window.taskManager) {
+                        window.taskManager.loadTasks().then(() => {
+                            console.log('✅ 任务数据刷新完成');
+                        });
+                    }
                 }
                 break;
         }

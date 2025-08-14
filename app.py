@@ -438,6 +438,13 @@ class PTYShellHandler:
         self.consecutive_same_lines = 0
         self.current_cursor_pos = (0, 0)  # (row, col)
         self.screen_state = {}  # 简单的屏幕状态跟踪
+        
+        # session_id捕获相关状态
+        self.task_id = None  # 当前执行的任务ID
+        self.session_id_captured = False  # 是否已经捕获过session_id
+        self.file_monitor_thread = None  # 文件监控线程
+        self.file_monitor_running = False  # 文件监控运行状态
+        self.project_path = None  # 项目路径，用于文件监控
     
     def is_running(self):
         """检查PTY进程是否正在运行"""
@@ -446,8 +453,16 @@ class PTYShellHandler:
                 self.running and 
                 self.master_fd is not None)
     
-    async def start_shell(self, websocket: WebSocket, project_path: str, session_id: str = None, has_session: bool = False, cols: int = 80, rows: int = 24, initial_command: str = None):
+    async def start_shell(self, websocket: WebSocket, project_path: str, session_id: str = None, has_session: bool = False, cols: int = 80, rows: int = 24, initial_command: str = None, task_id: str = None):
         """启动PTY shell进程"""
+        # 设置task_id和project_path用于session_id捕获
+        self.task_id = task_id
+        self.project_path = project_path
+        if task_id:
+            logger.info(f"🎯 设置任务ID用于session_id捕获: {task_id}")
+            # 启动文件监控来捕获session_id
+            self._start_file_monitor()
+        
         # 如果已经有进程在运行，先清理
         if self.is_running():
             logger.info("🔄 检测到已有PTY进程，正在清理...")
@@ -503,6 +518,8 @@ class PTYShellHandler:
                 # 直接启动新会话
                 shell_command = f'cd "{project_path}" && "{claude_executable}"'
                 logger.info(f"🆕 启动新Claude会话: \"{claude_executable}\"")
+            
+            # 注意：不再需要添加JSON参数，session_id通过文件监控获取
             
             # 设置正确的终端环境变量 - 使用实际尺寸和UTF-8编码
             env = os.environ.copy()
@@ -646,6 +663,8 @@ class PTYShellHandler:
                         
                         # 启用简化的输出处理，保留ANSI颜色序列
                         processed_output = self._simple_output_filter(raw_output)
+                        
+                        # 注意：session_id现在通过文件监控获取，不再从PTY输出解析
                         
                         # 调试日志
                         if processed_output:
@@ -1020,6 +1039,9 @@ class PTYShellHandler:
         
         self.running = False
         
+        # 停止文件监控
+        self._stop_file_monitor()
+        
         # 等待读取线程结束
         if self.read_thread and self.read_thread.is_alive():
             self.read_thread.join(timeout=2.0)
@@ -1045,6 +1067,139 @@ class PTYShellHandler:
             self.master_fd = None
         
         logger.info("✅ PTY Shell资源清理完成")
+    
+    
+    def _start_file_monitor(self):
+        """启动文件监控来捕获session_id"""
+        if self.file_monitor_running:
+            return
+        
+        import threading
+        self.file_monitor_running = True
+        self.file_monitor_thread = threading.Thread(
+            target=self._file_monitor_worker,
+            daemon=True
+        )
+        self.file_monitor_thread.start()
+        logger.info(f"📁 启动文件监控用于捕获session_id (任务: {self.task_id})")
+    
+    def _stop_file_monitor(self):
+        """停止文件监控"""
+        self.file_monitor_running = False
+        if self.file_monitor_thread and self.file_monitor_thread.is_alive():
+            self.file_monitor_thread.join(timeout=2.0)
+        logger.info("📁 文件监控已停止")
+    
+    def _file_monitor_worker(self):
+        """文件监控工作线程"""
+        import time
+        from pathlib import Path
+        
+        try:
+            # Claude CLI会话文件目录
+            claude_dir = Path.home() / ".claude" / "projects"
+            
+            # 构建项目路径对应的文件路径
+            # 例如: /Users/yuhao -> -Users-yuhao
+            if self.project_path:
+                project_file_path = self.project_path.replace("/", "-")
+                session_dir = claude_dir / project_file_path
+            else:
+                # 默认监控所有项目目录
+                session_dir = claude_dir
+            
+            logger.info(f"📁 监控目录: {session_dir}")
+            
+            # 记录监控开始时间
+            start_time = time.time()
+            
+            # 监控最多30秒
+            while self.file_monitor_running and time.time() - start_time < 30:
+                if not self.session_id_captured:
+                    session_id = self._scan_for_session_files(session_dir)
+                    if session_id:
+                        # 找到session_id，保存到任务记录
+                        try:
+                            success = task_scheduler.update_task_session_id(self.task_id, session_id)
+                            if success:
+                                logger.info(f"🆔 文件监控成功捕获session_id: {session_id} (任务: {self.task_id})")
+                                self.session_id_captured = True
+                                
+                                # 通知前端任务数据已更新，需要刷新任务列表
+                                try:
+                                    # 使用saved事件循环发送WebSocket消息
+                                    if hasattr(self, 'loop') and self.loop and not self.loop.is_closed():
+                                        # 获取WebSocket管理器
+                                        websocket_manager = getattr(task_scheduler, 'websocket_manager', None)
+                                        if websocket_manager:
+                                            # 在主事件循环中发送广播消息
+                                            import asyncio
+                                            future = asyncio.run_coroutine_threadsafe(
+                                                websocket_manager.broadcast({
+                                                    'type': 'task-session-captured',
+                                                    'taskId': self.task_id,
+                                                    'sessionId': session_id,
+                                                    'message': f"任务会话已捕获，可以继续任务"
+                                                }),
+                                                self.loop
+                                            )
+                                            future.result(timeout=5)
+                                            logger.info(f"✅ 已通知前端刷新任务数据: {self.task_id}")
+                                        else:
+                                            logger.warning("⚠️ WebSocket管理器不可用，无法通知前端")
+                                    else:
+                                        logger.warning("⚠️ 事件循环不可用，无法通知前端")
+                                except Exception as notify_error:
+                                    logger.error(f"❌ 通知前端失败: {notify_error}")
+                                
+                                break
+                            else:
+                                logger.warning(f"⚠️ 保存任务 {self.task_id} 的session_id失败")
+                        except Exception as e:
+                            logger.error(f"❌ 保存任务session_id时出错: {e}")
+                
+                # 每0.5秒检查一次
+                time.sleep(0.5)
+            
+            if not self.session_id_captured:
+                logger.warning(f"⚠️ 文件监控超时，未能捕获session_id (任务: {self.task_id})")
+                
+        except Exception as e:
+            logger.error(f"❌ 文件监控出错: {e}")
+        finally:
+            self.file_monitor_running = False
+    
+    def _scan_for_session_files(self, session_dir):
+        """扫描会话文件，提取session_id"""
+        import re
+        import time
+        from pathlib import Path
+        
+        try:
+            if not session_dir.exists():
+                return None
+            
+            # 查找新创建的.jsonl文件
+            current_time = time.time()
+            for file_path in session_dir.glob("*.jsonl"):
+                # 检查文件创建时间（最近10秒内创建的）
+                try:
+                    file_stat = file_path.stat()
+                    if current_time - file_stat.st_ctime < 10:
+                        # 从文件名提取session_id
+                        # 格式: 891a2f24-0dcb-41a3-ba70-8dff44e3eb42.jsonl
+                        filename = file_path.stem
+                        if re.match(r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', filename):
+                            logger.info(f"🎯 从文件名获取session_id: {filename} (文件: {file_path.name})")
+                            return filename
+                except:
+                    continue
+            
+            return None
+            
+        except Exception as e:
+            logger.debug(f"扫描会话文件出错: {e}")
+            return None
 
 manager = ConnectionManager()
 
@@ -1859,6 +2014,15 @@ async def get_tasks():
     """获取任务列表API"""
     try:
         tasks = task_scheduler.get_scheduled_tasks()
+        
+        # 添加调试日志：检查返回的任务数据
+        logger.info(f"🔍 API返回任务数量: {len(tasks)}")
+        for task in tasks:
+            if task.get('sessionId'):
+                logger.info(f"🔍 任务 {task['name']} 包含sessionId: {task['sessionId']}")
+            else:
+                logger.info(f"🔍 任务 {task['name']} 无sessionId")
+        
         return JSONResponse(content={"tasks": tasks})
     except Exception as e:
         logger.error(f"获取任务列表时出错: {e}")
@@ -2197,6 +2361,37 @@ async def chat_websocket_endpoint(websocket: WebSocket):
                         'error': f"任务执行失败: {str(e)}",
                         'category': 'execution'
                     }, websocket)
+            elif message.get('type') == 'resume-task-session':
+                # 处理任务会话恢复请求
+                task_id = message.get('taskId')
+                task_name = message.get('taskName', '未知任务')
+                session_id = message.get('sessionId')
+                work_directory = message.get('workDirectory', os.path.expanduser('~'))
+                
+                logger.info(f"🔄 恢复任务会话: {task_name} (ID: {task_id}, Session: {session_id})")
+                logger.info(f"📁 恢复会话工作目录: {work_directory}")
+                
+                if not session_id:
+                    logger.error(f"任务 {task_id} 缺少session_id，无法恢复会话")
+                    await manager.send_personal_message({
+                        'type': 'task-error',
+                        'taskId': task_id,
+                        'error': "缺少会话ID，无法恢复任务",
+                        'category': 'validation'
+                    }, websocket)
+                else:
+                    # 通知前端创建恢复会话的页签
+                    await manager.broadcast({
+                        'type': 'create-task-tab',
+                        'taskId': task_id,
+                        'taskName': f"继续: {task_name}",
+                        'resumeSession': True,  # 标记为恢复会话
+                        'sessionId': session_id,
+                        'workingDirectory': work_directory,
+                        'scheduledExecution': False
+                    })
+                    
+                    logger.info(f"✅ 任务会话恢复请求已发送到前端: session_id={session_id}")
             elif message.get('type') == 'ping':
                 await manager.send_personal_message({
                     'type': 'pong'
@@ -2236,6 +2431,7 @@ async def shell_websocket_endpoint(websocket: WebSocket):
                 has_session = message.get('hasSession', False)
                 initial_command = message.get('initialCommand')  # 添加初始命令参数
                 project_name = message.get('projectName')  # 添加项目名称参数
+                task_id = message.get('taskId')  # 任务ID，用于session_id捕获
                 cols = message.get('cols', 80)
                 rows = message.get('rows', 24)
                 
@@ -2260,8 +2456,8 @@ async def shell_websocket_endpoint(websocket: WebSocket):
                     logger.info("🔄 检测到已有PTY进程，先清理")
                     pty_handler.cleanup()
                 
-                # 启动PTY Shell，传递初始命令参数
-                success = await pty_handler.start_shell(websocket, project_path, session_id, has_session, cols, rows, initial_command)
+                # 启动PTY Shell，传递初始命令参数和task_id
+                success = await pty_handler.start_shell(websocket, project_path, session_id, has_session, cols, rows, initial_command, task_id)
                 # 如果启动成功，尺寸已在初始化时设置，无需额外调用resize
             
             elif message.get('type') == 'input':
