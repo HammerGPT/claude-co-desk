@@ -902,7 +902,9 @@ class EnhancedSidebar {
                 project: sessionData.project,
                 sessionName: sessionData.sessionName,
                 originalSession: sessionData.originalSession, // 传递原始会话信息用于恢复
-                initialCommand: sessionData.initialCommand // 传递初始命令
+                initialCommand: sessionData.initialCommand, // 传递初始命令
+                resumeSession: sessionData.resumeSession, // 是否为恢复会话
+                originalSessionId: sessionData.originalSessionId // 原始会话ID用于恢复
             } 
         });
         document.dispatchEvent(event);
@@ -1231,7 +1233,7 @@ class EnhancedSidebar {
     /**
      * 创建任务页签
      */
-    createTaskTab(taskId, taskName, initialCommand = null, workingDirectory = null) {
+    createTaskTab(taskId, taskName, initialCommand = null, workingDirectory = null, resumeSession = false, sessionId = null) {
         // 检查是否已存在相同taskId的页签
         if (this.sessionTabs) {
             const existingTab = this.sessionTabs.querySelector(`[data-task-id="${taskId}"]`);
@@ -1248,13 +1250,15 @@ class EnhancedSidebar {
         const taskSessionData = {
             project: {
                 name: 'task-execution',
-                displayName: '任务执行',
+                displayName: resumeSession ? '继续任务' : '任务执行',
                 path: workingDirectory || ''  // 使用传递的工作目录
             },
             sessionId: taskId,
             sessionName: taskName,
             isTask: true,
-            initialCommand: initialCommand  // 使用传递的完整任务命令
+            initialCommand: resumeSession ? null : initialCommand,  // 恢复会话时不需要初始命令
+            resumeSession: resumeSession,  // 标记为恢复会话
+            originalSessionId: resumeSession ? sessionId : null  // 原始会话ID
         };
         
         const tabElement = document.createElement('div');

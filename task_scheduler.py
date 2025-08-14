@@ -33,6 +33,7 @@ class ScheduledTask:
     last_run: Optional[str] = None
     work_directory: str = ""  # 任务工作目录
     deleted: bool = False     # 软删除标记
+    session_id: Optional[str] = None  # Claude CLI会话ID，用于恢复会话
 
 class TaskScheduler:
     """定时任务调度器"""
@@ -120,7 +121,8 @@ class TaskScheduler:
                 enabled=task_data.get('enabled', True),
                 created_at=task_data.get('createdAt', datetime.now().isoformat()),
                 work_directory=work_directory,
-                deleted=task_data.get('deleted', False)
+                deleted=task_data.get('deleted', False),
+                session_id=task_data.get('sessionId', None)
             )
             
             # 保存所有任务到all_tasks
@@ -277,7 +279,8 @@ class TaskScheduler:
                 'createdAt': task.created_at,
                 'lastRun': task.last_run,
                 'workDirectory': task.work_directory,
-                'deleted': task.deleted
+                'deleted': task.deleted,
+                'sessionId': task.session_id  # 添加sessionId字段到API响应
             })
         return tasks
     
@@ -357,8 +360,15 @@ class TaskScheduler:
                         created_at=task_data.get('createdAt', datetime.now().isoformat()),
                         last_run=task_data.get('lastRun'),
                         work_directory=task_data.get('workDirectory', ''),
-                        deleted=task_data.get('deleted', False)
+                        deleted=task_data.get('deleted', False),
+                        session_id=task_data.get('sessionId')  # 确保加载session_id
                     )
+                    
+                    # 添加调试日志
+                    if task.session_id:
+                        logger.info(f"🔍 从存储加载任务 {task.name}，包含session_id: {task.session_id}")
+                    else:
+                        logger.debug(f"🔍 从存储加载任务 {task.name}，无session_id")
                     
                     # 添加到all_tasks
                     self.all_tasks[task.id] = task
@@ -399,7 +409,8 @@ class TaskScheduler:
                     'lastRun': task.last_run,
                     'workDirectory': task.work_directory,
                     'deleted': task.deleted,
-                    'executionMode': execution_mode
+                    'executionMode': execution_mode,
+                    'sessionId': task.session_id
                 }
                 tasks_data.append(task_data)
                 
@@ -510,3 +521,23 @@ class TaskScheduler:
             
         except Exception as e:
             logger.error(f"执行定时任务失败: {task.name} - {e}")
+    
+    def update_task_session_id(self, task_id: str, session_id: str) -> bool:
+        """更新任务的session_id，用于会话恢复"""
+        try:
+            # 在所有任务中查找
+            if task_id in self.all_tasks:
+                task = self.all_tasks[task_id]
+                task.session_id = session_id
+                logger.info(f"💾 更新任务 {task.name} 的session_id: {session_id}")
+                
+                # 保存到存储文件
+                self._save_tasks_to_storage()
+                return True
+            else:
+                logger.warning(f"⚠️ 未找到任务 {task_id}，无法更新session_id")
+                return False
+                
+        except Exception as e:
+            logger.error(f"❌ 更新任务session_id失败: {task_id} - {e}")
+            return False
