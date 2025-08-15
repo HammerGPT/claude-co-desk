@@ -176,6 +176,18 @@ class ClaudeCLIIntegration:
                                             del self.active_processes[process_key]
                                         self.active_processes[captured_session_id] = process
                                     
+                                    # 如果是任务执行，保存session_id到任务记录
+                                    if task_id:
+                                        try:
+                                            from app import task_scheduler  # 延迟导入避免循环依赖
+                                            success = task_scheduler.update_task_session_id(task_id, captured_session_id)
+                                            if success:
+                                                logger.info(f"✅ 任务 {task_id} 的session_id已保存")
+                                            else:
+                                                logger.warning(f"⚠️ 保存任务 {task_id} 的session_id失败")
+                                        except Exception as e:
+                                            logger.error(f"❌ 保存任务session_id时出错: {e}")
+                                    
                                     # 发送session-created事件（仅新会话，不包括任务执行）
                                     if not session_id and not session_created_sent and not task_id:
                                         session_created_sent = True

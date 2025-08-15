@@ -12,7 +12,8 @@
     "lastRun": null,
     "workDirectory": "",
     "deleted": true,
-    "executionMode": "immediate"
+    "executionMode": "immediate",
+    "sessionId": null
   },
   {
     "id": "task_1754924871_13",
@@ -27,7 +28,8 @@
     "lastRun": "2025-08-13T12:07:47.571298",
     "workDirectory": "",
     "deleted": true,
-    "executionMode": "immediate"
+    "executionMode": "immediate",
+    "sessionId": null
   },
   {
     "id": "task_1755004901_8",
@@ -42,7 +44,8 @@
     "lastRun": null,
     "workDirectory": "",
     "deleted": true,
-    "executionMode": "immediate"
+    "executionMode": "immediate",
+    "sessionId": null
   },
   {
     "id": "task_1755014226_3",
@@ -57,7 +60,8 @@
     "lastRun": null,
     "workDirectory": "",
     "deleted": true,
-    "executionMode": "immediate"
+    "executionMode": "immediate",
+    "sessionId": null
   },
   {
     "id": "task_1755072614_3",
@@ -72,7 +76,8 @@
     "lastRun": null,
     "workDirectory": "/Users/yuhao/Documents/Heliki/Heliki_OS/mission/task_1755072614_3_a8nh1t",
     "deleted": true,
-    "executionMode": "immediate"
+    "executionMode": "immediate",
+    "sessionId": null
   },
   {
     "id": "task_1755072633_3",
@@ -87,7 +92,8 @@
     "lastRun": null,
     "workDirectory": "/Users/yuhao/Documents/Heliki/Heliki_OS/mission/task_1755072633_3_so68tw",
     "deleted": true,
-    "executionMode": "immediate"
+    "executionMode": "immediate",
+    "sessionId": null
   },
   {
     "id": "task_1755073451_6",
@@ -102,7 +108,8 @@
     "lastRun": null,
     "workDirectory": "/Users/yuhao/Documents/Heliki/Heliki_OS/mission/task_1755073451_6_g07epk",
     "deleted": true,
-    "executionMode": "immediate"
+    "executionMode": "immediate",
+    "sessionId": null
   },
   {
     "id": "task_1755073856_6",
@@ -117,7 +124,8 @@
     "lastRun": null,
     "workDirectory": "/Users/yuhao/Documents/Heliki/Heliki_OS/mission/task_1755073856_6_jqcl5y",
     "deleted": true,
-    "executionMode": "immediate"
+    "executionMode": "immediate",
+    "sessionId": null
   },
   {
     "id": "task_1755077133_6",
@@ -132,7 +140,8 @@
     "lastRun": null,
     "workDirectory": "/Users/yuhao/Documents/Heliki/Heliki_OS/mission/task_1755077133_6_kf4g9i",
     "deleted": true,
-    "executionMode": "immediate"
+    "executionMode": "immediate",
+    "sessionId": null
   },
   {
     "id": "task_1755077553_6",
@@ -146,23 +155,9 @@
     "createdAt": "2025-08-13T17:32:33.704477",
     "lastRun": null,
     "workDirectory": "/Users/yuhao/Documents/Heliki/Heliki_OS/mission/task_1755077553_6_shzu9s",
-    "deleted": false,
-    "executionMode": "immediate"
-  },
-  {
-    "id": "task_1755087511_4",
-    "name": "天气预报",
-    "goal": "查询一下今天北京天气如何，将结果保存到工作文件夹中",
-    "skipPermissions": true,
-    "resources": [],
-    "scheduleFrequency": "immediate",
-    "scheduleTime": "",
-    "enabled": true,
-    "createdAt": "2025-08-13T20:18:31.073032",
-    "lastRun": null,
-    "workDirectory": "/Users/yuhao/Documents/Heliki/Heliki_OS/mission/task_1755087511_4_8jqptc",
-    "deleted": false,
-    "executionMode": "immediate"
+    "deleted": true,
+    "executionMode": "immediate",
+    "sessionId": null
   },
   {
     "id": "task_1755070978_35",
@@ -176,7 +171,200 @@
     "createdAt": "2025-08-13T15:42:58.403921",
     "lastRun": null,
     "workDirectory": "/Users/yuhao/Documents/Heliki/Heliki_OS/mission/task_1755070978_35_m987lq",
+    "deleted": true,
+    "executionMode": "immediate",
+    "sessionId": null
+  },
+  {
+    "id": "task_1755094663_2",
+    "name": "测试",
+    "goal": "明天武汉的天气如何？",
+    "skipPermissions": false,
+    "resources": [],
+    "scheduleFrequency": "immediate",
+    "scheduleTime": "",
+    "enabled": true,
+    "createdAt": "2025-08-13T22:17:43.615077",
+    "lastRun": null,
+    "workDirectory": "/Users/yuhao/Documents/Heliki/Heliki_OS/mission/task_1755094663_2_uwh2my",
+    "deleted": true,
+    "executionMode": "immediate",
+    "sessionId": null
+  },
+  {
+    "id": "task_1755087511_4",
+    "name": "天气预报",
+    "goal": "查询一下今天武汉天气如何，将结果保存到工作文件夹中",
+    "skipPermissions": true,
+    "resources": [],
+    "scheduleFrequency": "immediate",
+    "scheduleTime": "",
+    "enabled": true,
+    "createdAt": "2025-08-13T20:18:31.073032",
+    "lastRun": null,
+    "workDirectory": "/Users/yuhao/Documents/Heliki/Heliki_OS/mission/task_1755087511_4_x8exvv",
+    "deleted": true,
+    "executionMode": "immediate",
+    "sessionId": "4ab21132-13a6-4145-b8f1-d322cc9f186e"
+  },
+  {
+    "id": "task_1755090845_3",
+    "name": "测试定时任务",
+    "goal": "查询明天重庆地区的天气如何",
+    "skipPermissions": true,
+    "resources": [],
+    "scheduleFrequency": "daily",
+    "scheduleTime": "21:24",
+    "enabled": true,
+    "createdAt": "2025-08-13T21:14:05.970594",
+    "lastRun": null,
+    "workDirectory": "/Users/yuhao/Documents/Heliki/Heliki_OS/mission/task_1755090845_3_t39z0v",
+    "deleted": true,
+    "executionMode": "immediate",
+    "sessionId": null
+  },
+  {
+    "id": "task_1755156106_6",
+    "name": "测试定时任务",
+    "goal": "查询明天重庆地区的天气如何",
+    "skipPermissions": true,
+    "resources": [],
+    "scheduleFrequency": "daily",
+    "scheduleTime": "15:22",
+    "enabled": true,
+    "createdAt": "2025-08-14T15:21:46.576116",
+    "lastRun": "2025-08-15T15:22:12.386901",
+    "workDirectory": "/Users/yuhao/Documents/Heliki/Heliki_OS/mission/task_1755156106_6_9r6cku",
+    "deleted": true,
+    "executionMode": "immediate",
+    "sessionId": "44cbaaec-a64b-49b9-8881-66ed7cc15104"
+  },
+  {
+    "id": "task_1755251537_5",
+    "name": "测试MCP",
+    "goal": "重庆明天的天气如何，将结果发送到我的邮箱 381679611@qq.com",
+    "skipPermissions": false,
+    "resources": [],
+    "scheduleFrequency": "immediate",
+    "scheduleTime": "",
+    "enabled": true,
+    "createdAt": "2025-08-15T17:52:17.431281",
+    "lastRun": null,
+    "workDirectory": "/Users/yuhao/Documents/Heliki/Heliki_OS/mission/task_1755251537_5_fm5ovv",
+    "deleted": true,
+    "executionMode": "immediate",
+    "sessionId": "815b45e9-6a37-4c97-bc39-1e4947238e45"
+  },
+  {
+    "id": "task_1755251810_3",
+    "name": "测试3",
+    "goal": "武汉明天的天气如何，结果发送到邮箱 381679611@qq.com",
+    "skipPermissions": true,
+    "resources": [],
+    "scheduleFrequency": "immediate",
+    "scheduleTime": "",
+    "enabled": true,
+    "createdAt": "2025-08-15T17:56:50.796314",
+    "lastRun": null,
+    "workDirectory": "/Users/yuhao/Documents/Heliki/Heliki_OS/mission/task_1755251810_3_xe12wv",
+    "deleted": true,
+    "executionMode": "immediate",
+    "sessionId": "2ae3d18f-8a94-402a-be45-86f424602acf"
+  },
+  {
+    "id": "task_1755260105_5",
+    "name": "测试MCP",
+    "goal": "重庆明天的天气如何，将结果发送到我的邮箱 381679611@qq.com",
+    "skipPermissions": false,
+    "resources": [],
+    "scheduleFrequency": "immediate",
+    "scheduleTime": "",
+    "enabled": true,
+    "createdAt": "2025-08-15T20:15:05.361882",
+    "lastRun": null,
+    "workDirectory": "/Users/yuhao/Documents/Heliki/Heliki_OS/mission/task_1755260105_5_w8i37v",
+    "deleted": true,
+    "executionMode": "immediate",
+    "sessionId": "de1a2cf7-97a4-412f-8157-2bab2307e87d"
+  },
+  {
+    "id": "task_1755260319_5",
+    "name": "测试MCP",
+    "goal": "重庆明天的天气如何，将结果发送到我的邮箱 381679611@qq.com",
+    "skipPermissions": false,
+    "resources": [],
+    "scheduleFrequency": "immediate",
+    "scheduleTime": "",
+    "enabled": true,
+    "createdAt": "2025-08-15T20:18:39.413425",
+    "lastRun": null,
+    "workDirectory": "/Users/yuhao/Documents/Heliki/Heliki_OS/mission/task_1755260319_5_7zs3ke",
     "deleted": false,
-    "executionMode": "immediate"
+    "executionMode": "immediate",
+    "sessionId": "47a0aa02-8567-48a8-9b30-52e986ec6fd9"
+  },
+  {
+    "id": "task_1755273455_5",
+    "name": "测试MCP",
+    "goal": "武汉明天的天气如何，结果发送到邮箱 381679611@qq.com",
+    "skipPermissions": false,
+    "resources": [],
+    "scheduleFrequency": "immediate",
+    "scheduleTime": "",
+    "enabled": true,
+    "createdAt": "2025-08-15T23:57:35.641471",
+    "lastRun": null,
+    "workDirectory": "/Users/yuhao/Documents/Heliki/Heliki_OS/mission/task_1755273455_5_gllzwp",
+    "deleted": true,
+    "executionMode": "immediate",
+    "sessionId": null
+  },
+  {
+    "id": "task_1755273719_5",
+    "name": "测试MCP",
+    "goal": "武汉明天的天气如何，结果发送到邮箱 381679611@qq.com",
+    "skipPermissions": false,
+    "resources": [],
+    "scheduleFrequency": "immediate",
+    "scheduleTime": "",
+    "enabled": true,
+    "createdAt": "2025-08-16T00:01:59.160715",
+    "lastRun": null,
+    "workDirectory": "/Users/yuhao/Documents/Heliki/Heliki_OS/mission/task_1755273719_5_kqwupr",
+    "deleted": true,
+    "executionMode": "immediate",
+    "sessionId": null
+  },
+  {
+    "id": "task_1755273762_5",
+    "name": "测试MCP",
+    "goal": "武汉明天的天气如何，结果发送到邮箱 381679611@qq.com",
+    "skipPermissions": true,
+    "resources": [],
+    "scheduleFrequency": "daily",
+    "scheduleTime": "00:08",
+    "enabled": true,
+    "createdAt": "2025-08-16T00:02:42.073742",
+    "lastRun": "2025-08-16T00:08:21.430359",
+    "workDirectory": "/Users/yuhao/Documents/Heliki/Heliki_OS/mission/task_1755273762_5_wc3zcu",
+    "deleted": false,
+    "executionMode": "scheduled",
+    "sessionId": null
+  },
+  {
+    "id": "task_1755274123_3",
+    "name": "测试2",
+    "goal": "武汉明天的天气如何，结果发送到邮箱 381679611@qq.com",
+    "skipPermissions": false,
+    "resources": [],
+    "scheduleFrequency": "immediate",
+    "scheduleTime": "",
+    "enabled": true,
+    "createdAt": "2025-08-16T00:08:43.549479",
+    "lastRun": null,
+    "workDirectory": "/Users/yuhao/Documents/Heliki/Heliki_OS/mission/task_1755274123_3_wfua8r",
+    "deleted": false,
+    "executionMode": "immediate",
+    "sessionId": null
   }
 ]

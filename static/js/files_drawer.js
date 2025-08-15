@@ -238,6 +238,13 @@ class FilesDrawer {
             return;
         }
         
+        // 检查是否为MCP管理员会话
+        if (taskId.startsWith('mcp-manager-')) {
+            console.log('🤖 检测到MCP管理员会话，显示特殊说明');
+            this.showMCPManagerInfo(taskId);
+            return;
+        }
+        
         console.log(`🎯 loadTaskFiles: 请求 /api/task-files/${taskId}`);
         const response = await fetch(`/api/task-files/${taskId}`);
         if (response.ok) {
@@ -254,6 +261,52 @@ class FilesDrawer {
             console.error('🎯 loadTaskFiles: API响应失败', response.status, response.statusText);
             this.showError('加载任务文件失败');
         }
+    }
+
+    /**
+     * 显示MCP管理员会话信息
+     */
+    showMCPManagerInfo(sessionId) {
+        this.files = [];
+        this.currentTaskInfo = {
+            taskId: sessionId,
+            taskName: 'MCP工具管理会话',
+            workDirectory: '/Users/yuhao'
+        };
+        
+        const filesList = document.querySelector('#files-list');
+        if (filesList) {
+            filesList.innerHTML = `
+                <div class="mcp-manager-info">
+                    <div class="info-header">
+                        <h4>🤖 MCP工具管理会话</h4>
+                        <p class="info-desc">这是一个MCP工具搜索和管理会话</p>
+                    </div>
+                    <div class="info-content">
+                        <div class="info-item">
+                            <strong>会话ID:</strong> ${sessionId}
+                        </div>
+                        <div class="info-item">
+                            <strong>工作目录:</strong> ${this.currentTaskInfo.workDirectory}
+                        </div>
+                        <div class="info-item">
+                            <strong>会话类型:</strong> MCP智能体工具搜索
+                        </div>
+                        <div class="info-note">
+                            <p>💡 <strong>说明:</strong></p>
+                            <ul>
+                                <li>此会话专门用于搜索和推荐MCP工具</li>
+                                <li>MCP管理员会通过Claude CLI提供实时交互</li>
+                                <li>会话结束后将自动更新工具列表</li>
+                                <li>您可以在终端中与MCP助手直接对话</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        this.setLoading(false);
     }
 
     /**

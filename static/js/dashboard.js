@@ -111,7 +111,7 @@ class TaskManagerDashboard {
      */
     showSessionHeader() {
         if (this.sessionHeader) {
-            this.sessionHeader.style.display = 'block';
+            this.sessionHeader.style.display = 'flex';
         }
     }
 

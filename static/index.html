@@ -194,14 +194,14 @@
                         <div id="current-session" class="current-session">
                             <div class="session-terminal-container">
                                 <div class="session-header">
-                                    <div class="session-info" style="display: flex; width: 100%; justify-content: space-between; align-items: center;">
+                                    <div class="session-info">
                                         <div>
                                             <span id="current-project" class="current-project">未选择项目</span>
                                             <span id="current-session-name" class="current-session-name"></span>
                                         </div>
-                                        <div style="display: flex; gap: 8px; align-items: center;">
-                                            <button id="terminal-theme-toggle" class="action-btn theme-active" title="切换到暗色模式" style="background: rgb(16, 185, 129) !important; border: 1px solid rgb(5, 150, 105) !important; color: white !important; padding: 8px !important; border-radius: 6px !important; min-width: 32px !important; min-height: 32px !important; display: flex !important; align-items: center !important; justify-content: center !important; cursor: pointer !important; transition: 0.2s !important; box-shadow: rgba(0, 0, 0, 0.2) 0px 2px 4px !important;">
-                                                <svg class="terminal-theme-icon terminal-theme-light" style="width: 16px !important; height: 16px !important; stroke: currentcolor !important; fill: none !important; stroke-width: 2 !important;" viewBox="0 0 24 24">
+                                        <div class="session-header-buttons">
+                                            <button id="terminal-theme-toggle" class="action-btn active" title="切换到暗色模式">
+                                                <svg class="terminal-theme-icon terminal-theme-light w-4 h-4" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2">
                                                     <!-- 太阳图标 (明亮模式) -->
                                                     <g class="sun-icon">
                                                         <circle cx="12" cy="12" r="5" stroke-width="2"></circle>
@@ -213,8 +213,8 @@
                                                     </g>
                                                 </svg>
                                             </button>
-                                            <button id="files-drawer-btn" class="action-btn" title="文件" style="background: rgb(124, 58, 237); border-width: 1px !important; border-style: solid !important; border-color: rgb(109, 40, 217); border-image: initial !important; color: white !important; padding: 8px !important; border-radius: 6px !important; min-width: 32px !important; min-height: 32px !important; display: flex !important; align-items: center !important; justify-content: center !important; cursor: pointer !important; transition: 0.2s !important; box-shadow: rgba(0, 0, 0, 0.2) 0px 2px 4px; transform: none;">
-                                                <svg style="width: 16px !important; height: 16px !important; stroke: currentcolor !important; fill: none !important; stroke-width: 2 !important;" viewBox="0 0 24 24">
+                                            <button id="files-drawer-btn" class="action-btn active" title="文件">
+                                                <svg class="w-4 h-4" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2">
                                                     <path stroke-linecap="round" stroke-linejoin="round" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-5l-2-2H5a2 2 0 00-2 2z"></path>
                                                 </svg>
                                             </button>
@@ -286,6 +286,134 @@
         
         <!-- 移动端侧边栏遮罩 -->
         <div id="sidebar-overlay" class="sidebar-overlay"></div>
+        
+        <!-- 系统设置弹窗 -->
+        <div id="settings-modal" class="modal-overlay hidden">
+            <div class="modal-content large-modal">
+                <div class="modal-header">
+                    <h3>系统设置</h3>
+                    <button id="settings-modal-close" class="modal-close">×</button>
+                </div>
+                <div class="modal-body settings-modal-body">
+                    <div class="settings-sidebar">
+                        <div class="settings-menu">
+                            <button class="settings-menu-item active" data-section="mcp-tools">
+                                🔧 MCP工具
+                            </button>
+                            <button class="settings-menu-item" data-section="theme">
+                                🎨 界面主题
+                            </button>
+                            <button class="settings-menu-item" data-section="notifications">
+                                🔔 通知设置
+                            </button>
+                            <button class="settings-menu-item" data-section="about">
+                                ℹ️ 关于系统
+                            </button>
+                        </div>
+                    </div>
+                    <div class="settings-content">
+                        <!-- MCP工具管理内容 -->
+                        <div id="settings-mcp-tools" class="settings-section active">
+                            <div class="settings-section-header">
+                                <h4>MCP工具管理</h4>
+                                <p class="settings-section-desc">管理Claude的MCP（Model Context Protocol）工具扩展</p>
+                            </div>
+                            
+                            <!-- 工具管理操作区域 -->
+                            <div class="mcp-tools-actions">
+                                <button id="add-mcp-tool" class="btn btn-primary">
+                                    <span class="btn-icon">➕</span>
+                                    添加MCP工具
+                                </button>
+                                <button id="refresh-mcp-tools" class="btn btn-secondary">
+                                    <span class="btn-icon">🔄</span>
+                                    刷新列表
+                                </button>
+                            </div>
+                            
+                            <!-- 已安装工具列表 -->
+                            <div class="mcp-installed-tools">
+                                <div class="tools-list-header">
+                                    <h5>📦 已安装工具 <span id="mcp-tools-count-wrapper">(<span id="mcp-tools-count">0</span>个)</span></h5>
+                                </div>
+                                <div id="mcp-tools-list" class="mcp-tools-list">
+                                    <div class="loading-placeholder">加载工具列表中...</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- 其他设置内容占位符 -->
+                        <div id="settings-theme" class="settings-section">
+                            <div class="settings-section-header">
+                                <h4>界面主题</h4>
+                                <p class="settings-section-desc">自定义界面外观和主题</p>
+                            </div>
+                            <p>主题设置功能开发中...</p>
+                        </div>
+                        
+                        <div id="settings-notifications" class="settings-section">
+                            <div class="settings-section-header">
+                                <h4>通知设置</h4>
+                                <p class="settings-section-desc">配置系统通知和提醒</p>
+                            </div>
+                            <p>通知设置功能开发中...</p>
+                        </div>
+                        
+                        <div id="settings-about" class="settings-section">
+                            <div class="settings-section-header">
+                                <h4>关于系统</h4>
+                                <p class="settings-section-desc">系统信息和版本详情</p>
+                            </div>
+                            <div class="system-info">
+                                <p><strong>Heliki OS</strong></p>
+                                <p>数字员工协作平台</p>
+                                <p>基于Claude Code构建</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- MCP工具添加弹窗 -->
+        <div id="mcp-add-modal" class="modal-overlay hidden">
+            <div class="modal-content large-modal">
+                <div class="modal-header">
+                    <h3>📦 添加MCP工具</h3>
+                    <button id="mcp-add-modal-close" class="modal-close">×</button>
+                </div>
+                <div class="modal-body">
+                    <div class="mcp-add-content">
+                        <!-- 工具需求输入区域 -->
+                        <div class="mcp-query-section">
+                            <div class="section-header">
+                                <h4>🤖 描述您的工具需求</h4>
+                                <p class="section-desc">详细描述您希望添加的MCP工具功能，AI助手将为您搜索和推荐合适的工具。</p>
+                            </div>
+                            <div class="mcp-query-input">
+                                <textarea id="mcp-add-query" class="form-control" placeholder="请描述您需要的工具功能...&#10;&#10;例如：我需要连接和操作PostgreSQL数据库&#10;例如：我想要一个能够处理PDF文件的工具&#10;例如：我需要与Slack集成发送消息的功能"></textarea>
+                                <button id="start-mcp-search" class="btn btn-primary">🔍 开始搜索工具</button>
+                            </div>
+                        </div>
+                        
+                        <!-- MCP助手会话区域 -->
+                        <div id="mcp-assistant-session" class="mcp-session-area hidden">
+                            <div class="mcp-session-header">
+                                <div class="session-info">
+                                    <h5>🤖 MCP工具助手</h5>
+                                    <div class="session-status">
+                                        <span id="mcp-session-status" class="status-indicator status-active"></span>
+                                        <span id="mcp-session-text">正在搜索合适的工具...</span>
+                                    </div>
+                                </div>
+                                <button id="collapse-mcp-session" class="btn-collapse">收起</button>
+                            </div>
+                            <div id="mcp-assistant-terminal" class="mcp-terminal"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
         
         <!-- 独立的新建任务弹窗 -->
         <div id="standalone-add-task-modal" class="modal-overlay hidden">

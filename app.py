@@ -499,10 +499,17 @@ class PTYShellHandler:
                     first_param_pos = param_matches[0].start()
                     main_command = command_content[:first_param_pos].strip()
                     remaining_params = command_content[first_param_pos:].strip()
-                    enhanced_command = f'"{claude_executable}" {main_command} {remaining_params}'
+                    # 检查main_command是否已经被双引号包围
+                    if main_command.startswith('"') and main_command.endswith('"'):
+                        enhanced_command = f'"{claude_executable}" {main_command} {remaining_params}'
+                    else:
+                        enhanced_command = f'"{claude_executable}" "{main_command}" {remaining_params}'
                 else:
-                    # 没有参数
-                    enhanced_command = f'"{claude_executable}" {command_content}'
+                    # 没有参数，检查command_content是否已经被双引号包围
+                    if command_content.startswith('"') and command_content.endswith('"'):
+                        enhanced_command = f'"{claude_executable}" {command_content}'
+                    else:
+                        enhanced_command = f'"{claude_executable}" "{command_content}"'
                 
                 shell_command = f'cd "{project_path}" && {enhanced_command}'
                 logger.info(f"🚀 使用增强初始命令: {enhanced_command}")
@@ -588,9 +595,13 @@ class PTYShellHandler:
             except Exception as e:
                 logger.warning(f"⚠️ 设置PTY属性失败: {e}")
             
-            # 启动子进程，使用bash执行shell命令
+            # 启动子进程，使用用户默认shell执行命令
+            # 获取用户的默认shell
+            user_shell = env.get('SHELL', '/bin/bash')
+            logger.info(f"🐚 使用shell: {user_shell}")
+            
             self.process = subprocess.Popen(
-                ['bash', '-c', shell_command],
+                [user_shell, '-c', shell_command],
                 stdin=slave_fd,
                 stdout=slave_fd,
                 stderr=slave_fd,
@@ -2237,6 +2248,110 @@ async def toggle_task(task_id: str, request: Request):
             content={"error": "切换任务状态失败", "details": str(e)}
         )
 
+def parse_mcp_tools_output(output: str) -> tuple[list, int]:
+    """解析claude mcp list命令的输出
+    
+    输出格式示例:
+    Checking MCP server health...
+    
+    playwright: npx @playwright/mcp - ✓ Connected
+    weather: /Users/yuhao/.local/bin/uv - ✗ Failed
+    
+    返回: (tools_list, tools_count)
+    """
+    import re
+    
+    tools_list = []
+    
+    # 跳过健康检查头部信息
+    lines = output.split('\n')
+    for line in lines:
+        line = line.strip()
+        if not line or line.startswith('Checking MCP server health'):
+            continue
+        
+        # 匹配工具行格式: tool_name: command - status
+        match = re.match(r'^([^:]+):\s+(.+?)\s+-\s+(.*?)$', line)
+        if match:
+            tool_name = match.group(1).strip()
+            tool_command = match.group(2).strip()
+            status_text = match.group(3).strip()
+            
+            # 解析状态
+            is_connected = '✓' in status_text and 'Connected' in status_text
+            
+            tool_info = {
+                'id': tool_name,
+                'name': tool_name,
+                'command': tool_command,
+                'enabled': is_connected,
+                'status': 'connected' if is_connected else 'failed',
+                'description': f'{tool_command} - {status_text}'
+            }
+            
+            tools_list.append(tool_info)
+    
+    tools_count = len(tools_list)
+    logger.info(f"解析MCP工具列表: {tools_count}个工具")
+    
+    return tools_list, tools_count
+
+# MCP管理处理方法
+async def handle_get_mcp_status(websocket: WebSocket):
+    """处理获取MCP工具状态请求"""
+    try:
+        logger.info("收到MCP状态查询请求")
+        
+        # 执行claude mcp list命令获取已安装工具
+        result = subprocess.run(['claude', 'mcp', 'list'], 
+                              capture_output=True, text=True, timeout=30,
+                              cwd="/Users/yuhao")  # 确保在用户家目录执行
+        
+        tools_list = []
+        tools_count = 0
+        
+        if result.returncode == 0:
+            output = result.stdout.strip()
+            if "No MCP servers configured" not in output and output:
+                # 解析MCP工具列表
+                tools_list, tools_count = parse_mcp_tools_output(output)
+            else:
+                tools_count = 0
+        else:
+            logger.error(f"获取MCP状态失败: {result.stderr}")
+        
+        # 发送MCP状态响应
+        await manager.send_personal_message({
+            'type': 'mcp-status-response',
+            'tools': tools_list,
+            'count': tools_count,
+            'status': 'success' if result.returncode == 0 else 'error',
+            'message': output if result.returncode == 0 else result.stderr
+        }, websocket)
+        
+        logger.info(f"MCP状态查询完成: {tools_count}个工具")
+        
+    except subprocess.TimeoutExpired:
+        await manager.send_personal_message({
+            'type': 'mcp-status-response',
+            'tools': [],
+            'count': 0,
+            'status': 'timeout',
+            'message': 'MCP状态查询超时'
+        }, websocket)
+        logger.error("MCP状态查询超时")
+        
+    except Exception as e:
+        await manager.send_personal_message({
+            'type': 'mcp-status-response',
+            'tools': [],
+            'count': 0,
+            'status': 'error',
+            'message': str(e)
+        }, websocket)
+        logger.error(f"MCP状态查询异常: {e}")
+
+
 # WebSocket路由
 @app.websocket("/ws")
 async def chat_websocket_endpoint(websocket: WebSocket):
@@ -2392,6 +2507,45 @@ async def chat_websocket_endpoint(websocket: WebSocket):
                     })
                     
                     logger.info(f"✅ 任务会话恢复请求已发送到前端: session_id={session_id}")
+            elif message.get('type') == 'get-mcp-status':
+                # 处理获取MCP工具状态请求
+                await handle_get_mcp_status(websocket)
+            elif message.get('type') == 'new-mcp-manager-session':
+                # 处理MCP管理员会话创建请求
+                session_id = message.get('sessionId')
+                session_name = message.get('sessionName', 'MCP工具搜索')
+                command = message.get('command', '')
+                skip_permissions = message.get('skipPermissions', True)
+                
+                logger.info(f"🤖 MCP管理员会话创建请求: {session_name} (ID: {session_id})")
+                
+                # 使用@agent语法构建简单命令，避免shell解析问题
+                agent_command = f"@agent-mcp-manager {command}"
+                logger.info(f"🤖 构建@agent命令: {agent_command}")
+                
+                task_command_parts = ['claude', f'"{agent_command}"']
+                
+                # MCP管理员默认跳过权限检查
+                if skip_permissions:
+                    task_command_parts.append('--dangerously-skip-permissions')
+                
+                # 拼接完整命令
+                full_command = ' '.join(task_command_parts)
+                logger.info(f"📋 构建MCP管理员命令: {full_command}")
+                
+                # 发送创建页签消息，使用与正常任务相同的机制
+                await manager.broadcast({
+                    'type': 'create-task-tab',
+                    'taskId': session_id,
+                    'taskName': session_name,
+                    'initialCommand': full_command,
+                    'workingDirectory': os.path.expanduser('~'),  # 使用与正常任务相同的工作目录获取方式
+                    'scheduledExecution': False,
+                    'resumeSession': False,  # 添加会话恢复标识
+                    'sessionId': None        # 添加会话ID字段
+                })
+                
+                logger.info(f"✅ MCP管理员会话创建请求已发送到前端: {session_id}")
             elif message.get('type') == 'ping':
                 await manager.send_personal_message({
                     'type': 'pong'
