@@ -1214,14 +1214,14 @@ class SessionTerminal {
      * 通过JavaScript内联样式绕过所有CSS冲突
      */
     forceButtonStyles() {
-        console.log('🎨 [强制样式] 开始设置session-actions按钮样式...');
+        console.log('🎨 [强制样式] 开始设置session-actions按钮样式... [v2.0-蓝色主题]');
         
-        // 文件按钮 - 紫色
+        // 文件按钮 - 主题蓝色
         const filesBtn = document.getElementById('files-drawer-btn');
         if (filesBtn) {
             filesBtn.style.cssText = `
-                background: #7c3aed !important;
-                border: 1px solid #6d28d9 !important;
+                background: hsl(221.2, 83.2%, 53.3%) !important;
+                border: 1px solid hsl(221.2, 83.2%, 48%) !important;
                 color: white !important;
                 padding: 8px !important;
                 border-radius: 6px !important;
@@ -1237,14 +1237,14 @@ class SessionTerminal {
             
             // 悬停效果
             filesBtn.onmouseenter = function() {
-                this.style.background = '#8b5cf6';
-                this.style.borderColor = '#a855f7';
+                this.style.background = 'hsl(221.2, 83.2%, 58%)';
+                this.style.borderColor = 'hsl(221.2, 83.2%, 53%)';
                 this.style.transform = 'translateY(-1px) scale(1.05)';
-                this.style.boxShadow = '0 4px 12px rgba(124, 58, 237, 0.4)';
+                this.style.boxShadow = '0 4px 12px rgba(59, 130, 246, 0.4)';
             };
             filesBtn.onmouseleave = function() {
-                this.style.background = '#7c3aed';
-                this.style.borderColor = '#6d28d9';
+                this.style.background = 'hsl(221.2, 83.2%, 53.3%)';
+                this.style.borderColor = 'hsl(221.2, 83.2%, 48%)';
                 this.style.transform = 'none';
                 this.style.boxShadow = '0 2px 4px rgba(0, 0, 0, 0.2)';
             };
@@ -1252,15 +1252,15 @@ class SessionTerminal {
             console.log('✅ [强制样式] 文件按钮样式已设置');
         }
 
-        // 主题切换按钮 - 金色/绿色
+        // 主题切换按钮 - 统一主题蓝色
         const themeBtn = document.getElementById('terminal-theme-toggle');
         if (themeBtn) {
             const setThemeButtonStyle = () => {
-                const isActive = themeBtn.classList.contains('theme-active');
-                const bgColor = isActive ? '#10b981' : '#f59e0b';
-                const borderColor = isActive ? '#059669' : '#d97706';
-                const hoverBg = isActive ? '#34d399' : '#ea580c';
-                const hoverBorder = isActive ? '#10b981' : '#dc2626';
+                // 使用统一的主题蓝色，不再根据状态切换颜色
+                const bgColor = 'hsl(221.2, 83.2%, 53.3%)';
+                const borderColor = 'hsl(221.2, 83.2%, 48%)';
+                const hoverBg = 'hsl(221.2, 83.2%, 58%)';
+                const hoverBorder = 'hsl(221.2, 83.2%, 53%)';
                 
                 themeBtn.style.cssText = `
                     background: ${bgColor} !important;
@@ -1282,7 +1282,7 @@ class SessionTerminal {
                     this.style.background = hoverBg;
                     this.style.borderColor = hoverBorder;
                     this.style.transform = 'translateY(-1px) scale(1.05)';
-                    this.style.boxShadow = `0 4px 12px rgba(245, 158, 11, 0.4)`;
+                    this.style.boxShadow = `0 4px 12px rgba(59, 130, 246, 0.4)`;
                 };
                 themeBtn.onmouseleave = function() {
                     this.style.background = bgColor;
@@ -1304,6 +1304,32 @@ class SessionTerminal {
             console.log('✅ [强制样式] 主题切换按钮样式已设置');
         }
 
+        // 终极解决方案：强制覆盖所有可能的样式设置
+        const forceBlueTheme = () => {
+            [filesBtn, themeBtn].filter(Boolean).forEach(btn => {
+                if (btn) {
+                    btn.style.setProperty('background', 'hsl(221.2, 83.2%, 53.3%)', 'important');
+                    btn.style.setProperty('border-color', 'hsl(221.2, 83.2%, 48%)', 'important');
+                    
+                    // 重新绑定hover事件
+                    btn.onmouseenter = function() {
+                        this.style.setProperty('background', 'hsl(221.2, 83.2%, 58%)', 'important');
+                        this.style.setProperty('border-color', 'hsl(221.2, 83.2%, 53%)', 'important');
+                    };
+                    btn.onmouseleave = function() {
+                        this.style.setProperty('background', 'hsl(221.2, 83.2%, 53.3%)', 'important');
+                        this.style.setProperty('border-color', 'hsl(221.2, 83.2%, 48%)', 'important');
+                    };
+                }
+            });
+        };
+        
+        // 立即执行一次
+        forceBlueTheme();
+        
+        // 每秒检查一次，确保样式不被覆盖
+        setInterval(forceBlueTheme, 1000);
+        
         // 强制设置SVG图标样式
         const buttons = [filesBtn, themeBtn].filter(Boolean);
         buttons.forEach(btn => {

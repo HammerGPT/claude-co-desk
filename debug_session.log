@@ -1,0 +1,62 @@
+INFO:tasks_storage:📁 任务存储初始化: tasks.json
+INFO:mission_manager:✅ Mission基础目录已创建: /Users/yuhao/Documents/Heliki/Heliki_OS/mission
+INFO:mission_manager:📁 MissionManager初始化: /Users/yuhao/Documents/Heliki/Heliki_OS/mission
+INFO:task_scheduler:🕐 TaskScheduler 初始化完成
+DEBUG:__main__:🔍 尝试检测策略: PATH环境变量
+DEBUG:__main__:🔍 在PATH环境变量中搜索claude命令
+DEBUG:__main__:📍 PATH中找到: /Users/yuhao/.local/bin/claude
+DEBUG:__main__:✅ Claude CLI版本验证成功: 1.0.80 (Claude Code)
+INFO:__main__:✅ 通过PATH环境变量找到Claude CLI: /Users/yuhao/.local/bin/claude (尝试 1/3)
+INFO:setup_hooks:读取现有配置文件: /Users/yuhao/.claude/settings.json
+WARNING:setup_hooks:setup_claude_hooks已废弃，请使用setup_temporary_hook
+INFO:     Will watch for changes in these directories: ['/Users/yuhao/Documents/Heliki/Heliki_OS']
+INFO:     Uvicorn running on http://localhost:3005 (Press CTRL+C to quit)
+INFO:     Started reloader process [60258] using WatchFiles
+🚀 启动 Heliki OS...
+📁 项目目录: /Users/yuhao/Documents/Heliki/Heliki_OS
+🔍 环境检测结果:
+   Claude CLI: ✅
+   项目目录: ✅
+   状态: ✅ 就绪
+🔧 配置Claude hooks...
+   Hooks状态: 🔧 需要配置
+   正在自动设置Claude hooks...
+   ⚠️ Claude hooks配置失败
+🚀 启动Heliki OS服务...
+🕐 任务调度器将通过应用生命周期自动启动...
+INFO:tasks_storage:📁 任务存储初始化: tasks.json
+INFO:mission_manager:✅ Mission基础目录已创建: /Users/yuhao/Documents/Heliki/Heliki_OS/mission
+INFO:mission_manager:📁 MissionManager初始化: /Users/yuhao/Documents/Heliki/Heliki_OS/mission
+INFO:task_scheduler:🕐 TaskScheduler 初始化完成
+INFO:tasks_storage:📁 任务存储初始化: tasks.json
+INFO:mission_manager:✅ Mission基础目录已创建: /Users/yuhao/Documents/Heliki/Heliki_OS/mission
+INFO:mission_manager:📁 MissionManager初始化: /Users/yuhao/Documents/Heliki/Heliki_OS/mission
+INFO:task_scheduler:🕐 TaskScheduler 初始化完成
+INFO:     Started server process [60267]
+INFO:     Waiting for application startup.
+INFO:app:🚀 应用启动中...
+INFO:app:🕐 启动任务调度器...
+INFO:task_scheduler:📡 已保存主事件循环引用
+INFO:tasks_storage:📂 从存储文件加载 14 个任务
+INFO:task_scheduler:📅 任务 测试2 已设置为每日 21:24 执行
+INFO:task_scheduler:📂 从存储文件恢复 14 个任务，其中 1 个定时任务
+INFO:task_scheduler:📅 任务调度器循环启动
+INFO:task_scheduler:🚀 任务调度器已启动
+INFO:     Application startup complete.
+INFO:     ('127.0.0.1', 56048) - "WebSocket /ws" [accepted]
+INFO:app:WebSocket连接已建立: chat
+INFO:     connection open
+DEBUG:watchfiles.main:3 changes detected: {(<Change.deleted: 3>, '/Users/yuhao/Documents/Heliki/Heliki_OS/__pycache__/app.cpython-312.pyc.4495430848'), (<Change.added: 1>, '/Users/yuhao/Documents/Heliki/Heliki_OS/__pycache__/app.cpython-312.pyc.4495430848'), (<Change.added: 1>, '/Users/yuhao/Documents/Heliki/Heliki_OS/__pycache__/app.cpython-312.pyc')}
+INFO:     ('127.0.0.1', 56083) - "WebSocket /ws" [accepted]
+INFO:app:WebSocket连接已建立: chat
+INFO:     connection open
+INFO:     127.0.0.1:56297 - "GET /api/system-project/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56297 - "GET /api/system-project/agents HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57127 - "GET /api/system-project/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57127 - "GET /api/system-project/agents HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58015 - "GET /api/system-project/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58015 - "GET /api/system-project/agents HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58607 - "GET /api/system-project/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58607 - "GET /api/system-project/agents HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59206 - "GET /api/system-project/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59206 - "GET /api/system-project/agents HTTP/1.1" 200 OK

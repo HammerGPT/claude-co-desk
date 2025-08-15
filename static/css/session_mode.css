@@ -131,6 +131,8 @@
 
 .session-info {
     display: flex;
+    width: 100%;
+    justify-content: space-between;
     align-items: center;
     gap: 8px;
     color: hsl(var(--foreground));
@@ -178,6 +180,13 @@
 .action-btn.active {
     background: hsl(var(--primary));
     color: hsl(var(--primary-foreground));
+}
+
+/* Session header button container */
+.session-header-buttons {
+    display: flex;
+    gap: 8px;
+    align-items: center;
 }
 
 .session-terminal-wrapper {

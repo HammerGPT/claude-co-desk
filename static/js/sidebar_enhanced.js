@@ -15,6 +15,11 @@ class EnhancedSidebar {
         this.activeSessionId = null;
         this.isLoading = false;
         this.currentTime = new Date();
+        
+        // MCP工具加载状态管理（简化版）
+        this.mcpLoadingState = {
+            isLoading: false
+        };
         this.searchFilter = '';
         
         this.initElements();
@@ -1045,7 +1050,657 @@ class EnhancedSidebar {
      * 显示设置
      */
     showSettings() {
-        alert('设置功能正在开发中...');
+        const settingsModal = document.getElementById('settings-modal');
+        if (!settingsModal) return;
+        
+        // 显示modal
+        settingsModal.classList.remove('hidden');
+        settingsModal.classList.add('active');
+        
+        // 初始化设置界面
+        this.initializeSettingsModal();
+        
+        // 加载MCP工具状态
+        this.loadMCPTools();
+    }
+    
+    /**
+     * 初始化设置界面
+     */
+    initializeSettingsModal() {
+        // 设置菜单切换功能
+        const menuItems = document.querySelectorAll('.settings-menu-item');
+        const sections = document.querySelectorAll('.settings-section');
+        
+        menuItems.forEach(item => {
+            item.addEventListener('click', () => {
+                // 移除所有active类
+                menuItems.forEach(mi => mi.classList.remove('active'));
+                sections.forEach(section => section.classList.remove('active'));
+                
+                // 添加active类到当前项
+                item.classList.add('active');
+                const targetSection = item.getAttribute('data-section');
+                const targetElement = document.getElementById(`settings-${targetSection}`);
+                if (targetElement) {
+                    targetElement.classList.add('active');
+                }
+            });
+        });
+        
+        // 关闭modal功能
+        const closeBtn = document.getElementById('settings-modal-close');
+        if (closeBtn) {
+            closeBtn.addEventListener('click', () => {
+                const modal = document.getElementById('settings-modal');
+                modal.classList.add('hidden');
+                modal.classList.remove('active');
+            });
+        }
+        
+        // MCP工具管理功能
+        this.initializeMCPToolsFeatures();
+        
+        // 设置MCP WebSocket消息监听器
+        this.setupMCPMessageListeners();
+    }
+    
+    /**
+     * 初始化MCP工具管理功能
+     */
+    initializeMCPToolsFeatures() {
+        // 添加MCP工具按钮
+        const addMCPToolBtn = document.getElementById('add-mcp-tool');
+        if (addMCPToolBtn) {
+            addMCPToolBtn.addEventListener('click', () => {
+                this.showMCPAddModal();
+            });
+        }
+        
+        // 刷新MCP工具列表按钮
+        const refreshMCPToolsBtn = document.getElementById('refresh-mcp-tools');
+        if (refreshMCPToolsBtn) {
+            refreshMCPToolsBtn.addEventListener('click', () => {
+                this.loadMCPTools();
+            });
+        }
+    }
+    
+    /**
+     * 加载MCP工具列表
+     */
+    async loadMCPTools() {
+        const toolsList = document.getElementById('mcp-tools-list');
+        const toolsCount = document.getElementById('mcp-tools-count');
+        
+        if (!toolsList || !toolsCount) return;
+        
+        // 简单的加载状态，避免重复请求
+        if (this.mcpLoadingState.isLoading) {
+            return;
+        }
+        
+        try {
+            // 设置加载状态并显示loading界面
+            this.mcpLoadingState.isLoading = true;
+            toolsList.innerHTML = '<div class="loading-placeholder">加载工具列表中...</div>';
+            
+            // 加载中时隐藏计数显示
+            const countWrapper = document.getElementById('mcp-tools-count-wrapper');
+            if (countWrapper) {
+                countWrapper.style.display = 'none';
+            }
+            
+            // 通过WebSocket获取MCP工具状态
+            if (window.wsManager && window.wsManager.isConnected) {
+                window.wsManager.sendMessage({
+                    type: 'get-mcp-status'
+                });
+                
+                // 确保监听器已设置
+                this.setupMCPStatusListener();
+            } else {
+                // 连接未建立，结束加载状态
+                this.mcpLoadingState.isLoading = false;
+                toolsList.innerHTML = `
+                    <div style="text-align: center; padding: 2rem; color: #ef4444;">
+                        <p>⚠️ 连接未建立</p>
+                        <p style="font-size: 0.85rem; margin-top: 0.5rem;">请刷新页面重新连接</p>
+                    </div>
+                `;
+                toolsCount.textContent = '0';
+            }
+            
+        } catch (error) {
+            console.error('加载MCP工具失败:', error);
+            this.mcpLoadingState.isLoading = false;
+            toolsList.innerHTML = '<div class="loading-placeholder">加载工具列表失败</div>';
+            toolsCount.textContent = '0';
+        }
+    }
+    
+    
+    /**
+     * 设置MCP状态监听器
+     */
+    setupMCPStatusListener() {
+        // 监听器已在setupMCPMessageListeners中全局设置
+        // handleMCPStatusResponse将自动处理mcp-status-response消息
+    }
+    
+    /**
+     * 显示MCP工具占位符内容
+     */
+    displayMCPToolsPlaceholder() {
+        const toolsList = document.getElementById('mcp-tools-list');
+        const toolsCount = document.getElementById('mcp-tools-count');
+        
+        if (!toolsList || !toolsCount) return;
+        
+        // 显示简化的占位符内容
+        toolsCount.textContent = '0';
+        toolsList.innerHTML = this.getMCPToolsPlaceholderHTML();
+        
+        // 显示计数
+        const countWrapper = document.getElementById('mcp-tools-count-wrapper');
+        if (countWrapper) {
+            countWrapper.style.display = 'inline';
+        }
+    }
+    
+    /**
+     * 呼叫MCP管理员
+     */
+    /**
+     * 显示MCP工具添加窗口
+     */
+    showMCPAddModal() {
+        // 关闭设置窗口
+        const settingsModal = document.getElementById('settings-modal');
+        if (settingsModal) {
+            settingsModal.classList.add('hidden');
+            settingsModal.classList.remove('active');
+        }
+        
+        // 显示MCP添加窗口
+        const mcpAddModal = document.getElementById('mcp-add-modal');
+        if (mcpAddModal) {
+            mcpAddModal.classList.remove('hidden');
+            mcpAddModal.classList.add('active');
+            
+            // 初始化MCP添加窗口
+            this.initializeMCPAddModal();
+        }
+    }
+    
+    /**
+     * 初始化MCP添加窗口
+     */
+    initializeMCPAddModal() {
+        // 关闭按钮
+        const closeBtn = document.getElementById('mcp-add-modal-close');
+        if (closeBtn) {
+            closeBtn.addEventListener('click', () => {
+                this.closeMCPAddModal();
+            });
+        }
+        
+        // 开始搜索按钮
+        const startSearchBtn = document.getElementById('start-mcp-search');
+        if (startSearchBtn) {
+            startSearchBtn.addEventListener('click', () => {
+                this.startMCPToolSearch();
+            });
+        }
+        
+        // 收起会话按钮
+        const collapseBtn = document.getElementById('collapse-mcp-session');
+        if (collapseBtn) {
+            collapseBtn.addEventListener('click', () => {
+                this.toggleMCPSession();
+            });
+        }
+        
+        // 重置界面状态
+        this.resetMCPAddModal();
+    }
+    
+    /**
+     * 关闭MCP添加窗口
+     */
+    closeMCPAddModal() {
+        const mcpAddModal = document.getElementById('mcp-add-modal');
+        if (mcpAddModal) {
+            mcpAddModal.classList.add('hidden');
+            mcpAddModal.classList.remove('active');
+        }
+        
+        // 重新显示设置窗口
+        const settingsModal = document.getElementById('settings-modal');
+        if (settingsModal) {
+            settingsModal.classList.remove('hidden');
+            settingsModal.classList.add('active');
+        }
+    }
+    
+    /**
+     * 关闭设置弹窗
+     */
+    closeSettingsModal() {
+        const settingsModal = document.getElementById('settings-modal');
+        if (settingsModal) {
+            settingsModal.classList.add('hidden');
+            settingsModal.classList.remove('active');
+        }
+    }
+    
+    /**
+     * 重置MCP添加窗口状态
+     */
+    resetMCPAddModal() {
+        // 清空输入框
+        const queryInput = document.getElementById('mcp-add-query');
+        if (queryInput) {
+            queryInput.value = '';
+        }
+        
+        // 隐藏会话区域
+        const sessionArea = document.getElementById('mcp-assistant-session');
+        if (sessionArea) {
+            sessionArea.classList.add('hidden');
+        }
+        
+        // 清空终端
+        const terminal = document.getElementById('mcp-assistant-terminal');
+        if (terminal) {
+            terminal.innerHTML = '';
+        }
+    }
+    
+    /**
+     * 开始MCP工具搜索
+     */
+    async startMCPToolSearch() {
+        const userQuery = document.getElementById('mcp-add-query').value.trim();
+        if (!userQuery) {
+            alert('请描述您需要的工具功能');
+            return;
+        }
+        
+        try {
+            // 关闭MCP添加弹窗
+            this.closeMCPAddModal();
+            
+            // 关闭设置弹窗
+            this.closeSettingsModal();
+            
+            // 直接使用用户需求，不再加载完整的智能体配置
+            // Claude Code的@agent功能会自动加载agent配置
+            
+            // 生成MCP管理员会话ID
+            const sessionId = `mcp-manager-${Date.now()}-${Math.random().toString(36).substr(2, 8)}`;
+            const sessionName = `MCP工具搜索: ${userQuery.length > 20 ? userQuery.substr(0, 20) + '...' : userQuery}`;
+            
+            console.log('🔍 启动MCP工具搜索会话:');
+            console.log('  会话ID:', sessionId);
+            console.log('  会话名称:', sessionName);
+            console.log('  用户需求:', userQuery);
+            
+            // 通过WebSocket发送MCP管理员会话创建请求
+            if (window.wsManager && window.wsManager.isConnected) {
+                const sessionData = {
+                    type: 'new-mcp-manager-session',
+                    sessionId: sessionId,
+                    sessionName: sessionName,
+                    command: userQuery,  // 只传递用户需求，后端会构建@agent命令
+                    skipPermissions: true  // MCP管理员需要跳过权限检查
+                };
+                
+                console.log('📡 发送MCP管理员会话创建请求:', sessionData);
+                window.wsManager.sendMessage(sessionData);
+                console.log('✅ MCP管理员会话请求已发送');
+            } else {
+                throw new Error('WebSocket连接未建立，请刷新页面重试');
+            }
+            
+        } catch (error) {
+            console.error('启动MCP工具搜索失败:', error);
+            alert('启动MCP工具搜索失败: ' + error.message);
+        }
+    }
+    
+    
+    /**
+     * 更新MCP会话状态
+     */
+    updateMCPSessionStatus(text, status = 'active') {
+        const statusIndicator = document.getElementById('mcp-session-status');
+        const statusText = document.getElementById('mcp-session-text');
+        
+        if (statusIndicator) {
+            statusIndicator.className = `status-indicator status-${status}`;
+        }
+        
+        if (statusText) {
+            statusText.textContent = text;
+        }
+    }
+    
+    /**
+     * 切换MCP会话显示状态
+     */
+    toggleMCPSession() {
+        const sessionArea = document.getElementById('mcp-assistant-session');
+        const collapseBtn = document.getElementById('collapse-mcp-session');
+        
+        if (sessionArea && collapseBtn) {
+            const terminal = sessionArea.querySelector('#mcp-assistant-terminal');
+            if (terminal) {
+                const isHidden = terminal.style.display === 'none';
+                terminal.style.display = isHidden ? 'block' : 'none';
+                collapseBtn.textContent = isHidden ? '收起' : '展开';
+            }
+        }
+    }
+    
+    /**
+     * 显示MCP搜索错误
+     */
+    showMCPSearchError(errorMessage) {
+        const terminal = document.getElementById('mcp-assistant-terminal');
+        if (terminal) {
+            terminal.innerHTML = `
+                <div style="padding: 1rem; font-family: monospace; background: #1a1a1a; color: #ef4444;">
+                    <p>❌ 错误: ${errorMessage}</p>
+                    <p>请检查网络连接或联系技术支持</p>
+                </div>
+            `;
+        }
+        
+        // 更新状态指示器
+        this.updateMCPSessionStatus('搜索失败', 'error');
+    }
+    
+    /**
+     * 生成会话ID
+     */
+    generateSessionId() {
+        return 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+    }
+    
+    /**
+     * 设置MCP WebSocket消息监听器
+     */
+    setupMCPMessageListeners() {
+        // 监听全局WebSocket事件
+        document.addEventListener('websocketMessage', (event) => {
+            const data = event.detail;
+            
+            switch (data.type) {
+                case 'mcp-status-response':
+                    this.handleMCPStatusResponse(data);
+                    break;
+            }
+        });
+    }
+    
+    /**
+     * 处理MCP状态响应
+     */
+    handleMCPStatusResponse(data) {
+        const toolsList = document.getElementById('mcp-tools-list');
+        const toolsCount = document.getElementById('mcp-tools-count');
+        
+        if (!toolsList || !toolsCount) return;
+        
+        try {
+            // 结束加载状态
+            this.mcpLoadingState.isLoading = false;
+            
+            // 更新工具数量并显示计数
+            toolsCount.textContent = data.count || 0;
+            const countWrapper = document.getElementById('mcp-tools-count-wrapper');
+            if (countWrapper) {
+                countWrapper.style.display = 'inline';
+            }
+            
+            if (data.status === 'success') {
+                // 直接显示结果
+                if (data.count > 0 && data.tools && data.tools.length > 0) {
+                    // 有工具，渲染工具列表
+                    toolsList.innerHTML = this.renderMCPToolsList(data.tools);
+                } else {
+                    // 确实没有工具，显示占位符
+                    toolsList.innerHTML = this.getMCPToolsPlaceholderHTML();
+                }
+            } else {
+                // 查询出错
+                toolsList.innerHTML = `
+                    <div style="text-align: center; padding: 2rem; color: #ef4444;">
+                        <p>❌ 获取工具状态失败</p>
+                        <p style="font-size: 0.85rem; margin-top: 0.5rem;">${data.message || '未知错误'}</p>
+                    </div>
+                `;
+            }
+        } catch (error) {
+            console.error('处理MCP状态响应失败:', error);
+            this.mcpLoadingState.isLoading = false;
+            toolsList.innerHTML = `
+                <div style="text-align: center; padding: 2rem; color: #ef4444;">
+                    <p>❌ 处理响应失败</p>
+                    <p style="font-size: 0.85rem; margin-top: 0.5rem;">${error.message}</p>
+                </div>
+            `;
+            toolsCount.textContent = '0';
+            const countWrapper = document.getElementById('mcp-tools-count-wrapper');
+            if (countWrapper) {
+                countWrapper.style.display = 'inline';
+            }
+        }
+    }
+    
+    /**
+     * 渲染MCP工具列表
+     */
+    renderMCPToolsList(tools) {
+        // 这个函数只负责渲染实际的工具列表，不处理空状态
+        if (!tools || tools.length === 0) {
+            return ''; // 返回空字符串，由调用方决定显示什么
+        }
+        
+        return tools.map(tool => `
+            <div class="mcp-tool-item">
+                <div class="mcp-tool-info">
+                    <div class="mcp-tool-name">${tool.name || 'Unknown Tool'}</div>
+                    <div class="mcp-tool-desc">${tool.description || '暂无描述'}</div>
+                    <div class="mcp-tool-status">
+                        <span class="status-indicator ${tool.enabled ? 'status-enabled' : 'status-disabled'}"></span>
+                        ${tool.enabled ? '运行中' : '已禁用'}
+                    </div>
+                </div>
+                <div class="mcp-tool-actions">
+                    <button class="btn-small ${tool.enabled ? 'btn-secondary' : 'btn-primary'}" 
+                            onclick="sidebarEnhanced.toggleMCPTool('${tool.id}', ${!tool.enabled})">
+                        ${tool.enabled ? '禁用' : '启用'}
+                    </button>
+                </div>
+            </div>
+        `).join('');
+    }
+    
+    /**
+     * 获取MCP工具占位符HTML
+     */
+    getMCPToolsPlaceholderHTML() {
+        return `
+            <div style="text-align: center; padding: 2rem; color: var(--muted-foreground);">
+                <p>暂无已安装的MCP工具</p>
+            </div>
+        `;
+    }
+    
+    /**
+     * 处理MCP管理员会话开始
+     */
+    handleMCPManagerSessionStart(data) {
+        // 检查新的MCP添加窗口终端
+        const assistantTerminal = document.getElementById('mcp-assistant-terminal');
+        if (assistantTerminal) {
+            assistantTerminal.innerHTML = `
+                <div style="padding: 1rem; font-family: monospace; background: #1a1a1a; color: #ffffff;">
+                    <p>🤖 MCP工具助手会话已启动</p>
+                    <p>会话ID: ${data.sessionId}</p>
+                    <p>正在分析您的需求...</p>
+                </div>
+            `;
+            
+            // 更新会话状态
+            this.updateMCPSessionStatus('会话已建立，正在搜索...', 'active');
+        }
+        
+        // 兼容旧的设置窗口终端（如果存在）
+        const agentTerminal = document.getElementById('mcp-agent-terminal');
+        if (agentTerminal) {
+            agentTerminal.innerHTML = `
+                <div style="padding: 1rem;">
+                    <p>🤖 MCP管理员会话已启动</p>
+                    <p>会话ID: ${data.sessionId}</p>
+                    <p>正在处理您的请求...</p>
+                </div>
+            `;
+        }
+    }
+    
+    /**
+     * 处理MCP管理员响应
+     */
+    handleMCPManagerResponse(data) {
+        // 优先处理新的MCP添加窗口终端
+        const assistantTerminal = document.getElementById('mcp-assistant-terminal');
+        if (assistantTerminal) {
+            try {
+                const responseData = data.data;
+                
+                if (responseData.content) {
+                    // 追加响应内容到新窗口终端
+                    const responseDiv = document.createElement('div');
+                    responseDiv.style.cssText = 'margin-bottom: 0.5rem; padding: 0.25rem; font-family: monospace; background: #1a1a1a; color: #ffffff; border-left: 2px solid #22c55e;';
+                    responseDiv.textContent = responseData.content;
+                    assistantTerminal.appendChild(responseDiv);
+                    
+                    // 滚动到底部
+                    assistantTerminal.scrollTop = assistantTerminal.scrollHeight;
+                    
+                    // 更新状态
+                    this.updateMCPSessionStatus('正在处理...', 'active');
+                }
+            } catch (error) {
+                console.error('处理MCP工具助手响应失败:', error);
+            }
+            return; // 新窗口处理完成，不需要处理旧窗口
+        }
+        
+        // 兼容旧的设置窗口终端
+        const agentTerminal = document.getElementById('mcp-agent-terminal');
+        if (!agentTerminal) return;
+        
+        try {
+            const responseData = data.data;
+            
+            if (responseData.content) {
+                // 追加响应内容
+                const responseDiv = document.createElement('div');
+                responseDiv.style.marginBottom = '0.5rem';
+                responseDiv.textContent = responseData.content;
+                agentTerminal.appendChild(responseDiv);
+                
+                // 滚动到底部
+                agentTerminal.scrollTop = agentTerminal.scrollHeight;
+            }
+        } catch (error) {
+            console.error('处理MCP管理员响应失败:', error);
+        }
+    }
+    
+    /**
+     * 处理MCP管理员会话结束
+     */
+    handleMCPManagerSessionEnd(data) {
+        // 优先处理新的MCP添加窗口终端
+        const assistantTerminal = document.getElementById('mcp-assistant-terminal');
+        if (assistantTerminal) {
+            const endDiv = document.createElement('div');
+            endDiv.style.cssText = 'color: #22c55e; margin-top: 1rem; padding: 0.5rem; font-family: monospace; background: #1a1a1a; border: 1px solid #22c55e; border-radius: 4px;';
+            endDiv.innerHTML = `
+                <p>✅ MCP工具搜索已完成</p>
+                <p>退出代码: ${data.exitCode}</p>
+                <p style="margin-top: 0.5rem; font-size: 0.9rem;">工具列表将自动刷新...</p>
+            `;
+            assistantTerminal.appendChild(endDiv);
+            
+            // 滚动到底部
+            assistantTerminal.scrollTop = assistantTerminal.scrollHeight;
+            
+            // 更新状态
+            this.updateMCPSessionStatus('搜索完成', 'success');
+            
+            // 刷新MCP工具列表
+            setTimeout(() => {
+                this.loadMCPTools();
+            }, 1000);
+            
+            return; // 新窗口处理完成
+        }
+        
+        // 兼容旧的设置窗口终端
+        const agentTerminal = document.getElementById('mcp-agent-terminal');
+        if (agentTerminal) {
+            const endDiv = document.createElement('div');
+            endDiv.style.color = '#10b981';
+            endDiv.style.marginTop = '1rem';
+            endDiv.innerHTML = `
+                <p>✅ MCP管理员会话已完成</p>
+                <p>退出代码: ${data.exitCode}</p>
+            `;
+            agentTerminal.appendChild(endDiv);
+            
+            // 滚动到底部
+            agentTerminal.scrollTop = agentTerminal.scrollHeight;
+        }
+        
+        // 刷新MCP工具列表
+        setTimeout(() => {
+            this.loadMCPTools();
+        }, 1000);
+    }
+    
+    /**
+     * 处理MCP管理员错误
+     */
+    handleMCPManagerError(data) {
+        // 优先处理新的MCP添加窗口
+        const assistantTerminal = document.getElementById('mcp-assistant-terminal');
+        if (assistantTerminal) {
+            this.showMCPSearchError(`会话错误: ${data.error}`);
+            return;
+        }
+        
+        // 兼容旧的设置窗口
+        this.showMCPManagerError(`会话错误: ${data.error}`);
+    }
+    
+    /**
+     * 切换MCP工具状态
+     */
+    async toggleMCPTool(toolId, enabled) {
+        try {
+            // TODO: 实现MCP工具启用/禁用功能
+            console.log(`切换MCP工具状态: ${toolId}, 启用: ${enabled}`);
+            alert('MCP工具状态切换功能开发中...');
+        } catch (error) {
+            console.error('切换MCP工具状态失败:', error);
+            alert('操作失败: ' + error.message);
+        }
     }
 
     /**
