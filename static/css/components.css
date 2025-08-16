@@ -287,12 +287,12 @@
   margin: 0;
 }
 
-.dashboard-grid {
+.dashboard-content-wrapper .dashboard-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 500px 1fr;
   gap: 24px;
   margin: 0 auto 32px auto;
-  max-width: 800px;
+  max-width: 1200px;
   width: 100%;
 }
 

@@ -2248,6 +2248,72 @@ async def toggle_task(task_id: str, request: Request):
             content={"error": "切换任务状态失败", "details": str(e)}
         )
 
+
+# MCP工具管理API
+@app.get("/api/mcp/status")
+async def get_mcp_status_api(project_path: str = None):
+    """获取MCP工具状态API"""
+    try:
+        result = await get_project_mcp_status(project_path or "/Users/yuhao")
+        return JSONResponse(content=result)
+    except Exception as e:
+        logger.error(f"获取MCP状态API出错: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"error": "获取MCP状态失败", "details": str(e)}
+        )
+
+
+@app.get("/api/mcp/cross-project-status")
+async def get_cross_project_mcp_status():
+    """获取跨项目MCP工具状态API"""
+    try:
+        # 获取所有项目
+        projects = await ProjectManager.get_projects()
+        
+        # 用户家目录MCP状态
+        user_home_status = await get_project_mcp_status("/Users/yuhao")
+        
+        # 并行获取每个项目的MCP状态
+        async def get_single_project_status(project):
+            project_path = project.get("path")
+            if project_path and os.path.exists(project_path):
+                try:
+                    status = await get_project_mcp_status(project_path)
+                    return {
+                        "projectName": project.get("name"),
+                        "projectPath": project_path,
+                        "mcpStatus": status
+                    }
+                except Exception as e:
+                    logger.warning(f"获取项目 {project_path} MCP状态失败: {e}")
+                    return {
+                        "projectName": project.get("name"),
+                        "projectPath": project_path,
+                        "mcpStatus": {"count": 0, "tools": []}
+                    }
+            return None
+        
+        # 并行执行所有项目的MCP状态查询
+        tasks = [get_single_project_status(project) for project in projects]
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+        
+        # 过滤掉None结果和异常
+        project_statuses = [result for result in results if result is not None and not isinstance(result, Exception)]
+        
+        return JSONResponse(content={
+            "userHomeStatus": user_home_status,
+            "projectStatuses": project_statuses,
+            "totalProjects": len(project_statuses)
+        })
+    except Exception as e:
+        logger.error(f"获取跨项目MCP状态API出错: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"error": "获取跨项目MCP状态失败", "details": str(e)}
+        )
+
+
 def parse_mcp_tools_output(output: str) -> tuple[list, int]:
     """解析claude mcp list命令的输出
     
@@ -2297,15 +2363,17 @@ def parse_mcp_tools_output(output: str) -> tuple[list, int]:
     return tools_list, tools_count
 
 # MCP管理处理方法
-async def handle_get_mcp_status(websocket: WebSocket):
+async def handle_get_mcp_status(websocket: WebSocket, project_path: str = None):
     """处理获取MCP工具状态请求"""
     try:
-        logger.info("收到MCP状态查询请求")
+        # 确定工作目录：如果提供了项目路径则使用项目路径，否则使用用户家目录
+        working_dir = project_path if project_path and os.path.exists(project_path) else "/Users/yuhao"
+        logger.info(f"收到MCP状态查询请求，工作目录: {working_dir}")
         
         # 执行claude mcp list命令获取已安装工具
         result = subprocess.run(['claude', 'mcp', 'list'], 
                               capture_output=True, text=True, timeout=30,
-                              cwd="/Users/yuhao")  # 确保在用户家目录执行
+                              cwd=working_dir)
         
         tools_list = []
         tools_count = 0
@@ -2326,30 +2394,99 @@ async def handle_get_mcp_status(websocket: WebSocket):
             'tools': tools_list,
             'count': tools_count,
             'status': 'success' if result.returncode == 0 else 'error',
-            'message': output if result.returncode == 0 else result.stderr
+            'message': output if result.returncode == 0 else result.stderr,
+            'projectPath': working_dir,
+            'isProjectSpecific': bool(project_path and os.path.exists(project_path))
         }, websocket)
         
         logger.info(f"MCP状态查询完成: {tools_count}个工具")
         
     except subprocess.TimeoutExpired:
+        working_dir = project_path if project_path and os.path.exists(project_path) else "/Users/yuhao"
         await manager.send_personal_message({
             'type': 'mcp-status-response',
             'tools': [],
             'count': 0,
             'status': 'timeout',
-            'message': 'MCP状态查询超时'
+            'message': 'MCP状态查询超时',
+            'projectPath': working_dir,
+            'isProjectSpecific': bool(project_path and os.path.exists(project_path))
         }, websocket)
         logger.error("MCP状态查询超时")
         
     except Exception as e:
+        working_dir = project_path if project_path and os.path.exists(project_path) else "/Users/yuhao"
         await manager.send_personal_message({
             'type': 'mcp-status-response',
             'tools': [],
             'count': 0,
             'status': 'error',
-            'message': str(e)
+            'message': str(e),
+            'projectPath': working_dir,
+            'isProjectSpecific': bool(project_path and os.path.exists(project_path))
         }, websocket)
         logger.error(f"MCP状态查询异常: {e}")
+
+
+async def get_project_mcp_status(project_path: str):
+    """获取指定项目的MCP状态"""
+    try:
+        working_dir = project_path if os.path.exists(project_path) else "/Users/yuhao"
+        logger.info(f"查询项目MCP状态: {working_dir}")
+        
+        # 异步执行claude mcp list命令获取已安装工具
+        process = await asyncio.create_subprocess_exec(
+            'claude', 'mcp', 'list',
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+            cwd=working_dir
+        )
+        
+        try:
+            stdout, stderr = await asyncio.wait_for(process.communicate(), timeout=10.0)
+            result_stdout = stdout.decode('utf-8').strip()
+            result_stderr = stderr.decode('utf-8')
+            returncode = process.returncode
+        except asyncio.TimeoutError:
+            process.kill()
+            await process.wait()
+            return {
+                'projectPath': working_dir,
+                'tools': [],
+                'count': 0,
+                'status': 'timeout',
+                'message': 'MCP查询超时',
+                'isProjectSpecific': os.path.exists(project_path)
+            }
+        
+        tools_list = []
+        tools_count = 0
+        
+        if returncode == 0:
+            if "No MCP servers configured" not in result_stdout and result_stdout:
+                tools_list, tools_count = parse_mcp_tools_output(result_stdout)
+            else:
+                tools_count = 0
+        
+        return {
+            'projectPath': working_dir,
+            'tools': tools_list,
+            'count': tools_count,
+            'status': 'success' if returncode == 0 else 'error',
+            'message': result_stdout if returncode == 0 else result_stderr,
+            'isProjectSpecific': os.path.exists(project_path)
+        }
+        
+    except Exception as e:
+        logger.error(f"获取项目MCP状态异常: {e}")
+        return {
+            'projectPath': project_path,
+            'tools': [],
+            'count': 0,
+            'status': 'error',
+            'message': str(e),
+            'isProjectSpecific': False
+        }
 
 
 # WebSocket路由
@@ -2509,21 +2646,28 @@ async def chat_websocket_endpoint(websocket: WebSocket):
                     logger.info(f"✅ 任务会话恢复请求已发送到前端: session_id={session_id}")
             elif message.get('type') == 'get-mcp-status':
                 # 处理获取MCP工具状态请求
-                await handle_get_mcp_status(websocket)
+                project_path = message.get('projectPath')
+                await handle_get_mcp_status(websocket, project_path)
             elif message.get('type') == 'new-mcp-manager-session':
                 # 处理MCP管理员会话创建请求
                 session_id = message.get('sessionId')
                 session_name = message.get('sessionName', 'MCP工具搜索')
                 command = message.get('command', '')
                 skip_permissions = message.get('skipPermissions', True)
+                project_path = message.get('projectPath', '/Users/yuhao')
                 
                 logger.info(f"🤖 MCP管理员会话创建请求: {session_name} (ID: {session_id})")
+                logger.info(f"🤖 目标项目路径: {project_path}")
                 
                 # 使用@agent语法构建简单命令，避免shell解析问题
                 agent_command = f"@agent-mcp-manager {command}"
                 logger.info(f"🤖 构建@agent命令: {agent_command}")
                 
                 task_command_parts = ['claude', f'"{agent_command}"']
+                
+                # 添加项目路径参数
+                if project_path and project_path != '/Users/yuhao':
+                    task_command_parts.append(f'--add-dir "{project_path}"')
                 
                 # MCP管理员默认跳过权限检查
                 if skip_permissions:
@@ -2539,7 +2683,7 @@ async def chat_websocket_endpoint(websocket: WebSocket):
                     'taskId': session_id,
                     'taskName': session_name,
                     'initialCommand': full_command,
-                    'workingDirectory': os.path.expanduser('~'),  # 使用与正常任务相同的工作目录获取方式
+                    'workingDirectory': project_path,  # 使用指定的项目路径作为工作目录
                     'scheduledExecution': False,
                     'resumeSession': False,  # 添加会话恢复标识
                     'sessionId': None        # 添加会话ID字段
