@@ -2015,7 +2015,7 @@ async def get_claude_info():
         logger.error(f"获取Claude CLI信息时出错: {e}")
         return JSONResponse(content={
             "version": "1.0.73 (Claude Code)",
-            "path": "/Users/yuhao/.local/bin/claude"
+            "path": str(Path.home() / '.local' / 'bin' / 'claude')
         })
 
 
@@ -2254,7 +2254,7 @@ async def toggle_task(task_id: str, request: Request):
 async def get_mcp_status_api(project_path: str = None):
     """获取MCP工具状态API"""
     try:
-        result = await get_project_mcp_status(project_path or "/Users/yuhao")
+        result = await get_project_mcp_status(project_path or os.path.expanduser('~'))
         return JSONResponse(content=result)
     except Exception as e:
         logger.error(f"获取MCP状态API出错: {e}")
@@ -2272,7 +2272,7 @@ async def get_cross_project_mcp_status():
         projects = await ProjectManager.get_projects()
         
         # 用户家目录MCP状态
-        user_home_status = await get_project_mcp_status("/Users/yuhao")
+        user_home_status = await get_project_mcp_status(os.path.expanduser('~'))
         
         # 并行获取每个项目的MCP状态
         async def get_single_project_status(project):
@@ -2367,11 +2367,16 @@ async def handle_get_mcp_status(websocket: WebSocket, project_path: str = None):
     """处理获取MCP工具状态请求"""
     try:
         # 确定工作目录：如果提供了项目路径则使用项目路径，否则使用用户家目录
-        working_dir = project_path if project_path and os.path.exists(project_path) else "/Users/yuhao"
+        working_dir = project_path if project_path and os.path.exists(project_path) else os.path.expanduser('~')
         logger.info(f"收到MCP状态查询请求，工作目录: {working_dir}")
         
+        # 获取Claude CLI的绝对路径
+        claude_executable = EnvironmentChecker.get_claude_executable_path()
+        if not claude_executable:
+            raise Exception("未找到Claude CLI可执行文件")
+        
         # 执行claude mcp list命令获取已安装工具
-        result = subprocess.run(['claude', 'mcp', 'list'], 
+        result = subprocess.run([claude_executable, 'mcp', 'list'], 
                               capture_output=True, text=True, timeout=30,
                               cwd=working_dir)
         
@@ -2402,7 +2407,7 @@ async def handle_get_mcp_status(websocket: WebSocket, project_path: str = None):
         logger.info(f"MCP状态查询完成: {tools_count}个工具")
         
     except subprocess.TimeoutExpired:
-        working_dir = project_path if project_path and os.path.exists(project_path) else "/Users/yuhao"
+        working_dir = project_path if project_path and os.path.exists(project_path) else os.path.expanduser('~')
         await manager.send_personal_message({
             'type': 'mcp-status-response',
             'tools': [],
@@ -2415,7 +2420,7 @@ async def handle_get_mcp_status(websocket: WebSocket, project_path: str = None):
         logger.error("MCP状态查询超时")
         
     except Exception as e:
-        working_dir = project_path if project_path and os.path.exists(project_path) else "/Users/yuhao"
+        working_dir = project_path if project_path and os.path.exists(project_path) else os.path.expanduser('~')
         await manager.send_personal_message({
             'type': 'mcp-status-response',
             'tools': [],
@@ -2434,9 +2439,14 @@ async def get_project_mcp_status(project_path: str):
         working_dir = project_path if os.path.exists(project_path) else "/Users/yuhao"
         logger.info(f"查询项目MCP状态: {working_dir}")
         
+        # 获取Claude CLI的绝对路径
+        claude_executable = EnvironmentChecker.get_claude_executable_path()
+        if not claude_executable:
+            raise Exception("未找到Claude CLI可执行文件")
+        
         # 异步执行claude mcp list命令获取已安装工具
         process = await asyncio.create_subprocess_exec(
-            'claude', 'mcp', 'list',
+            claude_executable, 'mcp', 'list',
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
             cwd=working_dir
