@@ -1209,7 +1209,9 @@ class EnhancedSidebar {
         const addMCPToolBtn = document.getElementById('add-mcp-tool');
         if (addMCPToolBtn) {
             addMCPToolBtn.addEventListener('click', () => {
-                this.showMCPAddModal();
+                // 获取当前选中的项目路径
+                const selectedProjectPath = this.getSelectedMCPProjectPath();
+                this.showMCPAddModal(selectedProjectPath);
             });
         }
         
@@ -1323,9 +1325,52 @@ class EnhancedSidebar {
      * 呼叫MCP管理员
      */
     /**
-     * 显示MCP工具添加窗口
+     * 获取当前选中的MCP项目路径
      */
-    showMCPAddModal() {
+    getSelectedMCPProjectPath() {
+        const projectSelect = document.getElementById('mcp-project-select');
+        if (projectSelect && projectSelect.value) {
+            return {
+                path: projectSelect.value,
+                name: projectSelect.options[projectSelect.selectedIndex].text
+            };
+        }
+        return null;
+    }
+    
+    /**
+     * 设置MCP目标项目信息
+     * @param {Object} projectInfo - 项目信息对象 {path, name}
+     */
+    setMCPTargetProject(projectInfo) {
+        const projectNameEl = document.getElementById('mcp-target-project-name');
+        const projectPathEl = document.getElementById('mcp-target-project-path');
+        
+        if (projectInfo && projectInfo.path) {
+            if (projectNameEl) {
+                projectNameEl.textContent = projectInfo.name || '未知项目';
+            }
+            if (projectPathEl) {
+                projectPathEl.textContent = `(${projectInfo.path})`;
+            }
+        } else {
+            if (projectNameEl) {
+                projectNameEl.textContent = '未选择项目';
+            }
+            if (projectPathEl) {
+                projectPathEl.textContent = '(请先在设置中选择项目)';
+            }
+        }
+        
+        // 存储项目路径供后续使用
+        this.currentMCPTargetProject = projectInfo;
+    }
+    
+    /**
+     * 显示MCP工具添加窗口
+     * @param {Object} projectInfo - 项目信息对象 {path, name}
+     */
+    showMCPAddModal(projectInfo = null) {
         // 关闭设置窗口
         const settingsModal = document.getElementById('settings-modal');
         if (settingsModal) {
@@ -1338,6 +1383,9 @@ class EnhancedSidebar {
         if (mcpAddModal) {
             mcpAddModal.classList.remove('hidden');
             mcpAddModal.classList.add('active');
+            
+            // 设置目标项目路径信息
+            this.setMCPTargetProject(projectInfo);
             
             // 初始化MCP添加窗口
             this.initializeMCPAddModal();
@@ -1459,9 +1507,8 @@ class EnhancedSidebar {
             
             // 通过WebSocket发送MCP管理员会话创建请求
             if (window.wsManager && window.wsManager.isConnected) {
-                // 获取当前选择的项目路径
-                const projectSelect = document.getElementById('mcp-project-select');
-                const selectedProjectPath = projectSelect?.value;
+                // 获取当前选择的项目路径，用于传递上下文
+                const selectedProjectPath = this.currentMCPTargetProject?.path || null;
                 
                 const sessionData = {
                     type: 'new-mcp-manager-session',
