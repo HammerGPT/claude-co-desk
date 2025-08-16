@@ -366,5 +366,21 @@
     "deleted": false,
     "executionMode": "immediate",
     "sessionId": null
+  },
+  {
+    "id": "task_1755323293_5",
+    "name": "测试MCP",
+    "goal": "查询昨天的AI行业新闻，发送到我的邮箱",
+    "skipPermissions": false,
+    "resources": [],
+    "scheduleFrequency": "immediate",
+    "scheduleTime": "",
+    "enabled": true,
+    "createdAt": "2025-08-16T13:48:13.310208",
+    "lastRun": null,
+    "workDirectory": "/Users/yuhao/Documents/Heliki/Heliki_OS/mission/task_1755323293_5_7w58xt",
+    "deleted": false,
+    "executionMode": "immediate",
+    "sessionId": "d29e183e-fa56-439d-88f8-7c69feadc844"
   }
 ]

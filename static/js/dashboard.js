@@ -7,7 +7,13 @@ class TaskManagerDashboard {
     constructor() {
         console.log('📊 TaskManagerDashboard 初始化开始');
         this.systemStatus = null;
-        this.taskStats = null;
+        this.taskStats = { total: 0, immediate: 0 }; // 初始显示0
+        this.mcpStatus = undefined; // 初始状态为undefined，表示未开始加载
+        this.claudeInfo = {
+            version: '1.0.73 (Claude Code)',
+            path: '/Users/yuhao/.local/bin/claude'
+        };
+        this.agentsCount = 0;
         this.isInitialized = false;
         
         this.initElements();
@@ -147,6 +153,48 @@ class TaskManagerDashboard {
      */
     async loadDashboardData() {
         try {
+            // 立即渲染Dashboard，显示加载状态
+            this.updateDashboard();
+            
+            // 并行加载所有数据，不阻塞页面显示
+            this.loadBasicDataAsync();
+            this.loadMCPStatusAsync();
+            
+        } catch (error) {
+            console.error('加载仪表板数据失败:', error);
+            this.renderErrorState();
+        }
+    }
+
+    /**
+     * 异步加载基础数据（不阻塞页面显示）
+     */
+    async loadBasicDataAsync() {
+        try {
+            console.log('开始异步加载基础数据...');
+            await this.loadBasicData();
+            console.log('基础数据加载完成，重新渲染Dashboard');
+            // 基础数据加载完成后重新渲染Dashboard
+            this.updateDashboard();
+        } catch (error) {
+            console.error('异步加载基础数据失败:', error);
+            // 即使基础数据加载失败，也要更新显示默认状态
+            this.systemStatus = null;
+            this.taskStats = { total: 0, immediate: 0 };
+            this.claudeInfo = {
+                version: '1.0.73 (Claude Code)',
+                path: '/Users/yuhao/.local/bin/claude'
+            };
+            this.agentsCount = 0;
+            this.updateDashboard();
+        }
+    }
+
+    /**
+     * 加载基础数据（快速加载）
+     */
+    async loadBasicData() {
+        try {
             // 加载系统状态
             const systemResponse = await fetch('/api/system-project/status');
             if (systemResponse.ok) {
@@ -168,11 +216,35 @@ class TaskManagerDashboard {
 
             // 加载Claude CLI信息和智能体数量
             await this.loadSystemInfo();
+            
+        } catch (error) {
+            console.error('加载基础数据失败:', error);
+            // 使用默认值确保页面能够显示
+            this.systemStatus = null;
+            this.taskStats = { total: 0, immediate: 0 };
+            this.claudeInfo = {
+                version: '1.0.73 (Claude Code)',
+                path: '/Users/yuhao/.local/bin/claude'
+            };
+            this.agentsCount = 0;
+        }
+    }
 
+    /**
+     * 异步加载MCP工具状态（不阻塞页面显示）
+     */
+    async loadMCPStatusAsync() {
+        try {
+            console.log('开始异步加载MCP状态...');
+            await this.loadMCPStatus();
+            console.log('MCP状态加载完成，重新渲染Dashboard');
+            // MCP数据加载完成后重新渲染Dashboard
             this.updateDashboard();
         } catch (error) {
-            console.error('加载仪表板数据失败:', error);
-            this.renderErrorState();
+            console.error('异步加载MCP状态失败:', error);
+            // 即使MCP加载失败，也要更新显示错误状态
+            this.mcpStatus = null;
+            this.updateDashboard();
         }
     }
 
@@ -212,6 +284,134 @@ class TaskManagerDashboard {
     }
 
     /**
+     * 加载MCP工具状态
+     */
+    async loadMCPStatus() {
+        try {
+            const response = await fetch('/api/mcp/cross-project-status');
+            if (response.ok) {
+                this.mcpStatus = await response.json();
+                console.log('Dashboard MCP状态加载成功:', this.mcpStatus);
+            } else {
+                console.warn('加载MCP状态失败:', response.status);
+                this.mcpStatus = null;
+            }
+        } catch (error) {
+            console.error('加载MCP状态异常:', error);
+            this.mcpStatus = null;
+        }
+    }
+
+    /**
+     * 获取MCP工具标题（带动态总数）
+     */
+    getMCPTitle() {
+        if (!this.mcpStatus) {
+            return 'MCP工具';
+        }
+        
+        // 计算总工具数
+        let totalCount = 0;
+        
+        // 用户全局工具
+        if (this.mcpStatus.userHomeStatus && this.mcpStatus.userHomeStatus.count) {
+            totalCount += this.mcpStatus.userHomeStatus.count;
+        }
+        
+        // 各项目工具
+        if (this.mcpStatus.projectStatuses && Array.isArray(this.mcpStatus.projectStatuses)) {
+            this.mcpStatus.projectStatuses.forEach(project => {
+                if (project.mcpStatus && project.mcpStatus.count) {
+                    totalCount += project.mcpStatus.count;
+                }
+            });
+        }
+        
+        return `MCP工具（总数 ${totalCount} 个）`;
+    }
+
+    /**
+     * 渲染MCP工具列表
+     */
+    renderMCPToolsList(tools, mode = 'full') {
+        // 这个函数只负责渲染实际的工具列表，不处理空状态
+        if (!tools || tools.length === 0) {
+            return mode === 'compact' ? 
+                '<div class="compact-no-tools">无MCP工具</div>' : 
+                ''; // 返回空字符串，由调用方决定显示什么
+        }
+        
+        if (mode === 'compact') {
+            // 紧凑模式，只显示工具名称和状态
+            return `<div class="compact-tools-list">${tools.map(tool => `
+                <span class="compact-tool-item">
+                    <span class="compact-tool-name">${tool.name || 'Unknown'}</span>
+                    <span class="status-indicator ${tool.enabled ? 'status-enabled' : 'status-disabled'}"></span>
+                </span>
+            `).join('')}</div>`;
+        }
+        
+        // 完整模式 (Dashboard中不使用，但保留兼容性)
+        return tools.map(tool => `
+            <div class="mcp-tool-item">
+                <div class="mcp-tool-info">
+                    <div class="mcp-tool-name">${tool.name || 'Unknown Tool'}</div>
+                    <div class="mcp-tool-desc">${tool.description || '暂无描述'}</div>
+                    <div class="mcp-tool-status">
+                        <span class="status-indicator ${tool.enabled ? 'status-enabled' : 'status-disabled'}"></span>
+                        ${tool.enabled ? '运行中' : '已禁用'}
+                    </div>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    /**
+     * 渲染MCP工具分布内容
+     */
+    renderMCPDistribution(data) {
+        // 检查加载状态
+        if (data === undefined) {
+            return `
+                <div class="mcp-loading">
+                    <p>正在加载MCP工具状态...</p>
+                    <small>请稍候</small>
+                </div>
+            `;
+        }
+        
+        if (data === null) {
+            return `
+                <div class="mcp-loading">
+                    <p>无法获取MCP工具状态</p>
+                    <small>设置 - MCP工具 可以添加工具</small>
+                </div>
+            `;
+        }
+
+        let html = '';
+        
+        // 各项目的MCP工具
+        data.projectStatuses.forEach(project => {
+            html += `
+                <div class="project-mcp-section">
+                    <h6>📂 ${project.projectName} (${project.mcpStatus.count}个)</h6>
+                    <div class="project-path">${project.projectPath.replace('/Users/yuhao/', '~/')}</div>
+                    ${this.renderMCPToolsList(project.mcpStatus.tools || [], 'compact')}
+                </div>
+            `;
+        });
+        
+        html += `
+            <div class="mcp-management-tip">
+                <small>设置 - MCP工具 可以添加工具</small>
+            </div>
+        `;
+        
+        return html;
+    }
+
+    /**
      * 更新仪表板内容
      */
     updateDashboard() {
@@ -242,20 +442,21 @@ class TaskManagerDashboard {
                                 <span class="status-label">智能体数量:</span>
                                 <span class="status-value">${this.agentsCount || 0} 个</span>
                             </div>
+                            <div class="status-item">
+                                <span class="status-label">总任务数:</span>
+                                <span class="status-value">${this.taskStats ? this.taskStats.total : 0} 个</span>
+                            </div>
+                            <div class="status-item">
+                                <span class="status-label">即时任务:</span>
+                                <span class="status-value">${this.taskStats ? this.taskStats.immediate : 0} 个</span>
+                            </div>
                         </div>
                     </div>
 
-                    <div class="dashboard-card">
-                        <h3>任务统计</h3>
-                        <div class="task-stats">
-                            <div class="stat-item">
-                                <div class="stat-number">${this.taskStats ? this.taskStats.total : 0}</div>
-                                <div class="stat-label">总任务数</div>
-                            </div>
-                            <div class="stat-item">
-                                <div class="stat-number">${this.taskStats ? this.taskStats.immediate : 0}</div>
-                                <div class="stat-label">即时任务</div>
-                            </div>
+                    <div class="dashboard-card mcp-overview-card">
+                        <h3>${this.getMCPTitle()}</h3>
+                        <div class="mcp-dashboard-content">
+                            ${this.renderMCPDistribution(this.mcpStatus)}
                         </div>
                     </div>
                 </div>

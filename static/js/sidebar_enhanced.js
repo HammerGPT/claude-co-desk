@@ -1106,14 +1106,140 @@ class EnhancedSidebar {
     }
     
     /**
+     * 初始化MCP项目选择器
+     */
+    initializeMCPProjectSelector() {
+        const projectSelect = document.getElementById('mcp-project-select');
+        if (!projectSelect) return;
+        
+        // 加载项目列表
+        this.loadProjectsForMCPSelector();
+        
+        // 监听选择变化
+        projectSelect.addEventListener('change', (e) => {
+            const selectedProjectPath = e.target.value;
+            console.log('MCP项目选择器变更:', selectedProjectPath || '全局');
+            
+            // 重新加载MCP工具状态
+            this.loadMCPTools();
+        });
+    }
+    
+    /**
+     * 为MCP选择器加载项目列表
+     */
+    async loadProjectsForMCPSelector() {
+        try {
+            const response = await fetch('/api/projects');
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            const data = await response.json();
+            const projectSelect = document.getElementById('mcp-project-select');
+            if (!projectSelect || !data.projects) return;
+            
+            // 清空并重建选项
+            projectSelect.innerHTML = '<option value="">全局MCP工具</option>';
+            
+            data.projects.forEach(project => {
+                const option = document.createElement('option');
+                option.value = project.path;
+                option.textContent = `${project.name} (${project.path.replace('/Users/yuhao/', '~/')})`;
+                projectSelect.appendChild(option);
+            });
+            
+            console.log(`已加载 ${data.projects.length} 个项目到MCP选择器`);
+        } catch (error) {
+            console.error('加载MCP项目列表失败:', error);
+        }
+    }
+    
+    /**
+     * 显示跨项目MCP视图
+     */
+    async showCrossProjectMCPView() {
+        try {
+            const response = await fetch('/api/mcp/cross-project-status');
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            const data = await response.json();
+            this.displayCrossProjectMCPData(data);
+        } catch (error) {
+            console.error('获取跨项目MCP状态失败:', error);
+            alert('无法获取跨项目MCP状态，请检查网络连接');
+        }
+    }
+    
+    /**
+     * 显示跨项目MCP数据
+     */
+    displayCrossProjectMCPData(data) {
+        const toolsList = document.getElementById('mcp-tools-list');
+        if (!toolsList) return;
+        
+        let html = `
+            <div class="cross-project-mcp-view">
+                <div class="cross-project-header">
+                    <h6>📊 跨项目MCP工具分布</h6>
+                    <small>总计 ${data.totalProjects} 个项目</small>
+                </div>
+        `;
+        
+        // 用户全局MCP工具
+        html += `
+            <div class="project-mcp-section">
+                <h6>🌐 全局工具 (${data.userHomeStatus.count}个)</h6>
+                <div class="project-path">~/</div>
+                ${this.renderMCPToolsList(data.userHomeStatus.tools || [], 'compact')}
+            </div>
+        `;
+        
+        // 各项目的MCP工具
+        data.projectStatuses.forEach(project => {
+            html += `
+                <div class="project-mcp-section">
+                    <h6>📂 ${project.projectName} (${project.mcpStatus.count}个)</h6>
+                    <div class="project-path">${project.projectPath.replace('/Users/yuhao/', '~/')}</div>
+                    ${this.renderMCPToolsList(project.mcpStatus.tools || [], 'compact')}
+                </div>
+            `;
+        });
+        
+        html += `
+            <div class="cross-project-actions">
+                <button class="btn btn-secondary" onclick="sidebarEnhanced.loadMCPTools()">
+                    返回当前项目视图
+                </button>
+            </div>
+            </div>
+        `;
+        
+        toolsList.innerHTML = html;
+    }
+    
+    /**
      * 初始化MCP工具管理功能
      */
     initializeMCPToolsFeatures() {
+        // 初始化项目选择器
+        this.initializeMCPProjectSelector();
+        
         // 添加MCP工具按钮
         const addMCPToolBtn = document.getElementById('add-mcp-tool');
         if (addMCPToolBtn) {
             addMCPToolBtn.addEventListener('click', () => {
                 this.showMCPAddModal();
+            });
+        }
+        
+        // 跨项目视图按钮
+        const crossProjectBtn = document.getElementById('cross-project-mcp-view');
+        if (crossProjectBtn) {
+            crossProjectBtn.addEventListener('click', () => {
+                this.showCrossProjectMCPView();
             });
         }
         
@@ -1153,9 +1279,22 @@ class EnhancedSidebar {
             
             // 通过WebSocket获取MCP工具状态
             if (window.wsManager && window.wsManager.isConnected) {
-                window.wsManager.sendMessage({
+                const message = {
                     type: 'get-mcp-status'
-                });
+                };
+                
+                // 优先从MCP项目选择器获取项目路径
+                const projectSelect = document.getElementById('mcp-project-select');
+                const selectedProjectPath = projectSelect?.value;
+                
+                if (selectedProjectPath) {
+                    message.projectPath = selectedProjectPath;
+                } else if (this.selectedProject && this.selectedProject.path) {
+                    // 如果项目选择器没有选择，则使用当前选择的项目
+                    message.projectPath = this.selectedProject.path;
+                }
+                
+                window.wsManager.sendMessage(message);
                 
                 // 确保监听器已设置
                 this.setupMCPStatusListener();
@@ -1348,12 +1487,17 @@ class EnhancedSidebar {
             
             // 通过WebSocket发送MCP管理员会话创建请求
             if (window.wsManager && window.wsManager.isConnected) {
+                // 获取当前选择的项目路径
+                const projectSelect = document.getElementById('mcp-project-select');
+                const selectedProjectPath = projectSelect?.value;
+                
                 const sessionData = {
                     type: 'new-mcp-manager-session',
                     sessionId: sessionId,
                     sessionName: sessionName,
                     command: userQuery,  // 只传递用户需求，后端会构建@agent命令
-                    skipPermissions: true  // MCP管理员需要跳过权限检查
+                    skipPermissions: true,  // MCP管理员需要跳过权限检查
+                    projectPath: selectedProjectPath || '/Users/yuhao'  // 传递项目路径上下文
                 };
                 
                 console.log('📡 发送MCP管理员会话创建请求:', sessionData);
@@ -1464,6 +1608,21 @@ class EnhancedSidebar {
                 countWrapper.style.display = 'inline';
             }
             
+            // 更新项目信息显示
+            const mcpHeader = document.querySelector('.mcp-tools-section h3');
+            if (mcpHeader && data.projectPath) {
+                const projectName = data.isProjectSpecific ? 
+                    (this.selectedProject?.name || '项目') : 
+                    '全局';
+                const pathDisplay = data.projectPath.replace('/Users/yuhao/', '~/');
+                mcpHeader.innerHTML = `
+                    <span>🔧 MCP工具</span>
+                    <small style="font-weight: normal; color: #888; margin-left: 8px;">
+                        ${projectName} (${pathDisplay})
+                    </small>
+                `;
+            }
+            
             if (data.status === 'success') {
                 // 直接显示结果
                 if (data.count > 0 && data.tools && data.tools.length > 0) {
@@ -1502,12 +1661,25 @@ class EnhancedSidebar {
     /**
      * 渲染MCP工具列表
      */
-    renderMCPToolsList(tools) {
+    renderMCPToolsList(tools, mode = 'full') {
         // 这个函数只负责渲染实际的工具列表，不处理空状态
         if (!tools || tools.length === 0) {
-            return ''; // 返回空字符串，由调用方决定显示什么
+            return mode === 'compact' ? 
+                '<div class="compact-no-tools">无MCP工具</div>' : 
+                ''; // 返回空字符串，由调用方决定显示什么
         }
         
+        if (mode === 'compact') {
+            // 紧凑模式，只显示工具名称和状态
+            return `<div class="compact-tools-list">${tools.map(tool => `
+                <span class="compact-tool-item">
+                    <span class="compact-tool-name">${tool.name || 'Unknown'}</span>
+                    <span class="status-indicator ${tool.enabled ? 'status-enabled' : 'status-disabled'}"></span>
+                </span>
+            `).join('')}</div>`;
+        }
+        
+        // 完整模式
         return tools.map(tool => `
             <div class="mcp-tool-item">
                 <div class="mcp-tool-info">
