@@ -330,12 +330,12 @@
                                     </div>
                                     <div class="mcp-actions">
                                         <button id="add-mcp-tool" class="btn btn-primary">
-                                            <span class="btn-icon">➕</span>
                                             添加MCP工具
                                         </button>
-                                        <button id="refresh-mcp-tools" class="btn btn-secondary">
-                                            <span class="btn-icon">🔄</span>
-                                            刷新列表
+                                        <button id="refresh-mcp-tools" class="action-btn" title="刷新列表">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                                            </svg>
                                         </button>
                                     </div>
                                 </div>
@@ -392,19 +392,29 @@
                     <h3>📦 添加MCP工具</h3>
                     <button id="mcp-add-modal-close" class="modal-close">×</button>
                 </div>
-                <div class="modal-body">
-                    <div class="mcp-add-content">
-                        <!-- 工具需求输入区域 -->
-                        <div class="mcp-query-section">
-                            <div class="section-header">
-                                <h4>🤖 描述您的工具需求</h4>
-                                <p class="section-desc">详细描述您希望添加的MCP工具功能，AI助手将为您搜索和推荐合适的工具。</p>
-                            </div>
-                            <div class="mcp-query-input">
-                                <textarea id="mcp-add-query" class="form-control" placeholder="请描述您需要的工具功能...&#10;&#10;例如：我需要连接和操作PostgreSQL数据库&#10;例如：我想要一个能够处理PDF文件的工具&#10;例如：我需要与Slack集成发送消息的功能"></textarea>
-                                <button id="start-mcp-search" class="btn btn-primary">🔍 开始搜索工具</button>
-                            </div>
+                
+                <!-- 目标路径提示区域 -->
+                <div class="mcp-target-path">
+                    <div class="path-info">
+                        <span class="path-label">目标项目：</span>
+                        <span id="mcp-target-project-name" class="path-project-name">未选择项目</span>
+                        <span id="mcp-target-project-path" class="path-project-path">(/path/to/project)</span>
+                    </div>
+                </div>
+                
+                <!-- 工具需求输入区域 -->
+                <div class="mcp-query-section">
+                    <div class="section-header">
+                        <div class="section-header-content">
+                            <h4>🤖 描述您的工具需求</h4>
+                            <p class="section-desc">详细描述您希望添加的MCP工具功能，AI助手将为您搜索和推荐合适的工具。</p>
                         </div>
+                        <button id="start-mcp-search" class="btn btn-primary">智能添加MCP</button>
+                    </div>
+                    <div class="mcp-query-input">
+                        <textarea id="mcp-add-query" class="form-control" placeholder="请描述您需要的工具功能，或直接输入MCP服务器安装命令...&#10;&#10;功能需求示例：&#10;• 我需要连接和操作PostgreSQL数据库&#10;• 我想要一个能够处理PDF文件的工具&#10;• 我需要与Slack集成发送消息的功能&#10;&#10;直接安装命令示例：&#10;• npx -y @modelcontextprotocol/server-filesystem /path/to/files&#10;• npx -y @modelcontextprotocol/server-github&#10;• npx -y @modelcontextprotocol/server-memory&#10;• uv --directory /path/to/server run server.py"></textarea>
+                    </div>
+                </div>
                         
                         <!-- MCP助手会话区域 -->
                         <div id="mcp-assistant-session" class="mcp-session-area hidden">
