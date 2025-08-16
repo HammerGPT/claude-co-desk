@@ -321,28 +321,24 @@
                             
                             <!-- 项目选择器 -->
                             <div class="mcp-project-selector">
-                                <div class="form-group">
-                                    <label for="mcp-project-select">工作项目：</label>
-                                    <select id="mcp-project-select" class="form-control">
-                                        <option value="">全局MCP工具</option>
-                                    </select>
+                                <div class="mcp-selector-row">
+                                    <div class="form-group">
+                                        <label for="mcp-project-select">工作项目：</label>
+                                        <select id="mcp-project-select" class="form-control">
+                                            <!-- 动态加载项目列表 -->
+                                        </select>
+                                    </div>
+                                    <div class="mcp-actions">
+                                        <button id="add-mcp-tool" class="btn btn-primary">
+                                            <span class="btn-icon">➕</span>
+                                            添加MCP工具
+                                        </button>
+                                        <button id="refresh-mcp-tools" class="btn btn-secondary">
+                                            <span class="btn-icon">🔄</span>
+                                            刷新列表
+                                        </button>
+                                    </div>
                                 </div>
-                            </div>
-                            
-                            <!-- 工具管理操作区域 -->
-                            <div class="mcp-tools-actions">
-                                <button id="add-mcp-tool" class="btn btn-primary">
-                                    <span class="btn-icon">➕</span>
-                                    添加MCP工具
-                                </button>
-                                <button id="refresh-mcp-tools" class="btn btn-secondary">
-                                    <span class="btn-icon">🔄</span>
-                                    刷新列表
-                                </button>
-                                <button id="cross-project-mcp-view" class="btn btn-secondary">
-                                    <span class="btn-icon">📊</span>
-                                    跨项目视图
-                                </button>
                             </div>
                             
                             <!-- 已安装工具列表 -->

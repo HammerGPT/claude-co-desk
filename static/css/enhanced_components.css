@@ -556,9 +556,10 @@
 /* Settings Modal 样式 */
 .settings-modal-body {
   display: flex;
-  height: 70vh;
-  max-height: 600px;
+  flex: 1;
+  height: 100%;
   padding: 0;
+  overflow: hidden;
 }
 
 .settings-sidebar {
@@ -566,6 +567,8 @@
   background: hsl(var(--muted));
   border-right: 1px solid hsl(var(--border));
   padding: 1rem 0;
+  height: 100%;
+  overflow-y: auto;
 }
 
 .settings-menu {
@@ -599,6 +602,7 @@
   flex: 1;
   padding: 2rem;
   overflow-y: auto;
+  height: 100%;
 }
 
 .settings-section {
@@ -780,14 +784,16 @@
 @media (max-width: 768px) {
   .settings-modal-body {
     flex-direction: column;
-    height: auto;
-    max-height: 80vh;
+    height: 100%;
   }
   
   .settings-sidebar {
     width: 100%;
     border-right: none;
     border-bottom: 1px solid hsl(var(--border));
+    height: auto;
+    max-height: 150px;
+    flex-shrink: 0;
   }
   
   .settings-menu {
@@ -813,48 +819,56 @@
   }
 }
 
-/* MCP工具管理操作区域样式 */
-.mcp-tools-actions {
+/* MCP项目选择器行布局样式 */
+.mcp-selector-row {
   display: flex;
+  align-items: flex-end;
   gap: 1rem;
-  margin-bottom: 1.5rem;
-  padding: 1rem;
-  background: hsl(var(--muted) / 0.3);
-  border: 1px solid hsl(var(--border));
-  border-radius: 0.5rem;
+  margin-bottom: 1rem;
 }
 
-.mcp-tools-actions .btn {
+.mcp-selector-row .form-group {
+  flex: 1;
+  margin: 0;
+}
+
+.mcp-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.mcp-actions .btn {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.75rem 1rem;
+  padding: 0.5rem 0.75rem;
   border-radius: 0.375rem;
-  font-size: 0.9rem;
+  font-size: 0.875rem;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s ease;
   border: none;
+  white-space: nowrap;
 }
 
-.mcp-tools-actions .btn-primary {
+.mcp-actions .btn-primary {
   background: hsl(var(--primary));
   color: hsl(var(--primary-foreground));
 }
 
-.mcp-tools-actions .btn-primary:hover {
+.mcp-actions .btn-primary:hover {
   background: hsl(var(--primary) / 0.9);
   transform: translateY(-1px);
   box-shadow: 0 2px 8px hsl(var(--primary) / 0.3);
 }
 
-.mcp-tools-actions .btn-secondary {
+.mcp-actions .btn-secondary {
   background: transparent;
   color: hsl(var(--muted-foreground));
   border: 1px solid hsl(var(--border));
 }
 
-.mcp-tools-actions .btn-secondary:hover {
+.mcp-actions .btn-secondary:hover {
   background: hsl(var(--accent));
   color: hsl(var(--accent-foreground));
   border-color: hsl(var(--primary));
@@ -1079,13 +1093,14 @@
     max-height: 300px;
   }
   
-  .mcp-tools-actions {
+  .mcp-selector-row {
     flex-direction: column;
-    gap: 0.5rem;
+    align-items: stretch;
+    gap: 0.75rem;
   }
   
-  .mcp-tools-actions .btn {
-    justify-content: center;
+  .mcp-actions {
+    justify-content: flex-start;
   }
 }
 
@@ -1099,8 +1114,9 @@
     padding: 0.5rem 1rem;
   }
   
-  .mcp-tools-actions .btn {
-    padding: 1rem;
+  .mcp-actions .btn {
+    padding: 0.75rem;
+    font-size: 0.9rem;
   }
 }
 
@@ -1212,37 +1228,35 @@
   box-shadow: 0 0 0 2px hsl(var(--primary) / 0.2);
 }
 
-/* 跨项目视图按钮样式 */
-#cross-project-mcp-view {
-  background: hsl(var(--secondary));
-  color: hsl(var(--secondary-foreground));
+
+
+
+
+
+.compact-tools-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
 }
 
-#cross-project-mcp-view:hover {
-  background: hsl(var(--secondary) / 0.8);
+.compact-tool-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.25rem 0.5rem;
+  background: hsl(var(--background));
+  border: 1px solid hsl(var(--border));
+  border-radius: 0.25rem;
+  font-size: 0.75rem;
 }
 
-/* 跨项目视图样式 */
-.cross-project-mcp-view {
-  padding: 1rem;
-}
-
-.cross-project-header {
-  margin-bottom: 1.5rem;
-  text-align: center;
-  padding-bottom: 1rem;
-  border-bottom: 1px solid hsl(var(--border));
-}
-
-.cross-project-header h6 {
-  margin: 0 0 0.5rem 0;
+.compact-tool-name {
   color: hsl(var(--foreground));
 }
 
-.cross-project-header small {
-  color: hsl(var(--muted-foreground));
-}
 
+
+/* 首页MCP工具展示样式 */
 .project-mcp-section {
   margin-bottom: 1.5rem;
   padding: 1rem;
@@ -1294,13 +1308,6 @@
   text-align: center;
 }
 
-.cross-project-actions {
-  margin-top: 1.5rem;
-  text-align: center;
-  padding-top: 1rem;
-  border-top: 1px solid hsl(var(--border));
-}
-
 /* Dashboard MCP卡片样式 */
 .mcp-overview-card {
   max-height: 350px;
@@ -1312,6 +1319,15 @@
   overflow-y: auto;
   font-size: 0.85rem;
   line-height: 1.3;
+}
+
+.mcp-dashboard-content .compact-tools-list {
+  gap: 0.25rem;
+}
+
+.mcp-dashboard-content .compact-tool-item {
+  font-size: 0.7rem;
+  padding: 0.2rem 0.4rem;
 }
 
 .mcp-loading {
@@ -1353,28 +1369,10 @@
   margin-bottom: 0.5rem;
 }
 
-.mcp-dashboard-content .compact-tools-list {
-  gap: 0.25rem;
-}
 
-.mcp-dashboard-content .compact-tool-item {
-  font-size: 0.7rem;
-  padding: 0.2rem 0.4rem;
-}
 
-.mcp-dashboard-content .cross-project-header {
-  margin-bottom: 1rem;
-  padding-bottom: 0.75rem;
-}
 
-.mcp-dashboard-content .cross-project-header h6 {
-  font-size: 0.85rem;
-  margin-bottom: 0.25rem;
-}
 
-.mcp-dashboard-content .cross-project-header small {
-  font-size: 0.7rem;
-}
 
 /* 隐藏元素工具类 */
 .hidden {
