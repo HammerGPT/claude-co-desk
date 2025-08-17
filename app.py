@@ -534,7 +534,6 @@ class PTYShellHandler:
                 'TERM': 'xterm-256color',       # 设置终端类型
                 'COLORTERM': 'truecolor',       # 启用真彩色
                 'FORCE_COLOR': '3',             # 强制彩色输出
-                'NO_COLOR': '',                 # 确保不禁用颜色
                 'CLICOLOR': '1',                # 启用CLI颜色
                 'CLICOLOR_FORCE': '1',          # 强制CLI颜色输出
                 'COLUMNS': str(cols),           # 终端宽度（实际值）
@@ -543,6 +542,8 @@ class PTYShellHandler:
                 'LC_ALL': 'en_US.UTF-8',        # 确保所有locale都是UTF-8
                 'BROWSER': 'echo "OPEN_URL:"'   # URL检测
             })
+            # 确保NO_COLOR不存在，避免与FORCE_COLOR冲突
+            env.pop('NO_COLOR', None)
             
             logger.info(f"🚀 启动PTY Shell: {shell_command}")
             logger.info(f"📁 工作目录: {project_path}")
@@ -2436,7 +2437,7 @@ async def handle_get_mcp_status(websocket: WebSocket, project_path: str = None):
 async def get_project_mcp_status(project_path: str):
     """获取指定项目的MCP状态"""
     try:
-        working_dir = project_path if os.path.exists(project_path) else "/Users/yuhao"
+        working_dir = project_path if os.path.exists(project_path) else os.path.expanduser('~')
         logger.info(f"查询项目MCP状态: {working_dir}")
         
         # 获取Claude CLI的绝对路径
@@ -2664,20 +2665,19 @@ async def chat_websocket_endpoint(websocket: WebSocket):
                 session_name = message.get('sessionName', 'MCP工具搜索')
                 command = message.get('command', '')
                 skip_permissions = message.get('skipPermissions', True)
-                project_path = message.get('projectPath', '/Users/yuhao')
+                project_path = message.get('projectPath', os.path.expanduser('~'))
                 
                 logger.info(f"🤖 MCP管理员会话创建请求: {session_name} (ID: {session_id})")
                 logger.info(f"🤖 目标项目路径: {project_path}")
                 
-                # 使用@agent语法构建简单命令，避免shell解析问题
-                agent_command = f"@agent-mcp-manager {command}"
+                # 使用@agent语法构建命令，将路径信息直接嵌入命令文本中
+                if project_path:
+                    agent_command = f"@agent-mcp-manager MCP添加的目录路径是:{project_path} ，{command}"
+                else:
+                    agent_command = f"@agent-mcp-manager {command}"
                 logger.info(f"🤖 构建@agent命令: {agent_command}")
                 
                 task_command_parts = ['claude', f'"{agent_command}"']
-                
-                # 添加项目路径参数
-                if project_path and project_path != '/Users/yuhao':
-                    task_command_parts.append(f'--add-dir "{project_path}"')
                 
                 # MCP管理员默认跳过权限检查
                 if skip_permissions:
