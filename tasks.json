@@ -345,11 +345,11 @@
     "scheduleTime": "00:08",
     "enabled": true,
     "createdAt": "2025-08-16T00:02:42.073742",
-    "lastRun": "2025-08-16T00:08:21.430359",
+    "lastRun": "2025-08-18T00:08:59.183930",
     "workDirectory": "/Users/yuhao/Documents/Heliki/Heliki_OS/mission/task_1755273762_5_wc3zcu",
     "deleted": false,
     "executionMode": "scheduled",
-    "sessionId": null
+    "sessionId": "9393f0ec-0282-4e70-ab7f-322083f04d53"
   },
   {
     "id": "task_1755274123_3",
