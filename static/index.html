@@ -455,55 +455,47 @@
                             </div>
                             
                             <div class="form-group">
-                                <div class="checkbox-group">
-                                    <input type="checkbox" id="standalone-skip-permissions" name="skip-permissions">
-                                    <label for="standalone-skip-permissions">全自动模式</label>
+                                <div class="toggle-switch">
+                                    <div class="switch-container">
+                                        <input type="checkbox" id="standalone-skip-permissions" name="skip-permissions">
+                                        <span class="switch-slider"></span>
+                                    </div>
+                                    <div>
+                                        <label for="standalone-skip-permissions" class="switch-label">全自动模式</label>
+                                        <div class="switch-description">启用后将自动跳过权限确认，提升执行效率</div>
+                                    </div>
                                 </div>
-                                <div class="checkbox-group">
-                                    <input type="checkbox" id="standalone-verbose-logs" name="verbose-logs">
-                                    <label for="standalone-verbose-logs">打开任务日志</label>
+                                <div class="toggle-switch">
+                                    <div class="switch-container">
+                                        <input type="checkbox" id="standalone-verbose-logs" name="verbose-logs">
+                                        <span class="switch-slider"></span>
+                                    </div>
+                                    <div>
+                                        <label for="standalone-verbose-logs" class="switch-label">打开任务日志</label>
+                                        <div class="switch-description">显示详细的执行过程和调试信息</div>
+                                    </div>
                                 </div>
                             </div>
                             
                             <div class="form-group">
                                 <label>资源文件</label>
                                 <div class="resource-help">
-                                    <p class="text-muted">为任务指定需要处理的文件或文件夹，支持多种添加方式：</p>
+                                    <p class="text-muted">选择需要模型引用/读取的文件或者文件夹</p>
                                 </div>
                                 <div id="standalone-resource-selector" class="resource-selector">
+                                    <div class="resource-add-methods">
+                                        <div class="manual-path">
+                                            <input type="text" id="standalone-manual-path" class="form-control" placeholder="输入关键词智能搜索文件/文件夹，点击下拉项即可添加">
+                                            <button type="button" id="standalone-add-manual-path" class="btn btn-outline btn-sm" style="display: none;">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                                                </svg>
+                                                添加
+                                            </button>
+                                        </div>
+                                    </div>
                                     <div class="resource-list" id="standalone-resource-list">
                                         <!-- 动态添加的资源文件 -->
-                                    </div>
-                                    <div class="resource-add-methods">
-                                        <div class="add-method-group">
-                                            <h6>快速选择</h6>
-                                            <div class="resource-actions">
-                                                <button type="button" class="btn btn-outline btn-sm" id="standalone-browse-files">
-                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-                                                    </svg>
-                                                    选择文件
-                                                </button>
-                                                <button type="button" class="btn btn-outline btn-sm" id="standalone-browse-folders">
-                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/>
-                                                    </svg>
-                                                    选择文件夹
-                                                </button>
-                                            </div>
-                                        </div>
-                                        <div class="add-method-group">
-                                            <h6>手动输入路径</h6>
-                                            <div class="manual-path">
-                                                <input type="text" id="standalone-manual-path" class="form-control" placeholder="例如: /Users/username/Documents/project">
-                                                <button type="button" id="standalone-add-manual-path" class="btn btn-outline btn-sm">
-                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-                                                    </svg>
-                                                    添加
-                                                </button>
-                                            </div>
-                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -590,55 +582,47 @@
                             </div>
                             
                             <div class="form-group">
-                                <div class="checkbox-group">
-                                    <input type="checkbox" id="standalone-edit-skip-permissions" name="skip-permissions">
-                                    <label for="standalone-edit-skip-permissions">全自动模式</label>
+                                <div class="toggle-switch">
+                                    <div class="switch-container">
+                                        <input type="checkbox" id="standalone-edit-skip-permissions" name="skip-permissions">
+                                        <span class="switch-slider"></span>
+                                    </div>
+                                    <div>
+                                        <label for="standalone-edit-skip-permissions" class="switch-label">全自动模式</label>
+                                        <div class="switch-description">启用后将自动跳过权限确认，提升执行效率</div>
+                                    </div>
                                 </div>
-                                <div class="checkbox-group">
-                                    <input type="checkbox" id="standalone-edit-verbose-logs" name="verbose-logs">
-                                    <label for="standalone-edit-verbose-logs">打开任务日志</label>
+                                <div class="toggle-switch">
+                                    <div class="switch-container">
+                                        <input type="checkbox" id="standalone-edit-verbose-logs" name="verbose-logs">
+                                        <span class="switch-slider"></span>
+                                    </div>
+                                    <div>
+                                        <label for="standalone-edit-verbose-logs" class="switch-label">打开任务日志</label>
+                                        <div class="switch-description">显示详细的执行过程和调试信息</div>
+                                    </div>
                                 </div>
                             </div>
                             
                             <div class="form-group">
                                 <label>资源文件</label>
                                 <div class="resource-help">
-                                    <p class="text-muted">为任务指定需要处理的文件或文件夹，支持多种添加方式：</p>
+                                    <p class="text-muted">选择需要模型引用/读取的文件或者文件夹</p>
                                 </div>
                                 <div id="standalone-edit-resource-selector" class="resource-selector">
+                                    <div class="resource-add-methods">
+                                        <div class="manual-path">
+                                            <input type="text" id="standalone-edit-manual-path" class="form-control" placeholder="输入关键词智能搜索文件/文件夹，点击下拉项即可添加">
+                                            <button type="button" id="standalone-edit-add-manual-path" class="btn btn-outline btn-sm" style="display: none;">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                                                </svg>
+                                                添加
+                                            </button>
+                                        </div>
+                                    </div>
                                     <div class="resource-list" id="standalone-edit-resource-list">
                                         <!-- 动态添加的资源文件 -->
-                                    </div>
-                                    <div class="resource-add-methods">
-                                        <div class="add-method-group">
-                                            <h6>快速选择</h6>
-                                            <div class="resource-actions">
-                                                <button type="button" class="btn btn-outline btn-sm" id="standalone-edit-browse-files">
-                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-                                                    </svg>
-                                                    选择文件
-                                                </button>
-                                                <button type="button" class="btn btn-outline btn-sm" id="standalone-edit-browse-folders">
-                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/>
-                                                    </svg>
-                                                    选择文件夹
-                                                </button>
-                                            </div>
-                                        </div>
-                                        <div class="add-method-group">
-                                            <h6>手动输入路径</h6>
-                                            <div class="manual-path">
-                                                <input type="text" id="standalone-edit-manual-path" class="form-control" placeholder="例如: /Users/username/Documents/project">
-                                                <button type="button" id="standalone-edit-add-manual-path" class="btn btn-outline btn-sm">
-                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-                                                    </svg>
-                                                    添加
-                                                </button>
-                                            </div>
-                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -801,55 +785,47 @@
                             </div>
                             
                             <div class="form-group">
-                                <div class="checkbox-group">
-                                    <input type="checkbox" id="skip-permissions" name="skip-permissions">
-                                    <label for="skip-permissions">全自动模式</label>
+                                <div class="toggle-switch">
+                                    <div class="switch-container">
+                                        <input type="checkbox" id="skip-permissions" name="skip-permissions">
+                                        <span class="switch-slider"></span>
+                                    </div>
+                                    <div>
+                                        <label for="skip-permissions" class="switch-label">全自动模式</label>
+                                        <div class="switch-description">启用后将自动跳过权限确认，提升执行效率</div>
+                                    </div>
                                 </div>
-                                <div class="checkbox-group">
-                                    <input type="checkbox" id="verbose-logs" name="verbose-logs">
-                                    <label for="verbose-logs">打开任务日志</label>
+                                <div class="toggle-switch">
+                                    <div class="switch-container">
+                                        <input type="checkbox" id="verbose-logs" name="verbose-logs">
+                                        <span class="switch-slider"></span>
+                                    </div>
+                                    <div>
+                                        <label for="verbose-logs" class="switch-label">打开任务日志</label>
+                                        <div class="switch-description">显示详细的执行过程和调试信息</div>
+                                    </div>
                                 </div>
                             </div>
                             
                             <div class="form-group">
                                 <label>资源文件</label>
                                 <div class="resource-help">
-                                    <p class="text-muted">为任务指定需要处理的文件或文件夹，支持多种添加方式：</p>
+                                    <p class="text-muted">选择需要模型引用/读取的文件或者文件夹</p>
                                 </div>
                                 <div id="resource-selector" class="resource-selector">
+                                    <div class="resource-add-methods">
+                                        <div class="manual-path">
+                                            <input type="text" id="manual-path" class="form-control" placeholder="输入关键词智能搜索文件/文件夹，点击下拉项即可添加">
+                                            <button type="button" id="add-manual-path" class="btn btn-outline btn-sm" style="display: none;">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                                                </svg>
+                                                添加
+                                            </button>
+                                        </div>
+                                    </div>
                                     <div class="resource-list" id="resource-list">
                                         <!-- 动态添加的资源文件 -->
-                                    </div>
-                                    <div class="resource-add-methods">
-                                        <div class="add-method-group">
-                                            <h6>快速选择</h6>
-                                            <div class="resource-actions">
-                                                <button type="button" class="btn btn-outline btn-sm" id="browse-files">
-                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-                                                    </svg>
-                                                    选择文件
-                                                </button>
-                                                <button type="button" class="btn btn-outline btn-sm" id="browse-folders">
-                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/>
-                                                    </svg>
-                                                    选择文件夹
-                                                </button>
-                                            </div>
-                                        </div>
-                                        <div class="add-method-group">
-                                            <h6>手动输入路径</h6>
-                                            <div class="manual-path">
-                                                <input type="text" id="manual-path" class="form-control" placeholder="例如: /Users/username/Documents/project">
-                                                <button type="button" id="add-manual-path" class="btn btn-outline btn-sm">
-                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-                                                    </svg>
-                                                    添加
-                                                </button>
-                                            </div>
-                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -913,6 +889,7 @@
     <script src="/static/js/files_drawer.js"></script>
     <script src="/static/js/session_terminal.js"></script>
     <script src="/static/js/chat.js"></script>
+    <script src="/static/js/path_autocomplete.js"></script>
     
     <!-- 初始化TaskManager实例 -->
     <script>
