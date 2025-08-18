@@ -25,6 +25,7 @@ class ScheduledTask:
     name: str
     goal: str
     skip_permissions: bool
+    verbose_logs: bool
     resources: List[str]
     schedule_frequency: str  # 'daily' or 'weekly'
     schedule_time: str       # HH:MM format
@@ -115,6 +116,7 @@ class TaskScheduler:
                 name=task_data['name'],
                 goal=task_data['goal'],
                 skip_permissions=task_data.get('skipPermissions', False),
+                verbose_logs=task_data.get('verboseLogs', False),
                 resources=task_data.get('resources', []),
                 schedule_frequency=task_data.get('scheduleFrequency', 'daily'),
                 schedule_time=task_data.get('scheduleTime', '09:00'),
@@ -272,6 +274,7 @@ class TaskScheduler:
                 'name': task.name,
                 'goal': task.goal,
                 'skipPermissions': task.skip_permissions,
+                'verboseLogs': task.verbose_logs,
                 'resources': task.resources,
                 'scheduleFrequency': task.schedule_frequency,
                 'scheduleTime': task.schedule_time,
@@ -353,6 +356,7 @@ class TaskScheduler:
                         name=task_data['name'],
                         goal=task_data['goal'],
                         skip_permissions=task_data.get('skipPermissions', False),
+                        verbose_logs=task_data.get('verboseLogs', False),
                         resources=task_data.get('resources', []),
                         schedule_frequency=task_data.get('scheduleFrequency', 'daily'),
                         schedule_time=task_data.get('scheduleTime', '09:00'),
@@ -401,6 +405,7 @@ class TaskScheduler:
                     'name': task.name,
                     'goal': task.goal,
                     'skipPermissions': task.skip_permissions,
+                    'verboseLogs': task.verbose_logs,
                     'resources': task.resources,
                     'scheduleFrequency': task.schedule_frequency,
                     'scheduleTime': task.schedule_time,
@@ -452,6 +457,11 @@ class TaskScheduler:
                 # 添加权限模式
                 if task.skip_permissions:
                     base_command_parts.append('--dangerously-skip-permissions')
+                
+                # 添加verbose日志模式
+                if task.verbose_logs:
+                    base_command_parts.append('--verbose')
+                    logger.info(f"🔍 定时任务已添加--verbose参数到命令")
                 
                 # 添加资源文件引用
                 if task.resources:

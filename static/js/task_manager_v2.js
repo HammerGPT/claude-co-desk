@@ -67,6 +67,7 @@ class TaskManager {
         this.taskNameInput = document.getElementById('task-name');
         this.taskGoalInput = document.getElementById('task-goal');
         this.skipPermissionsCheckbox = document.getElementById('skip-permissions');
+        this.verboseLogsCheckbox = document.getElementById('verbose-logs');
         this.resourceList = document.getElementById('resource-list');
         this.executeImmediateRadio = document.getElementById('execute-immediate');
         this.executeScheduledRadio = document.getElementById('execute-scheduled');
@@ -205,6 +206,17 @@ class TaskManager {
             });
         }
 
+        // 点击外部区域关闭弹窗
+        const modal = document.getElementById('standalone-add-task-modal');
+        if (modal) {
+            modal.addEventListener('click', (event) => {
+                // 只有点击modal-overlay本身时才关闭，点击modal-content内部不关闭
+                if (event.target === modal) {
+                    this.handleStandaloneAddModalClose();
+                }
+            });
+        }
+
         // 创建按钮
         const createBtn = document.getElementById('standalone-create-task');
         if (createBtn) {
@@ -257,15 +269,6 @@ class TaskManager {
             });
         }
 
-        // 点击模态框背景关闭
-        const modal = document.getElementById('standalone-add-task-modal');
-        if (modal) {
-            modal.addEventListener('click', (e) => {
-                if (e.target === modal) {
-                    this.closeStandaloneAddModal();
-                }
-            });
-        }
     }
 
     /**
@@ -277,6 +280,17 @@ class TaskManager {
         if (closeBtn) {
             closeBtn.addEventListener('click', () => {
                 this.closeStandaloneDetailModal();
+            });
+        }
+
+        // 点击外部区域关闭弹窗
+        const modal = document.getElementById('standalone-task-detail-modal');
+        if (modal) {
+            modal.addEventListener('click', (event) => {
+                // 只有点击modal-overlay本身时才关闭，点击modal-content内部不关闭
+                if (event.target === modal) {
+                    this.handleStandaloneDetailModalClose();
+                }
             });
         }
 
@@ -383,15 +397,6 @@ class TaskManager {
             });
         }
 
-        // 点击模态框背景关闭
-        const modal = document.getElementById('standalone-task-detail-modal');
-        if (modal) {
-            modal.addEventListener('click', (e) => {
-                if (e.target === modal) {
-                    this.closeStandaloneDetailModal();
-                }
-            });
-        }
     }
 
     /**
@@ -702,7 +707,8 @@ class TaskManager {
             schedule_time: task.scheduleTime || '09:00',                      // 后端返回驼峰命名
             resources: Array.isArray(task.resources) ? task.resources : [],
             enabled: task.enabled !== false,
-            skip_permissions: task.skipPermissions || false                   // 后端返回驼峰命名
+            skip_permissions: task.skipPermissions || false,                  // 后端返回驼峰命名
+            verbose_logs: task.verboseLogs || false                           // 新增verbose字段
         };
         
         if (this.detailTaskName) this.detailTaskName.textContent = safeTask.name;
@@ -812,6 +818,7 @@ class TaskManager {
             name: task.name || '',
             goal: task.goal || '',
             skip_permissions: task.skipPermissions || false,                 // 后端返回驼峰命名
+            verbose_logs: task.verboseLogs || false,                         // 新增verbose字段
             schedule_frequency: task.scheduleFrequency || 'immediate',       // 后端返回驼峰命名
             schedule_time: task.scheduleTime || '09:00',                     // 后端返回驼峰命名
             resources: Array.isArray(task.resources) ? task.resources : []
@@ -820,6 +827,7 @@ class TaskManager {
         if (this.taskNameInput) this.taskNameInput.value = safeTask.name;
         if (this.taskGoalInput) this.taskGoalInput.value = safeTask.goal;
         if (this.skipPermissionsCheckbox) this.skipPermissionsCheckbox.checked = safeTask.skip_permissions;
+        if (this.verboseLogsCheckbox) this.verboseLogsCheckbox.checked = safeTask.verbose_logs || false;
         
         // 设置执行方式
         if (safeTask.schedule_frequency === 'immediate') {
@@ -1075,6 +1083,7 @@ class TaskManager {
         }
         
         const skipPermissions = this.skipPermissionsCheckbox?.checked || false;
+        const verboseLogs = this.verboseLogsCheckbox?.checked || false;
         const isImmediate = this.executeImmediateRadio?.checked || false;
         
         // 使用后端期望的驼峰命名格式
@@ -1082,6 +1091,7 @@ class TaskManager {
             name: name,
             goal: goal,
             skipPermissions: skipPermissions,                    // 改为驼峰命名
+            verboseLogs: verboseLogs,                           // 新增verbose字段
             resources: [...this.resources],
             scheduleFrequency: isImmediate ? 'immediate' : (this.scheduleFrequency?.value || 'daily'),  // 改为驼峰命名
             scheduleTime: isImmediate ? '' : (this.scheduleTime?.value || '09:00'),                    // 改为驼峰命名
@@ -1140,7 +1150,8 @@ class TaskManager {
                 taskId: task.id,
                 taskName: task.name,
                 command: command,
-                skipPermissions: task.skipPermissions,
+                skipPermissions: task.skip_permissions,
+                verboseLogs: task.verbose_logs,
                 resources: task.resources
             };
             
@@ -1320,7 +1331,7 @@ class TaskManager {
     showStandaloneTaskDetail(task) {
         // 显示详情视图，隐藏编辑表单
         const detailView = document.getElementById('standalone-task-detail-view');
-        const editForm = document.getElementById('standalone-edit-task-form');
+        const editForm = document.getElementById('standalone-edit-form');
         const detailFooter = document.getElementById('standalone-detail-footer');
         const editFooter = document.getElementById('standalone-edit-footer');
         
@@ -1338,6 +1349,7 @@ class TaskManager {
             resources: Array.isArray(task.resources) ? task.resources : [],
             enabled: task.enabled !== false,
             skip_permissions: task.skipPermissions || false,
+            verbose_logs: task.verboseLogs || false,
             session_id: task.sessionId || null  // 添加session_id信息
         };
         
@@ -1399,7 +1411,7 @@ class TaskManager {
     showStandaloneEditForm(task) {
         // 显示编辑表单，隐藏详情视图
         const detailView = document.getElementById('standalone-task-detail-view');
-        const editForm = document.getElementById('standalone-edit-task-form');
+        const editForm = document.getElementById('standalone-edit-form');
         const detailFooter = document.getElementById('standalone-detail-footer');
         const editFooter = document.getElementById('standalone-edit-footer');
         
@@ -1420,6 +1432,7 @@ class TaskManager {
             name: task.name || '',
             goal: task.goal || '',
             skip_permissions: task.skipPermissions || false,
+            verbose_logs: task.verboseLogs || false,
             schedule_frequency: task.scheduleFrequency || 'immediate',
             schedule_time: task.scheduleTime || '09:00',
             resources: Array.isArray(task.resources) ? task.resources : []
@@ -1428,6 +1441,7 @@ class TaskManager {
         const nameInput = document.getElementById('standalone-edit-task-name');
         const goalInput = document.getElementById('standalone-edit-task-goal');
         const skipInput = document.getElementById('standalone-edit-skip-permissions');
+        const verboseInput = document.getElementById('standalone-edit-verbose-logs');
         const immediateRadio = document.getElementById('standalone-edit-execute-immediate');
         const scheduledRadio = document.getElementById('standalone-edit-execute-scheduled');
         const frequencySelect = document.getElementById('standalone-edit-schedule-frequency');
@@ -1436,6 +1450,7 @@ class TaskManager {
         if (nameInput) nameInput.value = safeTask.name;
         if (goalInput) goalInput.value = safeTask.goal;
         if (skipInput) skipInput.checked = safeTask.skip_permissions;
+        if (verboseInput) verboseInput.checked = safeTask.verbose_logs || false;
         
         // 设置执行方式
         if (safeTask.schedule_frequency === 'immediate') {
@@ -1669,17 +1684,20 @@ class TaskManager {
         }
         
         const skipInput = document.getElementById('standalone-skip-permissions');
+        const verboseInput = document.getElementById('standalone-verbose-logs');
         const immediateRadio = document.getElementById('standalone-execute-immediate');
         const frequencySelect = document.getElementById('standalone-schedule-frequency');
         const timeInput = document.getElementById('standalone-schedule-time');
         
         const skipPermissions = skipInput?.checked || false;
+        const verboseLogs = verboseInput?.checked || false;
         const isImmediate = immediateRadio?.checked || false;
         
         return {
             name: name,
             goal: goal,
             skipPermissions: skipPermissions,
+            verboseLogs: verboseLogs,
             resources: this.standaloneResources || [],
             scheduleFrequency: isImmediate ? 'immediate' : (frequencySelect?.value || 'daily'),
             scheduleTime: isImmediate ? '' : (timeInput?.value || '09:00'),
@@ -1704,17 +1722,20 @@ class TaskManager {
         }
         
         const skipInput = document.getElementById('standalone-edit-skip-permissions');
+        const verboseInput = document.getElementById('standalone-edit-verbose-logs');
         const immediateRadio = document.getElementById('standalone-edit-execute-immediate');
         const frequencySelect = document.getElementById('standalone-edit-schedule-frequency');
         const timeInput = document.getElementById('standalone-edit-schedule-time');
         
         const skipPermissions = skipInput?.checked || false;
+        const verboseLogs = verboseInput?.checked || false;
         const isImmediate = immediateRadio?.checked || false;
         
         return {
             name: name,
             goal: goal,
             skipPermissions: skipPermissions,
+            verboseLogs: verboseLogs,
             resources: this.standaloneEditResources || [],
             scheduleFrequency: isImmediate ? 'immediate' : (frequencySelect?.value || 'daily'),
             scheduleTime: isImmediate ? '' : (timeInput?.value || '09:00'),
@@ -1778,7 +1799,8 @@ class TaskManager {
                     taskId: task.id,
                     taskName: task.name,
                     command: command,
-                    skipPermissions: task.skipPermissions,
+                    skipPermissions: task.skip_permissions,
+                    verboseLogs: task.verbose_logs,
                     resources: task.resources
                 };
                 this.showExecutionFeedback(`重新执行任务: ${task.name}`);
@@ -1808,6 +1830,58 @@ class TaskManager {
         } catch (error) {
             console.error('❌ 任务执行失败:', error);
             alert(`任务执行失败: ${error.message}`);
+        }
+    }
+
+    /**
+     * 检查新建任务表单是否有未保存的更改
+     */
+    hasUnsavedChangesInAddForm() {
+        const taskName = document.getElementById('standalone-task-name')?.value?.trim() || '';
+        const taskGoal = document.getElementById('standalone-task-goal')?.value?.trim() || '';
+        return taskName.length > 0 || taskGoal.length > 0;
+    }
+
+    /**
+     * 检查任务详情编辑表单是否有未保存的更改
+     */
+    hasUnsavedChangesInDetailForm() {
+        // 检查是否在编辑模式
+        const editForm = document.getElementById('standalone-edit-form');
+        const detailView = document.getElementById('standalone-task-detail-view');
+        
+        if (!editForm || !detailView || !editForm.classList.contains('hidden')) {
+            // 在编辑模式下，检查表单内容
+            const taskName = document.getElementById('standalone-edit-task-name')?.value?.trim() || '';
+            const taskGoal = document.getElementById('standalone-edit-task-goal')?.value?.trim() || '';
+            return taskName.length > 0 || taskGoal.length > 0;
+        }
+        return false;
+    }
+
+    /**
+     * 处理新建任务弹窗的外部点击关闭
+     */
+    handleStandaloneAddModalClose() {
+        if (this.hasUnsavedChangesInAddForm()) {
+            if (confirm('表单中有未保存的内容，确定要关闭吗？')) {
+                this.closeStandaloneAddModal();
+            }
+        } else {
+            this.closeStandaloneAddModal();
+        }
+    }
+
+    /**
+     * 处理任务详情弹窗的外部点击关闭
+     */
+    handleStandaloneDetailModalClose() {
+        if (this.hasUnsavedChangesInDetailForm()) {
+            if (confirm('表单中有未保存的内容，确定要关闭吗？')) {
+                this.closeStandaloneDetailModal();
+            }
+        } else {
+            this.closeStandaloneDetailModal();
         }
     }
 

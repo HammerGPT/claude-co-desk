@@ -2080,6 +2080,10 @@ async def create_task(request: Request):
             task_data['enabled'] = True
         if 'resources' not in task_data:
             task_data['resources'] = []
+        if 'skipPermissions' not in task_data:
+            task_data['skipPermissions'] = False
+        if 'verboseLogs' not in task_data:
+            task_data['verboseLogs'] = False
         
         # 添加任务到调度器（无论是立即执行还是定时执行）
         success = task_scheduler.add_scheduled_task(task_data)
@@ -2096,11 +2100,20 @@ async def create_task(request: Request):
                     work_dir_instruction = f" [特别要求]本地任务你新建的任何资料/代码/文档以后收集的信息都存入{created_task.work_directory}，如果是智能体产生的结果，文件名携带智能体名称前缀"
                     enhanced_goal = f"{task_data['goal']} {work_dir_instruction}"
                     
+                    # 调试日志：确认task_data的内容
+                    logger.info(f"🔍 立即执行任务调试: verboseLogs={task_data.get('verboseLogs', 'KEY_NOT_FOUND')}, skipPermissions={task_data.get('skipPermissions', 'KEY_NOT_FOUND')}")
+                    logger.info(f"🔍 task_data所有键: {list(task_data.keys())}")
+                    
                     task_command_parts = [enhanced_goal]  # 增强的任务目标
                     
                     # 添加权限模式
                     if task_data.get('skipPermissions', False):
                         task_command_parts.append('--dangerously-skip-permissions')
+                    
+                    # 添加verbose日志模式
+                    if task_data.get('verboseLogs', False):
+                        task_command_parts.append('--verbose')
+                        logger.info(f"🔍 批量执行已添加--verbose参数到命令")
                     
                     # 添加资源文件引用
                     if task_data.get('resources'):
@@ -2544,7 +2557,11 @@ async def chat_websocket_endpoint(websocket: WebSocket):
                 task_name = message.get('taskName', '未知任务')
                 command = message.get('command', '')
                 skip_permissions = message.get('skipPermissions', False)
+                verbose_logs = message.get('verboseLogs', False)
                 resources = message.get('resources', [])
+                
+                # 调试日志：确认接收到的参数
+                logger.info(f"🔍 任务执行参数调试: skipPermissions={skip_permissions}, verboseLogs={verbose_logs}")
                 
                 logger.info(f"任务执行请求: {task_name} (ID: {task_id})")
                 if resources:
@@ -2576,6 +2593,11 @@ async def chat_websocket_endpoint(websocket: WebSocket):
                 if skip_permissions:
                     task_command_parts.append('--dangerously-skip-permissions')
                 
+                # 添加verbose日志模式
+                if verbose_logs:
+                    task_command_parts.append('--verbose')
+                    logger.info(f"🔍 已添加--verbose参数到命令")
+                
                 # 添加资源目录
                 if resources:
                     for resource in resources:
@@ -2584,6 +2606,7 @@ async def chat_websocket_endpoint(websocket: WebSocket):
                 # 拼接完整命令
                 full_task_command = ' '.join(task_command_parts)
                 logger.info(f"📋 构建任务命令: {full_task_command}")
+                logger.info(f"🔍 task_command_parts内容: {task_command_parts}")
                 
                 # 通知前端创建任务页签，同时传递完整的初始命令
                 await manager.broadcast({
@@ -2684,6 +2707,11 @@ async def chat_websocket_endpoint(websocket: WebSocket):
                 # MCP管理员默认跳过权限检查
                 if skip_permissions:
                     task_command_parts.append('--dangerously-skip-permissions')
+                
+                # 添加verbose日志模式
+                verbose_logs = message.get('verboseLogs', True)  # MCP任务默认开启verbose
+                if verbose_logs:
+                    task_command_parts.append('--verbose')
                 
                 # 拼接完整命令
                 full_command = ' '.join(task_command_parts)

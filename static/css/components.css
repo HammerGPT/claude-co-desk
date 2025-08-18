@@ -850,6 +850,8 @@
   max-width: 1200px !important;
   height: 85vh !important;
   max-height: 800px !important;
+  display: flex !important;
+  flex-direction: column !important;
 }
 
 .init-terminal-container {
@@ -3393,6 +3395,13 @@ div.session-header div.session-actions button.action-btn:hover {
   overflow-y: auto;
 }
 
+/* 独立弹框中的表单样式 */
+.standalone-form {
+  padding: 20px;
+  overflow: visible;
+  height: auto;
+}
+
 .add-task-form .form-header {
   display: flex;
   align-items: center;
@@ -4029,7 +4038,7 @@ div.session-header div.session-actions button.action-btn:hover {
 /* 独立弹窗样式优化 */
 #standalone-add-task-modal .modal-body,
 #standalone-task-detail-modal .modal-body {
-  max-height: 70vh;
+  flex: 1;
   overflow-y: auto;
   padding: 20px 24px;
   /* 美化滚动条 */
@@ -4064,20 +4073,23 @@ div.session-header div.session-actions button.action-btn:hover {
   margin-bottom: 20px;
 }
 
-/* 确保模态框footer始终可见 */
+/* 确保模态框footer始终可见并置底 */
 #standalone-add-task-modal .modal-footer,
 #standalone-task-detail-modal .modal-footer {
   flex-shrink: 0;
   border-top: 1px solid hsl(var(--border));
   padding: 16px 24px;
   background: hsl(var(--card));
+  position: sticky;
+  bottom: 0;
+  z-index: 20;
+  margin-top: auto;
 }
 
 /* 移动端响应式 */
 @media (max-width: 768px) {
   #standalone-add-task-modal .modal-body,
   #standalone-task-detail-modal .modal-body {
-    max-height: 60vh;
     padding: 16px 20px;
   }
   

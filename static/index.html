@@ -443,8 +443,7 @@
                     <button id="standalone-add-task-close" class="modal-close">×</button>
                 </div>
                 <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
-                    <div class="add-task-form">
-                        <form id="standalone-task-form">
+                    <form id="standalone-task-form" class="standalone-form">
                             <div class="form-group">
                                 <label for="standalone-task-name">任务名称</label>
                                 <input type="text" id="standalone-task-name" class="form-control" placeholder="例如：信息收集任务" required>
@@ -458,7 +457,11 @@
                             <div class="form-group">
                                 <div class="checkbox-group">
                                     <input type="checkbox" id="standalone-skip-permissions" name="skip-permissions">
-                                    <label for="standalone-skip-permissions">启用危险权限跳过模式 (--dangerously-skip-permissions)</label>
+                                    <label for="standalone-skip-permissions">全自动模式</label>
+                                </div>
+                                <div class="checkbox-group">
+                                    <input type="checkbox" id="standalone-verbose-logs" name="verbose-logs">
+                                    <label for="standalone-verbose-logs">打开任务日志</label>
                                 </div>
                             </div>
                             
@@ -529,8 +532,7 @@
                                     <input type="time" id="standalone-schedule-time" class="form-control" value="09:00">
                                 </div>
                             </div>
-                        </form>
-                    </div>
+                    </form>
                 </div>
                 <div class="modal-footer">
                     <button id="standalone-cancel-task" class="btn btn-secondary">取消</button>
@@ -576,8 +578,7 @@
                     </div>
                     
                     <!-- 任务编辑表单 -->
-                    <div id="standalone-edit-task-form" class="add-task-form hidden">
-                        <form id="standalone-edit-form">
+                    <form id="standalone-edit-form" class="standalone-form hidden">
                             <div class="form-group">
                                 <label for="standalone-edit-task-name">任务名称</label>
                                 <input type="text" id="standalone-edit-task-name" class="form-control" placeholder="例如：信息收集任务" required>
@@ -591,7 +592,11 @@
                             <div class="form-group">
                                 <div class="checkbox-group">
                                     <input type="checkbox" id="standalone-edit-skip-permissions" name="skip-permissions">
-                                    <label for="standalone-edit-skip-permissions">启用危险权限跳过模式 (--dangerously-skip-permissions)</label>
+                                    <label for="standalone-edit-skip-permissions">全自动模式</label>
+                                </div>
+                                <div class="checkbox-group">
+                                    <input type="checkbox" id="standalone-edit-verbose-logs" name="verbose-logs">
+                                    <label for="standalone-edit-verbose-logs">打开任务日志</label>
                                 </div>
                             </div>
                             
@@ -662,14 +667,13 @@
                                     <input type="time" id="standalone-edit-schedule-time" class="form-control" value="09:00">
                                 </div>
                             </div>
-                        </form>
-                    </div>
+                    </form>
                 </div>
                 <div class="modal-footer">
                     <div id="standalone-detail-footer" class="modal-footer-buttons">
-                        <button id="standalone-delete-task-btn" class="btn btn-danger btn-sm">删除</button>
-                        <button id="standalone-edit-task-btn" class="btn btn-outline btn-sm">编辑</button>
-                        <button id="standalone-execute-task-btn" class="btn btn-primary btn-sm">执行</button>
+                        <button id="standalone-delete-task-btn" class="btn btn-danger">删除</button>
+                        <button id="standalone-edit-task-btn" class="btn btn-outline">编辑</button>
+                        <button id="standalone-execute-task-btn" class="btn btn-primary">执行</button>
                     </div>
                     <div id="standalone-edit-footer" class="modal-footer-buttons hidden">
                         <button id="standalone-cancel-edit" class="btn btn-secondary">取消</button>
@@ -799,7 +803,11 @@
                             <div class="form-group">
                                 <div class="checkbox-group">
                                     <input type="checkbox" id="skip-permissions" name="skip-permissions">
-                                    <label for="skip-permissions">启用危险权限跳过模式 (--dangerously-skip-permissions)</label>
+                                    <label for="skip-permissions">全自动模式</label>
+                                </div>
+                                <div class="checkbox-group">
+                                    <input type="checkbox" id="verbose-logs" name="verbose-logs">
+                                    <label for="verbose-logs">打开任务日志</label>
                                 </div>
                             </div>
                             
@@ -908,16 +916,24 @@
     
     <!-- 初始化TaskManager实例 -->
     <script>
-        // 等待DOM加载完成后创建TaskManager全局实例
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', () => {
+        // 安全初始化TaskManager实例
+        function initTaskManager() {
+            if (typeof TaskManager !== 'undefined') {
                 window.taskManagerV2 = new TaskManager(); // V2版本任务管理器
                 window.taskManager = window.taskManagerV2; // 统一引用
-            });
+                console.log('✅ TaskManager 实例创建成功');
+            } else {
+                console.error('❌ TaskManager 类未定义，延迟重试...');
+                setTimeout(initTaskManager, 100); // 100ms后重试
+            }
+        }
+        
+        // 等待DOM加载完成后创建TaskManager全局实例
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initTaskManager);
         } else {
             // DOM已经加载完成
-            window.taskManagerV2 = new TaskManager();
-            window.taskManager = window.taskManagerV2; // 统一引用
+            initTaskManager();
         }
     </script>
     
