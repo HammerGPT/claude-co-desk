@@ -2670,11 +2670,11 @@ async def chat_websocket_endpoint(websocket: WebSocket):
                 logger.info(f"🤖 MCP管理员会话创建请求: {session_name} (ID: {session_id})")
                 logger.info(f"🤖 目标项目路径: {project_path}")
                 
-                # 使用@agent语法构建命令，将路径信息直接嵌入命令文本中
+                # 使用@agent语法构建命令，强化指令确保智能体持续工作直到完成
                 if project_path:
-                    agent_command = f"@agent-mcp-manager MCP添加的目录路径是:{project_path} ，{command}"
+                    agent_command = f"@agent-mcp-manager 该任务为MCP添加的独立任务，需要全程使用mcp-manager智能体进行MCP添加工作。MCP添加的目录路径是:{project_path}。请完整执行MCP工具的推荐、确认和安装流程，直到用户要求的MCP工具成功安装并通过claude mcp list验证为止。用户需求：{command}"
                 else:
-                    agent_command = f"@agent-mcp-manager {command}"
+                    agent_command = f"@agent-mcp-manager 该任务为MCP添加的独立任务，需要全程使用mcp-manager智能体进行MCP添加工作。请完整执行MCP工具的推荐、确认和安装流程，直到用户要求的MCP工具成功安装并通过claude mcp list验证为止。用户需求：{command}"
                 logger.info(f"🤖 构建@agent命令: {agent_command}")
                 
                 task_command_parts = ['claude', f'"{agent_command}"']
@@ -2854,7 +2854,7 @@ if __name__ == "__main__":
             "app:app", 
             host="localhost", 
             port=3005, 
-            reload=True,
+            reload=False,
             log_level="info",
             # WebSocket长连接配置 - 设置极长超时时间实现静默连接
             timeout_keep_alive=86400*7,  # 7天保持连接
