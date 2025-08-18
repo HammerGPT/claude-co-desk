@@ -292,11 +292,29 @@ class EnhancedSidebar {
     getSortedProjects() {
         const filtered = this.getFilteredProjects();
         return filtered.sort((a, b) => {
-            // 按显示名称排序
+            // 检测是否为工作目录项目
+            const isWorkingDirA = this.isWorkingDirectoryProject(a);
+            const isWorkingDirB = this.isWorkingDirectoryProject(b);
+            
+            // 工作目录项目置顶
+            if (isWorkingDirA && !isWorkingDirB) return -1;
+            if (!isWorkingDirA && isWorkingDirB) return 1;
+            
+            // 同类型项目按显示名称排序
             const nameA = a.displayName || a.name;
             const nameB = b.displayName || b.name;
             return nameA.localeCompare(nameB);
         });
+    }
+
+    /**
+     * 检测项目是否为工作目录
+     */
+    isWorkingDirectoryProject(project) {
+        if (!project.path) return false;
+        // 检测路径是否为用户家目录格式
+        const userHomePath = project.path.match(/^(\/[^\/]+\/[^\/]+)$/)?.[1];
+        return userHomePath && project.path === userHomePath;
     }
 
     /**
@@ -367,7 +385,7 @@ class EnhancedSidebar {
                         }
                     </div>
                     <div class="project-info">
-                        <div class="project-name">${this.escapeHtml(project.displayName || project.name)}</div>
+                        <div class="project-name">${this.isWorkingDirectoryProject(project) ? '工作目录' : this.escapeHtml(project.displayName || project.name)}</div>
                         <div class="project-meta">
                             ${hasMore && sessionCount >= 5 ? `${sessionCount}+` : sessionCount} 个会话
                         </div>
@@ -1339,6 +1357,30 @@ class EnhancedSidebar {
     }
     
     /**
+     * 获取有效的MCP项目路径（带回退机制）
+     * 优先级：项目选择器 > 存储的MCP目标项目 > 当前选择的项目 > null
+     */
+    getEffectiveMCPProjectPath() {
+        // 优先使用项目选择器的当前值
+        const projectSelect = document.getElementById('mcp-project-select');
+        if (projectSelect && projectSelect.value) {
+            return projectSelect.value;
+        }
+        
+        // 备用：使用存储的MCP目标项目信息
+        if (this.currentMCPTargetProject?.path) {
+            return this.currentMCPTargetProject.path;
+        }
+        
+        // 最后备用：使用当前选择的项目
+        if (this.selectedProject?.path) {
+            return this.selectedProject.path;
+        }
+        
+        return null;
+    }
+    
+    /**
      * 设置MCP目标项目信息
      * @param {Object} projectInfo - 项目信息对象 {path, name}
      */
@@ -1507,8 +1549,8 @@ class EnhancedSidebar {
             
             // 通过WebSocket发送MCP管理员会话创建请求
             if (window.wsManager && window.wsManager.isConnected) {
-                // 获取当前选择的项目路径，用于传递上下文
-                const selectedProjectPath = this.currentMCPTargetProject?.path || null;
+                // 获取当前选择的项目路径，用于传递上下文（使用智能回退机制）
+                const selectedProjectPath = this.getEffectiveMCPProjectPath();
                 
                 const sessionData = {
                     type: 'new-mcp-manager-session',

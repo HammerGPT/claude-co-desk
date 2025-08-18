@@ -391,6 +391,17 @@ class TaskManagerDashboard {
 
         let html = '';
         
+        // 用户家目录的MCP工具（优先显示）
+        if (data.userHomeStatus && data.userHomeStatus.count > 0) {
+            html += `
+                <div class="project-mcp-section">
+                    <h6>📂 工作目录 (${data.userHomeStatus.count}个)</h6>
+                    <div class="project-path">${data.userHomeStatus.projectPath.replace('/Users/yuhao/', '~/')}</div>
+                    ${this.renderMCPToolsList(data.userHomeStatus.tools || [], 'compact')}
+                </div>
+            `;
+        }
+        
         // 各项目的MCP工具
         data.projectStatuses.forEach(project => {
             html += `

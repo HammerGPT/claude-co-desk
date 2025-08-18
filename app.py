@@ -2273,12 +2273,14 @@ async def get_cross_project_mcp_status():
         projects = await ProjectManager.get_projects()
         
         # 用户家目录MCP状态
-        user_home_status = await get_project_mcp_status(os.path.expanduser('~'))
+        user_home_path = os.path.expanduser('~')
+        user_home_status = await get_project_mcp_status(user_home_path)
         
         # 并行获取每个项目的MCP状态
         async def get_single_project_status(project):
             project_path = project.get("path")
-            if project_path and os.path.exists(project_path):
+            # 过滤掉用户家目录，避免重复统计
+            if project_path and os.path.exists(project_path) and os.path.abspath(project_path) != os.path.abspath(user_home_path):
                 try:
                     status = await get_project_mcp_status(project_path)
                     return {
@@ -2295,7 +2297,7 @@ async def get_cross_project_mcp_status():
                     }
             return None
         
-        # 并行执行所有项目的MCP状态查询
+        # 并行执行所有项目的MCP状态查询（排除用户家目录）
         tasks = [get_single_project_status(project) for project in projects]
         results = await asyncio.gather(*tasks, return_exceptions=True)
         
