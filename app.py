@@ -319,13 +319,19 @@ class EnvironmentChecker:
             logger.warning(f"检查系统项目状态时出错: {e}")
             system_project_status = {'error': str(e)}
         
+        # 获取工作目录
+        working_directory = os.getcwd()
+        home_directory = os.path.expanduser('~')
+        
         return {
             'claude_cli': claude_available,
             'projects_dir': projects_exist,
             'projects_path': cls.get_projects_path(),
             'system_project': system_project_status,
             'ready': claude_available and projects_exist,
-            'status': 'ready' if (claude_available and projects_exist) else 'incomplete'
+            'status': 'ready' if (claude_available and projects_exist) else 'incomplete',
+            'workingDirectory': working_directory,
+            'homeDirectory': home_directory
         }
 
 class ProjectScanner:
@@ -1304,6 +1310,233 @@ async def build_file_tree(path: Path, max_depth: int = 3, current_depth: int = 0
     
     return items
 
+async def build_folder_tree(path: Path, max_depth: int = 3, current_depth: int = 0) -> List[Dict[str, Any]]:
+    """构建文件夹树结构，只返回文件夹"""
+    folders = []
+    
+    if current_depth >= max_depth:
+        return folders
+    
+    try:
+        # 忽略的目录
+        ignore_patterns = {
+            '.git', '.svn', '.hg', '__pycache__', '.pytest_cache',
+            'node_modules', '.venv', 'venv', '.env',
+            '.DS_Store', 'Thumbs.db', '.vscode', '.idea'
+        }
+        
+        # macOS系统保护目录列表
+        macos_protected_dirs = {
+            'Accounts', 'AppleMediaServices', 'Autosave Information', 'Biome',
+            'Calendars', 'CallHistoryDB', 'CloudStorage', 'Contacts', 
+            'CoreData', 'CoreDuet', 'CoreFollowUp', 'DataDeliveryServices',
+            'GameKit', 'IdentityServices', 'Insights', 'Mail', 'Messages',
+            'Photos', 'ProtectedCloudStorage', 'Reminders', 'Safari', 'Shared',
+            'SpeechRecognition', 'Suggestions', 'TCC', 'Trial', 'Wallet'
+        }
+        
+        # 获取目录下的所有条目
+        entries = []
+        for entry in path.iterdir():
+            if entry.name.startswith('.') and entry.name not in {'.claude'}:
+                continue
+            if entry.name in ignore_patterns:
+                continue
+            if entry.name in macos_protected_dirs:
+                continue
+            entries.append(entry)
+        
+        # 按名称排序，文件夹优先
+        entries.sort(key=lambda x: (not x.is_dir(), x.name.lower()))
+        
+        for entry in entries:
+            try:
+                # 只处理文件夹
+                if not entry.is_dir():
+                    continue
+                    
+                folder = {
+                    'name': entry.name,
+                    'path': str(entry),
+                    'type': 'directory',
+                    'size': 0
+                }
+                
+                # 递归获取子文件夹
+                if current_depth < max_depth - 1:
+                    folder['children'] = await build_folder_tree(entry, max_depth, current_depth + 1)
+                else:
+                    # 即使不递归，也要检查是否有子文件夹，用于显示展开箭头
+                    folder['children'] = []
+                    folder['hasChildren'] = await has_subfolders(entry)
+                
+                folders.append(folder)
+                
+            except (PermissionError, OSError) as e:
+                if 'Operation not permitted' in str(e) or 'Permission denied' in str(e):
+                    logger.debug(f"macOS系统保护目录无法访问: {entry}")
+                else:
+                    logger.warning(f"无法访问 {entry}: {e}")
+                continue
+                
+    except (PermissionError, OSError) as e:
+        if 'Operation not permitted' in str(e) or 'Permission denied' in str(e):
+            logger.debug(f"macOS系统保护目录无法读取: {path}")
+        else:
+            logger.error(f"无法读取目录 {path}: {e}")
+    
+    return folders
+
+async def has_subfolders(path: Path) -> bool:
+    """检查目录是否包含子文件夹"""
+    try:
+        # 忽略的目录
+        ignore_patterns = {
+            '.git', '.svn', '.hg', '__pycache__', '.pytest_cache',
+            'node_modules', '.venv', 'venv', '.env',
+            '.DS_Store', 'Thumbs.db', '.vscode', '.idea'
+        }
+        
+        # macOS系统保护目录列表
+        macos_protected_dirs = {
+            'Accounts', 'AppleMediaServices', 'Autosave Information', 'Biome',
+            'Calendars', 'CallHistoryDB', 'CloudStorage', 'Contacts', 
+            'CoreData', 'CoreDuet', 'CoreFollowUp', 'DataDeliveryServices',
+            'GameKit', 'IdentityServices', 'Insights', 'Mail', 'Messages',
+            'Photos', 'ProtectedCloudStorage', 'Reminders', 'Safari', 'Shared',
+            'SpeechRecognition', 'Suggestions', 'TCC', 'Trial', 'Wallet'
+        }
+        
+        for entry in path.iterdir():
+            if entry.name.startswith('.') and entry.name not in {'.claude'}:
+                continue
+            if entry.name in ignore_patterns:
+                continue
+            if entry.name in macos_protected_dirs:
+                continue
+            if entry.is_dir():
+                return True
+        return False
+    except (PermissionError, OSError):
+        return False
+
+async def search_files_in_directory(
+    directory: Path, 
+    query: str, 
+    file_types: str = "all", 
+    max_results: int = 20
+) -> List[Dict[str, Any]]:
+    """在指定目录中搜索文件和文件夹"""
+    results = []
+    
+    if not query or len(query.strip()) < 2:
+        return results
+    
+    try:
+        # 忽略的目录和文件（扩展以跳过大型目录）
+        ignore_patterns = {
+            '.git', '.svn', '.hg', '__pycache__', '.pytest_cache',
+            'node_modules', '.venv', 'venv', '.env',
+            '.DS_Store', 'Thumbs.db', '.vscode', '.idea',
+            'Library', 'Applications', '.yarn', 'go', '.npm', '.cache',
+            'bower_components', '.gradle', '.m2'
+        }
+        
+        # 全局停止标志，用于提前终止搜索
+        search_stopped = False
+        
+        # 递归搜索 - 改为广度优先策略
+        def search_recursive(current_path: Path, relative_base: Path, depth: int = 0):
+            nonlocal search_stopped
+            if depth > 2 or search_stopped:  # 限制搜索深度为2层，大幅提升速度
+                return
+                
+            try:
+                for entry in current_path.iterdir():
+                    if entry.name in ignore_patterns:
+                        continue
+                        
+                    # 计算相对路径
+                    try:
+                        relative_path = entry.relative_to(relative_base)
+                        relative_path_str = str(relative_path)
+                    except ValueError:
+                        continue
+                    
+                    # 检查是否匹配搜索词
+                    entry_name_lower = entry.name.lower()
+                    path_lower = relative_path_str.lower()
+                    
+                    if (query in entry_name_lower or 
+                        query in path_lower or 
+                        any(query in part.lower() for part in relative_path_str.split('/'))):
+                        
+                        is_directory = entry.is_dir()
+                        
+                        # 根据文件类型过滤
+                        if file_types == "files" and is_directory:
+                            continue
+                        elif file_types == "folders" and not is_directory:
+                            continue
+                        
+                        # 添加到结果
+                        result_item = {
+                            "name": entry.name,
+                            "path": relative_path_str,
+                            "type": "directory" if is_directory else "file",
+                            "isDirectory": is_directory
+                        }
+                        
+                        # 移除文件大小获取以提升速度
+                        # 前端不需要文件大小信息，移除stat()调用
+                        
+                        results.append(result_item)
+                        
+                        # 检查是否达到最大结果数 - 全局停止
+                        if len(results) >= max_results:
+                            search_stopped = True
+                            return
+                    
+                    # 如果是目录，递归搜索 - 增加全局停止检查
+                    if entry.is_dir() and not search_stopped:
+                        search_recursive(entry, relative_base, depth + 1)
+                        if search_stopped:
+                            return
+                            
+            except (PermissionError, OSError) as e:
+                logger.debug(f"搜索时无法访问目录 {current_path}: {e}")
+                return
+        
+        # 开始搜索
+        search_recursive(directory, directory)
+        
+        # 按相关性排序（优先显示文件名匹配的结果）
+        def sort_key(item):
+            name_lower = item["name"].lower()
+            path_lower = item["path"].lower()
+            
+            # 文件名完全匹配得分最高
+            if name_lower == query:
+                return (0, item["name"])
+            # 文件名开头匹配
+            elif name_lower.startswith(query):
+                return (1, item["name"])
+            # 文件名包含
+            elif query in name_lower:
+                return (2, item["name"])
+            # 路径匹配
+            else:
+                return (3, item["name"])
+        
+        results.sort(key=sort_key)
+        
+        # 限制结果数量
+        return results[:max_results]
+        
+    except Exception as e:
+        logger.error(f"搜索过程中出错: {e}")
+        return []
+
 def get_permissions_string(mode: int) -> str:
     """转换权限模式为可读字符串"""
     permissions = ''
@@ -1715,6 +1948,70 @@ async def get_project_files(project_name: str):
         return JSONResponse(
             status_code=500,
             content={"error": "获取文件列表失败", "details": str(e)}
+        )
+
+@app.get("/api/browse-folders")
+async def browse_folders(path: str = "/Users/yuhao", max_depth: int = 2):
+    """浏览文件夹树API，只返回文件夹结构"""
+    try:
+        folder_path = Path(path).resolve()
+        
+        # 安全检查：确保路径存在
+        if not folder_path.exists():
+            return JSONResponse(
+                status_code=404,
+                content={"error": "路径不存在"}
+            )
+            
+        if not folder_path.is_dir():
+            return JSONResponse(
+                status_code=400,
+                content={"error": "指定路径不是文件夹"}
+            )
+        
+        # 构建文件夹树
+        folder_tree = await build_folder_tree(folder_path, max_depth)
+        return JSONResponse(content={"folders": folder_tree, "currentPath": str(folder_path)})
+        
+    except Exception as e:
+        logger.error(f"浏览文件夹 {path} 时出错: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"error": "浏览文件夹失败", "details": str(e)}
+        )
+
+@app.get("/api/search-files")
+async def search_files(
+    query: str,
+    working_directory: str,
+    file_types: str = "all",
+    max_results: int = 20
+):
+    """搜索文件和文件夹API"""
+    try:
+        # 安全检查：确保工作目录存在
+        working_dir = Path(working_directory).resolve()
+        if not working_dir.exists() or not working_dir.is_dir():
+            return JSONResponse(
+                status_code=404,
+                content={"error": "工作目录不存在"}
+            )
+        
+        # 执行搜索
+        results = await search_files_in_directory(
+            working_dir, 
+            query.lower().strip(), 
+            file_types, 
+            max_results
+        )
+        
+        return JSONResponse(content={"results": results})
+        
+    except Exception as e:
+        logger.error(f"搜索文件时出错: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"error": "搜索文件失败", "details": str(e)}
         )
 
 @app.get("/api/files/read")
