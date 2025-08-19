@@ -30,6 +30,9 @@ class TaskManager {
         // 初始化时加载任务列表
         this.loadTasks();
         
+        // 初始化路径自动补全功能
+        this.initPathAutocomplete();
+        
         console.log('✅ TaskManager V2 初始化完成');
     }
 
@@ -520,6 +523,40 @@ class TaskManager {
     }
 
     /**
+     * 构建任务状态信息HTML
+     */
+    buildStatusInfo(safeTask) {
+        const taskStatus = this.getTaskStatus(safeTask);
+        
+        // 构建执行状态部分
+        const statusHTML = `<div class="status-item">
+            <span class="task-item-status ${taskStatus.class}">
+                ${taskStatus.text}
+            </span>
+        </div>`;
+        
+        // 构建执行选项部分
+        const optionsHTML = [];
+        
+        if (safeTask.skip_permissions) {
+            optionsHTML.push('<span class="status-option auto-mode">全自动模式</span>');
+        }
+        
+        if (safeTask.verbose_logs) {
+            optionsHTML.push('<span class="status-option verbose-logs">任务日志模式</span>');
+        }
+        
+        const optionsSection = optionsHTML.length > 0 
+            ? `<div class="status-options">${optionsHTML.join('')}</div>`
+            : '';
+        
+        return `<div class="status-info-container">
+            ${statusHTML}
+            ${optionsSection}
+        </div>`;
+    }
+
+    /**
      * 检查任务是否正在运行（通过页签判断）
      */
     isTaskRunning(taskId) {
@@ -593,8 +630,8 @@ class TaskManager {
                 </div>
             `;
         } else {
-            // 只显示前5个任务，保持侧边栏简洁
-            const displayTasks = this.tasks.slice(0, 5);
+            // 显示所有任务
+            const displayTasks = this.tasks;
             
             sidebarTasksList.innerHTML = displayTasks.map(task => {
                 const safeTask = {
@@ -629,17 +666,6 @@ class TaskManager {
                     </div>
                 `;
             }).join('');
-
-            // 如果任务数量超过5个，显示"查看更多"
-            if (this.tasks.length > 5) {
-                sidebarTasksList.innerHTML += `
-                    <div class="view-more-tasks">
-                        <button class="view-more-btn" onclick="window.taskManager && window.taskManager.showAllTasks()">
-                            查看全部 ${this.tasks.length} 个任务
-                        </button>
-                    </div>
-                `;
-            }
         }
 
         // 任务板块不再使用动态高度控制，改为CSS默认布局
@@ -724,13 +750,7 @@ class TaskManager {
                 : '<span class="text-muted">未设置资源文件</span>';
         }
         if (this.detailStatus) {
-            const taskStatus = this.getTaskStatus(safeTask);
-            this.detailStatus.innerHTML = `
-                <span class="task-item-status ${taskStatus.class}">
-                    ${taskStatus.text}
-                </span>
-                ${safeTask.skip_permissions ? '<span class="detail-value code">危险权限跳过模式</span>' : ''}
-            `;
+            this.detailStatus.innerHTML = this.buildStatusInfo(safeTask);
         }
     }
 
@@ -872,7 +892,7 @@ class TaskManager {
         if (!this.resourceList) return;
         
         if (this.resources.length === 0) {
-            this.resourceList.innerHTML = '<div class="text-muted">未添加资源文件</div>';
+            this.resourceList.innerHTML = '<div class="text-muted">暂无引用文件或文件夹</div>';
             return;
         }
         
@@ -921,8 +941,10 @@ class TaskManager {
         fileInput.addEventListener('change', (e) => {
             const files = Array.from(e.target.files);
             files.forEach(file => {
-                // 只获取文件名作为路径，用户可以后续手动修改为完整路径
+                // 对于单个文件选择，只能获取文件名（浏览器安全限制）
                 const path = file.name;
+                console.log(`添加文件: ${file.name} (仅文件名，如需完整路径请手动输入)`);
+                
                 if (!this.resources.includes(path)) {
                     this.resources.push(path);
                 }
@@ -979,6 +1001,9 @@ class TaskManager {
                         if (firstFile.webkitRelativePath) {
                             // 从第一个文件的路径提取文件夹路径
                             const pathParts = firstFile.webkitRelativePath.split('/');
+                            console.log('webkitRelativePath:', firstFile.webkitRelativePath);
+                            console.log('pathParts:', pathParts);
+                            
                             if (pathParts.length > 1) {
                                 // 移除文件名，保留文件夹路径
                                 pathParts.pop();
@@ -986,9 +1011,11 @@ class TaskManager {
                             } else {
                                 folderPath = pathParts[0];
                             }
+                            console.log('提取的文件夹路径:', folderPath);
                         } else {
                             // 如果无法获取路径，使用文件夹名
                             folderPath = firstFile.name || 'selected_folder';
+                            console.log('无法获取webkitRelativePath，使用默认:', folderPath);
                         }
                         
                         if (folderPath && !this.resources.includes(folderPath)) {
@@ -1372,13 +1399,7 @@ class TaskManager {
                 : '<span class="text-muted">未设置资源文件</span>';
         }
         if (statusEl) {
-            const taskStatus = this.getTaskStatus(safeTask);
-            statusEl.innerHTML = `
-                <span class="task-item-status ${taskStatus.class}">
-                    ${taskStatus.text}
-                </span>
-                ${safeTask.skip_permissions ? '<span class="detail-value code">危险权限跳过模式</span>' : ''}
-            `;
+            statusEl.innerHTML = this.buildStatusInfo(safeTask);
         }
         
         // 动态更新执行按钮文本
@@ -1476,7 +1497,7 @@ class TaskManager {
         if (!resourceList) return;
         
         if (!this.standaloneResources || this.standaloneResources.length === 0) {
-            resourceList.innerHTML = '<div class="text-muted">未添加资源文件</div>';
+            resourceList.innerHTML = '<div class="text-muted">暂无引用文件或文件夹</div>';
             return;
         }
         
@@ -1498,7 +1519,7 @@ class TaskManager {
         if (!resourceList) return;
         
         if (!this.standaloneEditResources || this.standaloneEditResources.length === 0) {
-            resourceList.innerHTML = '<div class="text-muted">未添加资源文件</div>';
+            resourceList.innerHTML = '<div class="text-muted">暂无引用文件或文件夹</div>';
             return;
         }
         
@@ -1909,7 +1930,10 @@ class TaskManager {
         fileInput.addEventListener('change', (e) => {
             const files = Array.from(e.target.files);
             files.forEach(file => {
+                // 对于单个文件选择，只能获取文件名（浏览器安全限制）
                 const path = file.name;
+                console.log(`添加文件: ${file.name} (仅文件名，如需完整路径请手动输入)`);
+                
                 if (!this.standaloneResources) this.standaloneResources = [];
                 if (!this.standaloneResources.includes(path)) {
                     this.standaloneResources.push(path);
@@ -1963,14 +1987,19 @@ class TaskManager {
                         
                         if (firstFile.webkitRelativePath) {
                             const pathParts = firstFile.webkitRelativePath.split('/');
+                            console.log('独立新建-webkitRelativePath:', firstFile.webkitRelativePath);
+                            console.log('独立新建-pathParts:', pathParts);
+                            
                             if (pathParts.length > 1) {
                                 pathParts.pop();
                                 folderPath = pathParts.join('/');
                             } else {
                                 folderPath = pathParts[0];
                             }
+                            console.log('独立新建-提取的文件夹路径:', folderPath);
                         } else {
                             folderPath = firstFile.name || 'selected_folder';
+                            console.log('独立新建-无法获取webkitRelativePath，使用默认:', folderPath);
                         }
                         
                         if (folderPath) {
@@ -2008,7 +2037,10 @@ class TaskManager {
         fileInput.addEventListener('change', (e) => {
             const files = Array.from(e.target.files);
             files.forEach(file => {
+                // 对于单个文件选择，只能获取文件名（浏览器安全限制）
                 const path = file.name;
+                console.log(`添加文件: ${file.name} (仅文件名，如需完整路径请手动输入)`);
+                
                 if (!this.standaloneEditResources) this.standaloneEditResources = [];
                 if (!this.standaloneEditResources.includes(path)) {
                     this.standaloneEditResources.push(path);
@@ -2098,6 +2130,69 @@ class TaskManager {
             modal.classList.add('hidden');
         }
         this.selectedTaskId = null;
+    }
+
+    /**
+     * 初始化路径自动补全功能
+     */
+    initPathAutocomplete() {
+        if (typeof PathInputEnhancer === 'undefined') {
+            console.warn('PathInputEnhancer 未定义，跳过路径自动补全初始化');
+            return;
+        }
+        
+        // 工作目录获取函数
+        const getWorkingDirectory = () => {
+            // 默认使用用户家目录，任务基于此目录执行
+            return '/Users/yuhao';
+        };
+        
+        // 为主任务表单的手动输入框添加自动补全
+        const mainPathInput = document.getElementById('manual-path');
+        if (mainPathInput) {
+            const onPathSelected = (path) => {
+                // 直接添加到主任务表单的资源列表
+                if (!this.resources.includes(path)) {
+                    this.resources.push(path);
+                    this.renderResourceList();
+                    console.log(`✅ 已添加资源: ${path}`);
+                }
+            };
+            new PathInputEnhancer(mainPathInput, getWorkingDirectory, onPathSelected);
+            console.log('✅ 主任务表单路径自动补全已初始化');
+        }
+        
+        // 为独立新建任务的手动输入框添加自动补全
+        const standalonePathInput = document.getElementById('standalone-manual-path');
+        if (standalonePathInput) {
+            const onPathSelected = (path) => {
+                // 直接添加到独立新建任务的资源列表
+                if (!this.standaloneResources) this.standaloneResources = [];
+                if (!this.standaloneResources.includes(path)) {
+                    this.standaloneResources.push(path);
+                    this.renderStandaloneResourceList();
+                    console.log(`✅ 已添加资源: ${path}`);
+                }
+            };
+            new PathInputEnhancer(standalonePathInput, getWorkingDirectory, onPathSelected);
+            console.log('✅ 独立新建任务路径自动补全已初始化');
+        }
+        
+        // 为独立编辑任务的手动输入框添加自动补全
+        const standaloneEditPathInput = document.getElementById('standalone-edit-manual-path');
+        if (standaloneEditPathInput) {
+            const onPathSelected = (path) => {
+                // 直接添加到独立编辑任务的资源列表
+                if (!this.standaloneEditResources) this.standaloneEditResources = [];
+                if (!this.standaloneEditResources.includes(path)) {
+                    this.standaloneEditResources.push(path);
+                    this.renderStandaloneEditResourceList();
+                    console.log(`✅ 已添加资源: ${path}`);
+                }
+            };
+            new PathInputEnhancer(standaloneEditPathInput, getWorkingDirectory, onPathSelected);
+            console.log('✅ 独立编辑任务路径自动补全已初始化');
+        }
     }
 
     /**
