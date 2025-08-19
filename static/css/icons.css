@@ -1,0 +1,252 @@
+/* 
+ * Heliki OS - 图标系统样式
+ * 绿色海洋主题图标样式管理
+ */
+
+/* 图标基础样式 */
+.icon {
+  display: inline-block;
+  vertical-align: middle;
+  transition: opacity 0.2s ease, filter 0.2s ease;
+}
+
+/* 通用图标对齐修复 */
+img {
+  vertical-align: middle;
+}
+
+/* 按钮内图标对齐 */
+button img, .btn img {
+  vertical-align: middle;
+  margin-right: 6px;
+}
+
+.icon:hover {
+  opacity: 0.8;
+}
+
+/* 系统级图标 */
+.icon-logo {
+  width: 32px;
+  height: 32px;
+}
+
+.icon-favicon {
+  width: 16px;
+  height: 16px;
+}
+
+.icon-app-icon {
+  width: 192px;
+  height: 192px;
+}
+
+/* 界面交互图标 */
+.icon-tools {
+  width: 16px;
+  height: 16px;
+}
+
+.icon-tools-lg {
+  width: 20px;
+  height: 20px;
+}
+
+.icon-tools-xl {
+  width: 24px;
+  height: 24px;
+}
+
+.icon-folder {
+  width: 16px;
+  height: 16px;
+}
+
+.icon-folder-lg {
+  width: 20px;
+  height: 20px;
+}
+
+.icon-terminal {
+  width: 16px;
+  height: 16px;
+}
+
+.icon-terminal-lg {
+  width: 20px;
+  height: 20px;
+}
+
+.icon-rocket {
+  width: 20px;
+  height: 20px;
+}
+
+.icon-refresh {
+  width: 16px;
+  height: 16px;
+}
+
+.icon-refresh-lg {
+  width: 20px;
+  height: 20px;
+}
+
+.icon-zap {
+  width: 16px;
+  height: 16px;
+}
+
+.icon-edit {
+  width: 16px;
+  height: 16px;
+}
+
+.icon-menu {
+  width: 20px;
+  height: 20px;
+}
+
+.icon-info {
+  width: 16px;
+  height: 16px;
+}
+
+.icon-package {
+  width: 16px;
+  height: 16px;
+}
+
+/* 状态指示图标 */
+.icon-check {
+  width: 16px;
+  height: 16px;
+}
+
+.icon-check-lg {
+  width: 20px;
+  height: 20px;
+}
+
+.icon-error {
+  width: 16px;
+  height: 16px;
+}
+
+.icon-error-lg {
+  width: 20px;
+  height: 20px;
+}
+
+.icon-warning {
+  width: 16px;
+  height: 16px;
+}
+
+.icon-warning-lg {
+  width: 20px;
+  height: 20px;
+}
+
+.icon-warning-xl {
+  width: 48px;
+  height: 48px;
+}
+
+/* 图标状态变体 */
+.icon-disabled {
+  opacity: 0.5;
+  filter: grayscale(50%);
+}
+
+.icon-hover:hover {
+  filter: brightness(1.1);
+  transform: scale(1.05);
+}
+
+.icon-success {
+  filter: hue-rotate(90deg);
+}
+
+.icon-error-state {
+  filter: hue-rotate(0deg) saturate(1.2);
+}
+
+.icon-warning-state {
+  filter: hue-rotate(30deg) saturate(1.1);
+}
+
+/* 图标与文字组合样式 */
+.icon-text {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.icon-text .icon {
+  margin-right: 0;
+}
+
+/* 标题内图标对齐 */
+h1 img, h2 img, h3 img, h4 img, h5 img, h6 img {
+  vertical-align: middle;
+  margin-right: 8px;
+}
+
+/* 列表项图标对齐 */
+li img {
+  vertical-align: middle;
+  margin-right: 6px;
+}
+
+/* 工具列表标题对齐 */
+.tools-list-header h5 img {
+  vertical-align: middle;
+  margin-right: 6px;
+}
+
+/* 动画效果 */
+.icon-spin {
+  animation: icon-spin 1s linear infinite;
+}
+
+@keyframes icon-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.icon-pulse {
+  animation: icon-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes icon-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* 主题适配 */
+.dark .icon {
+  filter: brightness(0.9);
+}
+
+.dark .icon:hover {
+  filter: brightness(1.1);
+}
+
+/* 响应式图标 */
+@media (max-width: 768px) {
+  .icon-responsive {
+    width: 18px;
+    height: 18px;
+  }
+  
+  .icon-tools-responsive {
+    width: 18px;
+    height: 18px;
+  }
+  
+  .icon-menu-responsive {
+    width: 22px;
+    height: 22px;
+  }
+}

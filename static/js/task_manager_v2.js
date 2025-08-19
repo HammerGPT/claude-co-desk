@@ -5,7 +5,7 @@
 
 class TaskManager {
     constructor() {
-        console.log('📋 TaskManager V2 初始化开始');
+        console.log(' TaskManager V2 初始化开始');
         this.tasks = [];
         this.selectedTaskId = null;
         this.currentView = 'empty'; // 'empty', 'detail', 'form'
@@ -18,13 +18,13 @@ class TaskManager {
         
         // 监听任务创建事件（来自SimpleTaskManager）
         document.addEventListener('taskCreated', (event) => {
-            console.log('📋 收到任务创建事件:', event.detail.task);
+            console.log(' 收到任务创建事件:', event.detail.task);
             this.loadTasks(); // 重新加载任务列表
         });
         
         // 监听任务更新事件（来自SimpleTaskManager）
         document.addEventListener('taskUpdated', (event) => {
-            console.log('📋 收到任务更新事件:', event.detail.task);
+            console.log(' 收到任务更新事件:', event.detail.task);
             this.loadTasks(); // 重新加载任务列表
         });
         
@@ -58,7 +58,7 @@ class TaskManager {
             const response = await fetch('/api/config');
             if (response.ok) {
                 this.systemConfig = await response.json();
-                console.log('📋 TaskManager系统配置已加载:', this.systemConfig);
+                console.log(' TaskManager系统配置已加载:', this.systemConfig);
             }
         } catch (error) {
             console.error('加载系统配置失败:', error);
@@ -458,7 +458,7 @@ class TaskManager {
                 // 后端返回格式是 {tasks: [...]}，需要提取tasks数组
                 this.tasks = Array.isArray(data.tasks) ? data.tasks : (Array.isArray(data) ? data : []);
                 
-                console.log('📋 任务加载成功，数量:', this.tasks.length);
+                console.log(' 任务加载成功，数量:', this.tasks.length);
                 
                 // 详细检查每个任务的sessionId
                 this.tasks.forEach((task, index) => {
@@ -714,7 +714,7 @@ class TaskManager {
         }
 
         // 任务板块不再使用动态高度控制，改为CSS默认布局
-        console.log('📋 任务列表渲染完成，任务板块使用CSS默认布局');
+        console.log(' 任务列表渲染完成，任务板块使用CSS默认布局');
     }
 
     /**
@@ -725,7 +725,7 @@ class TaskManager {
         setTimeout(() => {
             if (window.sidebarDrawers) {
                 window.sidebarDrawers.recalculateDrawerHeight(drawerName);
-                console.log(`📋 已通知抽屉管理器重新计算 ${drawerName} 抽屉高度`);
+                console.log(` 已通知抽屉管理器重新计算 ${drawerName} 抽屉高度`);
             }
         }, 50);
         
@@ -1192,11 +1192,11 @@ class TaskManager {
             task.enabled = true;
         }
         
-        console.log('🚀 执行任务:', task.name);
+        console.log(' 执行任务:', task.name);
         
         // 验证资源文件
         if (task.resources && task.resources.length > 0) {
-            console.log('📁 任务资源文件:', task.resources);
+            console.log('[TASK] 任务资源文件:', task.resources);
         }
         
         // 检查WebSocket连接
@@ -1276,7 +1276,7 @@ class TaskManager {
         notification.className = 'task-execution-notification';
         notification.innerHTML = `
             <div class="notification-content">
-                <span class="notification-icon">🚀</span>
+                <span class="notification-icon"></span>
                 <span class="notification-text">正在执行任务: ${this.escapeHtml(taskName)}</span>
             </div>
         `;
@@ -1323,7 +1323,7 @@ class TaskManager {
      * 快速添加任务（从侧边栏触发）
      */
     showQuickAddTask() {
-        console.log('📋 从侧边栏快速添加任务');
+        console.log(' 从侧边栏快速添加任务');
         
         // 打开独立的新建任务弹窗
         const modal = document.getElementById('standalone-add-task-modal');
@@ -1344,7 +1344,7 @@ class TaskManager {
      * 显示任务详情（从侧边栏触发）
      */
     showTaskDetails(taskId) {
-        console.log('📋 从侧边栏查看任务详情:', taskId);
+        console.log(' 从侧边栏查看任务详情:', taskId);
         
         // 查找任务数据
         const task = this.tasks.find(t => t.id === taskId);
@@ -1371,7 +1371,7 @@ class TaskManager {
      * 显示所有任务（从侧边栏触发）
      */
     showAllTasks() {
-        console.log('📋 从侧边栏查看所有任务');
+        console.log(' 从侧边栏查看所有任务');
         
         // 打开任务管理弹窗
         const modal = document.getElementById('daily-tasks-modal');
@@ -1829,7 +1829,7 @@ class TaskManager {
             task.enabled = true;
         }
         
-        console.log('🚀 执行任务:', task.name);
+        console.log(' 执行任务:', task.name);
         
         // 检查WebSocket连接
         if (!window.websocketManager || !window.websocketManager.isConnected) {
@@ -1856,7 +1856,7 @@ class TaskManager {
                 this.showExecutionFeedback(`继续任务: ${task.name}`);
             } else {
                 // 重新执行：使用原有逻辑
-                console.log('🚀 重新执行任务');
+                console.log(' 重新执行任务');
                 const command = this.buildClaudeCommand(task);
                 console.log('📝 构建的命令:', command);
                 

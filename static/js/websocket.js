@@ -22,12 +22,12 @@ class WebSocketManager {
             const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
             const wsUrl = `${protocol}//${window.location.host}/ws`;
             
-            console.log('🔗 连接WebSocket:', wsUrl);
+            console.log('连接WebSocket:', wsUrl);
             
             this.ws = new WebSocket(wsUrl);
             
             this.ws.onopen = () => {
-                console.log('✅ WebSocket连接已建立');
+                console.log('WebSocket连接已建立');
                 this.isConnected = true;
                 this._notifyConnectionHandlers(true);
                 
@@ -41,34 +41,34 @@ class WebSocketManager {
             this.ws.onmessage = (event) => {
                 try {
                     const data = JSON.parse(event.data);
-                    console.log('📨 收到WebSocket消息:', data);
+                    console.log('收到WebSocket消息:', data);
                     
                     this.messages.push(data);
                     this._handleMessage(data);
                 } catch (error) {
-                    console.error('❌ 解析WebSocket消息失败:', error);
+                    console.error('解析WebSocket消息失败:', error);
                 }
             };
             
             this.ws.onclose = () => {
-                console.log('🔌 WebSocket连接已断开');
+                console.log('WebSocket连接已断开');
                 this.isConnected = false;
                 this.ws = null;
                 this._notifyConnectionHandlers(false);
                 
                 // 3秒后尝试重连
                 this.reconnectTimeout = setTimeout(() => {
-                    console.log('🔄 尝试重新连接WebSocket...');
+                    console.log(' 尝试重新连接WebSocket...');
                     this.connect();
                 }, 3000);
             };
             
             this.ws.onerror = (error) => {
-                console.error('❌ WebSocket错误:', error);
+                console.error('WebSocket错误:', error);
             };
             
         } catch (error) {
-            console.error('❌ 创建WebSocket连接失败:', error);
+            console.error('创建WebSocket连接失败:', error);
         }
     }
 
@@ -78,11 +78,11 @@ class WebSocketManager {
     sendMessage(message) {
         if (this.ws && this.isConnected) {
             const messageStr = JSON.stringify(message);
-            console.log('📤 发送WebSocket消息:', messageStr);
+            console.log('发送WebSocket消息:', messageStr);
             this.ws.send(messageStr);
             return true;
         } else {
-            console.warn('⚠️ WebSocket未连接，无法发送消息');
+            console.warn('WebSocket未连接，无法发送消息');
             return false;
         }
     }
@@ -164,11 +164,11 @@ class WebSocketManager {
                 try {
                     handler(data);
                 } catch (error) {
-                    console.error('❌ 消息处理器错误:', error);
+                    console.error('消息处理器错误:', error);
                 }
             });
         } else {
-            console.log(`📋 没有为消息类型 '${type}' 注册处理器，仅触发全局事件`);
+            console.log(` 没有为消息类型 '${type}' 注册处理器，仅触发全局事件`);
         }
     }
 
@@ -210,11 +210,11 @@ class WebSocketManager {
             case 'create-task-tab':
                 // 创建任务页签
                 if (data.taskId && data.taskName && window.enhancedSidebar) {
-                    console.log('🎯 创建任务页签:', data.taskName);
-                    console.log('📋 初始命令:', data.initialCommand);
-                    console.log('📁 工作目录:', data.workingDirectory);
-                    console.log('🔄 恢复会话:', data.resumeSession);
-                    console.log('🆔 会话ID:', data.sessionId);
+                    console.log(' 创建任务页签:', data.taskName);
+                    console.log(' 初始命令:', data.initialCommand);
+                    console.log('[WS] 工作目录:', data.workingDirectory);
+                    console.log(' 恢复会话:', data.resumeSession);
+                    console.log(' 会话ID:', data.sessionId);
                     
                     // 传递所有必要参数给createTaskTab
                     window.enhancedSidebar.createTaskTab(
@@ -232,7 +232,7 @@ class WebSocketManager {
             case 'task-error':
                 // 处理任务错误
                 if (data.taskId && data.error) {
-                    console.error('❌ 任务执行错误:', data);
+                    console.error('任务执行错误:', data);
                     this._showTaskError(data);
                 }
                 break;
@@ -240,13 +240,13 @@ class WebSocketManager {
             case 'task-session-captured':
                 // 处理任务会话捕获成功，刷新任务数据
                 if (data.taskId && data.sessionId) {
-                    console.log('🆔 任务会话已捕获:', data);
-                    console.log('🔄 刷新任务列表以更新按钮状态');
+                    console.log(' 任务会话已捕获:', data);
+                    console.log(' 刷新任务列表以更新按钮状态');
                     
                     // 通知任务管理器刷新数据
                     if (window.taskManager) {
                         window.taskManager.loadTasks().then(() => {
-                            console.log('✅ 任务数据刷新完成');
+                            console.log('任务数据刷新完成');
                         });
                     }
                 }
@@ -262,11 +262,11 @@ class WebSocketManager {
         
         // 获取错误图标
         const errorIcons = {
-            validation: '⚠️',
-            system: '🚨',
-            execution: '❌'
+            validation: '',
+            system: '',
+            execution: ''
         };
-        const icon = errorIcons[category] || '❌';
+        const icon = errorIcons[category] || '';
         
         // 创建错误通知元素
         const notification = document.createElement('div');
@@ -330,7 +330,7 @@ class WebSocketManager {
             try {
                 handler(connected);
             } catch (error) {
-                console.error('❌ 连接状态处理器错误:', error);
+                console.error('连接状态处理器错误:', error);
             }
         });
     }
@@ -393,12 +393,12 @@ class ShellWebSocketManager {
     async connect() {
         // 防止重复连接
         if (this.isConnecting) {
-            console.warn('⚠️ Shell WebSocket正在连接中，忽略重复请求');
+            console.warn('Shell WebSocket正在连接中，忽略重复请求');
             return Promise.resolve();
         }
         
         if (this.isConnected) {
-            console.log('✅ Shell WebSocket已连接，无需重复连接');
+            console.log('Shell WebSocket已连接，无需重复连接');
             return Promise.resolve();
         }
         
@@ -409,12 +409,12 @@ class ShellWebSocketManager {
                 const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
                 const wsUrl = `${protocol}//${window.location.host}/shell`;
                 
-                console.log('🐚 连接Shell WebSocket:', wsUrl);
+                console.log('连接Shell WebSocket:', wsUrl);
                 
                 this.ws = new WebSocket(wsUrl);
                 
                 this.ws.onopen = () => {
-                    console.log('✅ Shell WebSocket连接已建立');
+                    console.log('Shell WebSocket连接已建立');
                     this.isConnected = true;
                     this.isConnecting = false;
                     this.reconnectAttempts = 0; // 重置重连计数器
@@ -429,20 +429,20 @@ class ShellWebSocketManager {
                         const data = JSON.parse(event.data);
                         this._handleMessage(data);
                     } catch (error) {
-                        console.error('❌ 解析Shell WebSocket消息失败:', error);
+                        console.error('解析Shell WebSocket消息失败:', error);
                     }
                 };
                 
                 this.ws.onclose = (event) => {
-                    console.log('🔌 Shell WebSocket连接已断开');
-                    console.log('📊 断开详情:', {
+                    console.log('Shell WebSocket连接已断开');
+                    console.log('断开详情:', {
                         code: event.code,
                         reason: event.reason,
                         wasClean: event.wasClean,
                         timestamp: new Date().toISOString(),
                         url: this.ws?.url
                     });
-                    console.trace('📍 WebSocket断开调用栈');
+                    console.trace('WebSocket断开调用栈');
                     this.isConnected = false;
                     this.isConnecting = false;
                     this.ws = null;
@@ -452,27 +452,27 @@ class ShellWebSocketManager {
                     // 自动重连机制
                     if (this.shouldReconnect && this.reconnectAttempts < this.maxReconnectAttempts) {
                         this.reconnectAttempts++;
-                        console.log(`🔄 尝试重新连接Shell WebSocket (${this.reconnectAttempts}/${this.maxReconnectAttempts})...`);
+                        console.log(` 尝试重新连接Shell WebSocket (${this.reconnectAttempts}/${this.maxReconnectAttempts})...`);
                         
                         this.reconnectTimeout = setTimeout(() => {
                             this.connect().catch(error => {
-                                console.error('❌ Shell WebSocket重连失败:', error);
+                                console.error('Shell WebSocket重连失败:', error);
                             });
                         }, this.reconnectDelay);
                     } else if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-                        console.error('❌ Shell WebSocket重连次数已达上限，停止重连');
+                        console.error('Shell WebSocket重连次数已达上限，停止重连');
                     }
                 };
                 
                 this.ws.onerror = (error) => {
-                    console.error('❌ Shell WebSocket错误:', error);
+                    console.error('Shell WebSocket错误:', error);
                     this.isConnected = false;
                     this.isConnecting = false;
                     reject(error); // 连接失败时reject
                 };
                 
             } catch (error) {
-                console.error('❌ 创建Shell WebSocket连接失败:', error);
+                console.error('创建Shell WebSocket连接失败:', error);
                 this.isConnecting = false;
                 reject(error);
             }
@@ -546,8 +546,8 @@ class ShellWebSocketManager {
      * 手动断开连接（不自动重连）
      */
     manualDisconnect() {
-        console.log('🔌 [SHELL WS] 手动断开Shell WebSocket连接');
-        console.trace('📍 手动断开调用栈');
+        console.log('[SHELL WS] 手动断开Shell WebSocket连接');
+        console.trace('手动断开调用栈');
         this.shouldReconnect = false; // 禁用自动重连
         // 清理重连计时器
         if (this.reconnectTimeout) {
@@ -561,8 +561,8 @@ class ShellWebSocketManager {
      * 断开连接
      */
     disconnect() {
-        console.log('🔌 [SHELL WS] 正在断开Shell WebSocket连接...');
-        console.trace('📍 disconnect()调用栈');
+        console.log('[SHELL WS] 正在断开Shell WebSocket连接...');
+        console.trace('disconnect()调用栈');
         
         this._stopHeartbeat(); // 停止心跳
         
@@ -586,7 +586,7 @@ class ShellWebSocketManager {
         // 通知连接状态变化
         this._notifyConnectionHandlers(false);
         
-        console.log('✅ [SHELL WS] Shell WebSocket连接已断开');
+        console.log('[SHELL WS] Shell WebSocket连接已断开');
     }
 
     /**
@@ -607,7 +607,7 @@ class ShellWebSocketManager {
                 try {
                     handler(data);
                 } catch (error) {
-                    console.error('❌ Shell消息处理器错误:', error);
+                    console.error('Shell消息处理器错误:', error);
                 }
             });
         }
@@ -621,7 +621,7 @@ class ShellWebSocketManager {
             try {
                 handler(connected);
             } catch (error) {
-                console.error('❌ Shell连接状态处理器错误:', error);
+                console.error('Shell连接状态处理器错误:', error);
             }
         });
     }
@@ -631,7 +631,7 @@ class ShellWebSocketManager {
      */
     _startHeartbeat() {
         // 完全禁用心跳机制，避免任何可能的自动断开
-        console.log('❤️ Shell WebSocket心跳机制已禁用，保持永久连接');
+        console.log('Shell WebSocket心跳机制已禁用，保持永久连接');
         return;
         
         /* 原心跳逻辑已禁用
@@ -651,13 +651,13 @@ class ShellWebSocketManager {
                 
                 // 检查是否超过最大丢失心跳数
                 if (this.missedHeartbeats > this.maxMissedHeartbeats) {
-                    console.warn('❤️‍🩹 Shell WebSocket心跳超时，主动断开连接');
+                    console.warn('Shell WebSocket心跳超时，主动断开连接');
                     this.disconnect();
                 }
             }
         }, this.heartbeatFrequency);
         
-        console.log('❤️ Shell WebSocket心跳机制已启动');
+        console.log('Shell WebSocket心跳机制已启动');
         */
     }
 
@@ -668,7 +668,7 @@ class ShellWebSocketManager {
         if (this.heartbeatInterval) {
             clearInterval(this.heartbeatInterval);
             this.heartbeatInterval = null;
-            console.log('💔 Shell WebSocket心跳机制已停止');
+            console.log('Shell WebSocket心跳机制已停止');
         }
     }
 
@@ -678,14 +678,14 @@ class ShellWebSocketManager {
     _handlePong(data) {
         this.missedHeartbeats = 0; // 重置丢失计数
         const latency = Date.now() - data.timestamp;
-        console.log(`❤️ Shell WebSocket心跳响应: ${latency}ms`);
+        console.log(`Shell WebSocket心跳响应: ${latency}ms`);
     }
 
     /**
      * 完全清理WebSocket连接和资源
      */
     cleanup() {
-        console.log('🧹 [SHELL WS] 开始清理Shell WebSocket资源...');
+        console.log('[SHELL WS] 开始清理Shell WebSocket资源...');
         
         // 禁用自动重连
         this.shouldReconnect = false;
@@ -722,7 +722,7 @@ class ShellWebSocketManager {
         this.messageHandlers.clear();
         this.connectionHandlers = [];
         
-        console.log('✅ [SHELL WS] Shell WebSocket资源清理完成');
+        console.log('[SHELL WS] Shell WebSocket资源清理完成');
     }
 }
 
@@ -735,12 +735,12 @@ window.websocketManager = window.wsManager;
 
 // 添加全局调试监听器
 window.addEventListener('load', () => {
-    console.log('🔍 [GLOBAL DEBUG] WebSocket全局监听器已启动');
+    console.log('[GLOBAL DEBUG] WebSocket全局监听器已启动');
     
     // 监听所有可能导致页面状态变化的事件
     ['beforeunload', 'pagehide', 'visibilitychange', 'focus', 'blur'].forEach(eventType => {
         document.addEventListener(eventType, (event) => {
-            console.log(`🔍 [GLOBAL DEBUG] 页面事件触发: ${eventType}`, {
+            console.log(`[GLOBAL DEBUG] 页面事件触发: ${eventType}`, {
                 hidden: document.hidden,
                 visibilityState: document.visibilityState,
                 hasFocus: document.hasFocus(),

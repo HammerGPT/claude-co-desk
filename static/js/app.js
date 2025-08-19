@@ -72,12 +72,12 @@ class App {
         
         // 页面卸载事件监听 - 修复标签页关闭时连接未断开的bug
         window.addEventListener('beforeunload', () => {
-            console.log('🔄 [APP] 页面即将卸载，清理应用资源');
+            console.log(' [APP] 页面即将卸载，清理应用资源');
             this.cleanup();
         });
         
         window.addEventListener('pagehide', () => {
-            console.log('🔄 [APP] 页面隐藏，清理应用资源');
+            console.log(' [APP] 页面隐藏，清理应用资源');
             this.cleanup();
         });
     }
@@ -86,7 +86,7 @@ class App {
      * 应用初始化
      */
     async initialize() {
-        console.log('🚀 初始化 Heliki OS...');
+        console.log(' 初始化 Heliki OS...');
         
         // 检查环境
         await this.checkEnvironment();
@@ -102,7 +102,7 @@ class App {
      */
     async checkEnvironment() {
         try {
-            console.log('🔍 检查环境状态...');
+            console.log('[DEBUG] 检查环境状态...');
             
             const response = await fetch('/api/environment');
             const status = await response.json();
@@ -111,14 +111,14 @@ class App {
             this.environmentStatus = status;
             
             if (status.ready) {
-                console.log('✅ 环境检查通过');
+                console.log(' 环境检查通过');
                 await this.initializeApp();
             } else {
-                console.log('⚠️ 环境配置不完整');
+                console.log('[WARN] 环境配置不完整');
                 this.showEnvironmentError(status);
             }
         } catch (error) {
-            console.error('❌ 环境检查失败:', error);
+            console.error(' 环境检查失败:', error);
             this.showEnvironmentError({
                 claude_cli: false,
                 projects_dir: false,
@@ -139,13 +139,13 @@ class App {
                 <div class="status-item">
                     <span>Claude CLI</span>
                     <span class="status-indicator ${status.claude_cli ? 'success' : 'error'}">
-                        ${status.claude_cli ? '✅ 已安装' : '❌ 未安装'}
+                        ${status.claude_cli ? ' 已安装' : ' 未安装'}
                     </span>
                 </div>
                 <div class="status-item">
                     <span>项目目录</span>
                     <span class="status-indicator ${status.projects_dir ? 'success' : 'error'}">
-                        ${status.projects_dir ? '✅ 已存在' : '❌ 不存在'}
+                        ${status.projects_dir ? ' 已存在' : ' 不存在'}
                     </span>
                 </div>
                 ${status.projects_path ? 
@@ -170,7 +170,7 @@ class App {
      * 初始化应用
      */
     async initializeApp() {
-        console.log('🚀 初始化应用组件...');
+        console.log(' 初始化应用组件...');
         
         try {
             // 连接WebSocket
@@ -178,7 +178,7 @@ class App {
             
             // 初始化员工管理器（如果存在）
             if (window.employeesManager) {
-                console.log('🧑‍💼 初始化员工团队管理器...');
+                console.log(' 初始化员工团队管理器...');
                 // 员工管理器已经在自己的构造函数中初始化了
             }
             
@@ -188,9 +188,9 @@ class App {
             // 显示主应用
             this.showMainApp();
             
-            console.log('✅ 应用初始化完成');
+            console.log(' 应用初始化完成');
         } catch (error) {
-            console.error('❌ 应用初始化失败:', error);
+            console.error(' 应用初始化失败:', error);
             this.showEnvironmentError({
                 claude_cli: this.environmentStatus?.claude_cli || false,
                 projects_dir: this.environmentStatus?.projects_dir || false,
@@ -212,7 +212,7 @@ class App {
         // 激活默认标签
         this.switchTab(this.activeTab);
         
-        console.log('✅ 主应用界面已显示');
+        console.log(' 主应用界面已显示');
     }
 
     /**
@@ -226,7 +226,7 @@ class App {
      * 切换标签
      */
     switchTab(tabName) {
-        console.log(`🔍 [APP DEBUG] 切换标签: ${this.activeTab} -> ${tabName}`, {
+        console.log(`[DEBUG] 切换标签: ${this.activeTab} -> ${tabName}`, {
             terminalBufferLength: window.terminal?.terminal?.buffer?.active?.length || 0,
             timestamp: new Date().toISOString()
         });
@@ -258,7 +258,7 @@ class App {
                 break;
         }
         
-        console.log(`🔍 [APP DEBUG] 标签切换完成: ${tabName}`, {
+        console.log(`[DEBUG] 标签切换完成: ${tabName}`, {
             terminalBufferLength: window.terminal?.terminal?.buffer?.active?.length || 0,
             timestamp: new Date().toISOString()
         });
@@ -278,7 +278,7 @@ class App {
     handleTerminalTabActivation() {
         // 终端标签激活时不进行任何操作，避免内容丢失
         // 移除对window.terminal.onActivate()的调用
-        console.log(`🔍 [APP DEBUG] 终端标签激活，保持当前状态`, {
+        console.log(`[DEBUG] 终端标签激活，保持当前状态`, {
             terminalBufferLength: window.terminal?.terminal?.buffer?.active?.length || 0,
             isConnected: window.terminal?.isConnected,
             timestamp: new Date().toISOString()
@@ -372,7 +372,7 @@ class App {
         this.activeSessions.add(sessionId);
         this.sessionActivity.set(sessionId, Date.now());
         
-        console.log(`✅ 会话已激活: ${sessionId}`);
+        console.log(` 会话已激活: ${sessionId}`);
         
         // 通知侧边栏更新视觉状态
         this.notifySessionStateChange();
@@ -387,7 +387,7 @@ class App {
         this.activeSessions.delete(sessionId);
         this.sessionActivity.delete(sessionId);
         
-        console.log(`🔕 会话已去激活: ${sessionId}`);
+        console.log(` 会话已去激活: ${sessionId}`);
         
         // 通知侧边栏更新视觉状态
         this.notifySessionStateChange();
@@ -407,7 +407,7 @@ class App {
         const previousSession = this.selectedSession;
         this.selectedSession = session;
         
-        console.log(`🎯 选中会话: ${session?.id || 'null'}`);
+        console.log(`[TARGET] 选中会话: ${session?.id || 'null'}`);
         
         // 如果选择了新会话，激活它
         if (session?.id) {
@@ -472,7 +472,7 @@ class App {
     handleSessionClick(session) {
         // 如果点击的是已选中的会话，直接切换到chat标签
         if (this.selectedSession?.id === session.id) {
-            console.log(`🔄 切换到已连接的会话: ${session.id}`);
+            console.log(` 切换到已连接的会话: ${session.id}`);
             this.switchTab('chat');
             return false; // 阻止重复连接
         }
@@ -487,29 +487,29 @@ class App {
      * 清理应用资源 - 修复页面关闭时连接未断开的问题
      */
     cleanup() {
-        console.log('🧹 [APP] 开始清理应用资源...');
+        console.log(' [APP] 开始清理应用资源...');
         
         try {
             // 1. 清理会话终端（新版多会话终端）
             if (window.sessionTerminal) {
-                console.log('🧹 [APP] 清理会话终端...');
+                console.log(' [APP] 清理会话终端...');
                 window.sessionTerminal.cleanup();
             }
             
             // 2. 清理旧版终端（兼容性）
             if (window.terminal) {
-                console.log('🧹 [APP] 清理旧版终端...');
+                console.log(' [APP] 清理旧版终端...');
                 window.terminal.cleanup();
             }
             
             // 3. 清理WebSocket连接
             if (window.wsManager) {
-                console.log('🧹 [APP] 清理聊天WebSocket...');
+                console.log(' [APP] 清理聊天WebSocket...');
                 window.wsManager.disconnect();
             }
             
             if (window.shellWsManager) {
-                console.log('🧹 [APP] 清理Shell WebSocket...');
+                console.log(' [APP] 清理Shell WebSocket...');
                 window.shellWsManager.cleanup();
             }
             
@@ -518,10 +518,10 @@ class App {
             this.sessionActivity.clear();
             this.selectedSession = null;
             
-            console.log('✅ [APP] 应用资源清理完成');
+            console.log(' [APP] 应用资源清理完成');
             
         } catch (error) {
-            console.error('❌ [APP] 清理过程中出现错误:', error);
+            console.error(' [APP] 清理过程中出现错误:', error);
         }
     }
 
@@ -529,7 +529,7 @@ class App {
 
 // 应用启动
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('🚀 启动 Heliki OS...');
+    console.log(' 启动 Heliki OS...');
     window.app = new App();
 });
 

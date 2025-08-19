@@ -16,7 +16,7 @@ import requests
 
 def test_hook_configuration():
     """测试hook配置功能"""
-    print("🔧 测试1: Hook配置功能")
+    print(" 测试1: Hook配置功能")
     
     hook_manager = HookManager()
     
@@ -33,9 +33,9 @@ def test_hook_configuration():
     print("   配置hooks...")
     success = hook_manager.setup_claude_hooks()
     if success:
-        print("   ✅ Hook配置成功")
+        print("    Hook配置成功")
     else:
-        print("   ❌ Hook配置失败")
+        print("    Hook配置失败")
         return False
     
     # 验证配置结果
@@ -46,7 +46,7 @@ def test_hook_configuration():
 
 def test_agent_deployment():
     """测试数字员工部署功能"""
-    print("🚀 测试2: 数字员工部署功能")
+    print(" 测试2: 数字员工部署功能")
     
     deployer = AgentDeployer()
     
@@ -88,7 +88,7 @@ def test_agent_deployment():
         success = deployer.run(transcript_path)
         
         if success:
-            print("   ✅ 数字员工部署成功")
+            print("    数字员工部署成功")
             
             # 验证部署结果
             deployed_count = 0
@@ -96,14 +96,14 @@ def test_agent_deployment():
                 agent_path = deployer.target_dir / agent_file
                 if agent_path.exists():
                     deployed_count += 1
-                    print(f"   ✅ 已部署: {agent_file}")
+                    print(f"    已部署: {agent_file}")
                 else:
-                    print(f"   ❌ 缺失: {agent_file}")
+                    print(f"    缺失: {agent_file}")
             
             print(f"   部署统计: {deployed_count}/{len(deployer.expected_agents)} 个员工")
             return deployed_count == len(deployer.expected_agents)
         else:
-            print("   ❌ 数字员工部署失败")
+            print("    数字员工部署失败")
             return False
             
     finally:
@@ -112,7 +112,7 @@ def test_agent_deployment():
 
 def test_api_endpoint():
     """测试API端点"""
-    print("🌐 测试3: API端点功能")
+    print(" 测试3: API端点功能")
     
     try:
         # 测试数据
@@ -145,28 +145,28 @@ def test_api_endpoint():
         
         if response.status_code == 200:
             result = response.json()
-            print(f"   ✅ API响应成功: {result}")
+            print(f"    API响应成功: {result}")
             return True
         else:
-            print(f"   ❌ API响应失败: {response.status_code}")
+            print(f"    API响应失败: {response.status_code}")
             return False
             
     except requests.exceptions.ConnectionError:
-        print("   ⚠️ 无法连接到Heliki OS服务器")
+        print("    无法连接到Heliki OS服务器")
         print("   请确保运行 'python app.py' 启动服务器")
         return False
     except Exception as e:
-        print(f"   ❌ API测试出错: {e}")
+        print(f"    API测试出错: {e}")
         return False
 
 def test_source_files():
     """测试源文件完整性"""
-    print("📁 测试4: 源文件完整性")
+    print("测试4: 源文件完整性")
     
     deployer = AgentDeployer()
     
     if not deployer.source_dir.exists():
-        print(f"   ❌ 源目录不存在: {deployer.source_dir}")
+        print(f"    源目录不存在: {deployer.source_dir}")
         return False
     
     missing_files = []
@@ -174,30 +174,30 @@ def test_source_files():
         source_file = deployer.source_dir / agent_file
         if not source_file.exists():
             missing_files.append(agent_file)
-            print(f"   ❌ 缺失源文件: {agent_file}")
+            print(f"    缺失源文件: {agent_file}")
         else:
             # 检查文件内容
             try:
                 with open(source_file, 'r', encoding='utf-8') as f:
                     content = f.read()
                     if len(content) < 100:
-                        print(f"   ⚠️ 源文件内容过短: {agent_file}")
+                        print(f"    源文件内容过短: {agent_file}")
                     else:
-                        print(f"   ✅ 源文件正常: {agent_file} ({len(content)} 字符)")
+                        print(f"    源文件正常: {agent_file} ({len(content)} 字符)")
             except Exception as e:
-                print(f"   ❌ 读取源文件失败 {agent_file}: {e}")
+                print(f"    读取源文件失败 {agent_file}: {e}")
                 missing_files.append(agent_file)
     
     if missing_files:
-        print(f"   ❌ 缺失 {len(missing_files)} 个源文件")
+        print(f"    缺失 {len(missing_files)} 个源文件")
         return False
     else:
-        print(f"   ✅ 所有 {len(deployer.expected_agents)} 个源文件完整")
+        print(f"    所有 {len(deployer.expected_agents)} 个源文件完整")
         return True
 
 def run_full_test():
     """运行完整测试"""
-    print("🧪 开始数字员工自动部署系统完整测试")
+    print("开始数字员工自动部署系统完整测试")
     print("=" * 60)
     
     test_results = []
@@ -216,11 +216,11 @@ def run_full_test():
     
     # 打印测试结果
     print("\n" + "=" * 60)
-    print("📊 测试结果总结:")
+    print("测试结果总结:")
     
     passed_count = 0
     for test_name, result in test_results:
-        status = "✅ 通过" if result else "❌ 失败"
+        status = " 通过" if result else " 失败"
         print(f"   {test_name:<20} {status}")
         if result:
             passed_count += 1
@@ -228,10 +228,10 @@ def run_full_test():
     print(f"\n总体结果: {passed_count}/{len(test_results)} 项测试通过")
     
     if passed_count == len(test_results):
-        print("🎉 所有测试通过！数字员工自动部署系统已就绪！")
+        print(" 所有测试通过！数字员工自动部署系统已就绪！")
         return True
     else:
-        print(f"⚠️ 有 {len(test_results) - passed_count} 项测试失败，请检查配置")
+        print(f" 有 {len(test_results) - passed_count} 项测试失败，请检查配置")
         return False
 
 if __name__ == "__main__":

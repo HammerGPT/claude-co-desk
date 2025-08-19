@@ -5,7 +5,7 @@
 
 class SidebarDrawers {
     constructor() {
-        console.log('📂 SidebarDrawers 初始化开始');
+        console.log('[SIDEBAR] SidebarDrawers 初始化开始');
         this.expandedDrawers = new Set(['tasks', 'projects']); // 默认展开任务和项目
         this.drawerConfigs = {
             tasks: { 
@@ -66,7 +66,7 @@ class SidebarDrawers {
                 }
             });
             
-            console.log('📂 从localStorage恢复抽屉状态:', Array.from(this.expandedDrawers));
+            console.log('[SIDEBAR] 从localStorage恢复抽屉状态:', Array.from(this.expandedDrawers));
         } catch (error) {
             console.error('❌ 加载抽屉状态失败:', error);
         }
@@ -109,13 +109,13 @@ class SidebarDrawers {
                     // 检查是否是任务列表或项目列表的内容变化
                     if (targetElement.classList.contains('tasks-list') || 
                         targetElement.closest('.tasks-list')) {
-                        console.log('📂 检测到任务列表内容变化，重新计算高度');
+                        console.log('[SIDEBAR] 检测到任务列表内容变化，重新计算高度');
                         setTimeout(() => this.recalculateDrawerHeight('tasks'), 50);
                     }
                     
                     if (targetElement.classList.contains('projects-list') || 
                         targetElement.closest('.projects-list')) {
-                        console.log('📂 检测到项目列表内容变化，重新计算高度');
+                        console.log('[SIDEBAR] 检测到项目列表内容变化，重新计算高度');
                         setTimeout(() => this.recalculateDrawerHeight('projects'), 50);
                     }
                 }
@@ -152,7 +152,7 @@ class SidebarDrawers {
      * 切换抽屉状态
      */
     toggleDrawer(drawerName) {
-        console.log(`📂 切换抽屉: ${drawerName}`);
+        console.log(`[SIDEBAR] 切换抽屉: ${drawerName}`);
         
         if (this.expandedDrawers.has(drawerName)) {
             this.expandedDrawers.delete(drawerName);
@@ -169,7 +169,7 @@ class SidebarDrawers {
      */
     expandDrawer(drawerName) {
         if (!this.expandedDrawers.has(drawerName)) {
-            console.log(`📂 展开抽屉: ${drawerName}`);
+            console.log(`[SIDEBAR] 展开抽屉: ${drawerName}`);
             this.expandedDrawers.add(drawerName);
             this.updateDrawer(drawerName);
             this.saveStateToStorage();
@@ -181,7 +181,7 @@ class SidebarDrawers {
      */
     collapseDrawer(drawerName) {
         if (this.expandedDrawers.has(drawerName)) {
-            console.log(`📂 折叠抽屉: ${drawerName}`);
+            console.log(`[SIDEBAR] 折叠抽屉: ${drawerName}`);
             this.expandedDrawers.delete(drawerName);
             this.updateDrawer(drawerName);
             this.saveStateToStorage();
@@ -217,7 +217,7 @@ class SidebarDrawers {
             expandIcon.querySelector('polyline').setAttribute('points', points);
         }
 
-        console.log(`📂 抽屉 ${drawerName} 更新为: ${isExpanded ? '展开' : '折叠'}`);
+        console.log(`[SIDEBAR] 抽屉 ${drawerName} 更新为: ${isExpanded ? '展开' : '折叠'}`);
     }
 
     /**
@@ -251,7 +251,7 @@ class SidebarDrawers {
         
         if (hasValidContent) {
             // 内容已存在，直接显示并计算高度
-            console.log(`📂 抽屉 ${drawerName} 检测到现有内容，立即显示`);
+            console.log(`[SIDEBAR] 抽屉 ${drawerName} 检测到现有内容，立即显示`);
             this.showDrawer(drawerSection, drawerContent, drawerName);
         } else {
             // 内容未加载，等待加载完成
@@ -277,9 +277,9 @@ class SidebarDrawers {
                     this.showDrawer(drawerSection, drawerContent, drawerName);
                     
                     if (updatedHasValidContent) {
-                        console.log(`📂 抽屉 ${drawerName} 内容加载完成，显示抽屉 (尝试${attempts}次)`);
+                        console.log(`[SIDEBAR] 抽屉 ${drawerName} 内容加载完成，显示抽屉 (尝试${attempts}次)`);
                     } else {
-                        console.log(`📂 抽屉 ${drawerName} 等待超时，使用默认显示 (尝试${attempts}次)`);
+                        console.log(`[SIDEBAR] 抽屉 ${drawerName} 等待超时，使用默认显示 (尝试${attempts}次)`);
                     }
                 }
             }, 100);
@@ -303,7 +303,7 @@ class SidebarDrawers {
     calculateDrawerHeight(drawerContent, drawerName) {
         // 任务板块也需要基本的高度适配
         if (drawerName === 'tasks') {
-            console.log('📂 任务板块进行基本高度计算');
+            console.log('[SIDEBAR] 任务板块进行基本高度计算');
             this.calculateTasksDrawerHeight(drawerContent);
             return;
         }
@@ -342,26 +342,26 @@ class SidebarDrawers {
             if (hasEmptyTasks) {
                 // 空任务状态需要足够空间显示文本和按钮
                 minHeight = 100;
-                console.log(`📂 检测到空任务状态，设置最小高度: ${minHeight}px`);
+                console.log(`[SIDEBAR] 检测到空任务状态，设置最小高度: ${minHeight}px`);
             } else if (hasEmptyState) {
                 // 空项目状态
                 minHeight = 80;
-                console.log(`📂 检测到空项目状态，设置最小高度: ${minHeight}px`);
+                console.log(`[SIDEBAR] 检测到空项目状态，设置最小高度: ${minHeight}px`);
             } else if (hasActualContent) {
                 // 有实际内容，使用较小的最小高度，让内容决定
                 minHeight = 60;
-                console.log(`📂 检测到实际内容，使用默认最小高度: ${minHeight}px`);
+                console.log(`[SIDEBAR] 检测到实际内容，使用默认最小高度: ${minHeight}px`);
             }
             
             // 确保最终高度足够显示内容
             const finalHeight = Math.max(contentHeight + padding, minHeight);
             
-            console.log(`📂 高度计算详情: 内容${contentHeight}px + 内边距${padding}px = ${contentHeight + padding}px, 最小${minHeight}px, 最终${finalHeight}px`);
+            console.log(`[SIDEBAR] 高度计算详情: 内容${contentHeight}px + 内边距${padding}px = ${contentHeight + padding}px, 最小${minHeight}px, 最终${finalHeight}px`);
             
             // 设置CSS自定义属性
             drawerContent.style.setProperty('--drawer-content-height', `${finalHeight}px`);
             
-            console.log(`📂 抽屉 ${drawerName} 计算高度: 内容${contentHeight}px + 内边距${padding}px = ${finalHeight}px`);
+            console.log(`[SIDEBAR] 抽屉 ${drawerName} 计算高度: 内容${contentHeight}px + 内边距${padding}px = ${finalHeight}px`);
             
             // 如果高度变化显著，可能需要二次确认
             if (Math.abs(contentHeight - finalHeight + padding) > 10) {
@@ -370,7 +370,7 @@ class SidebarDrawers {
                     if (Math.abs(recheckHeight - contentHeight) > 5) {
                         const newFinalHeight = Math.max(recheckHeight + padding, minHeight);
                         drawerContent.style.setProperty('--drawer-content-height', `${newFinalHeight}px`);
-                        console.log(`📂 抽屉 ${drawerName} 二次校正高度: ${newFinalHeight}px`);
+                        console.log(`[SIDEBAR] 抽屉 ${drawerName} 二次校正高度: ${newFinalHeight}px`);
                     }
                 }, 100);
             }
@@ -429,7 +429,7 @@ class SidebarDrawers {
                     finalHeight = Math.max(contentHeight + padding, 200);
                 }
                 
-                console.log(`📂 任务抽屉高度计算: 任务数量=${taskItems.length}, 内容高度=${contentHeight}px, 最终高度=${finalHeight}px`);
+                console.log(`[SIDEBAR] 任务抽屉高度计算: 任务数量=${taskItems.length}, 内容高度=${contentHeight}px, 最终高度=${finalHeight}px`);
                 
                 // 设置高度
                 drawerContent.style.setProperty('--drawer-content-height', `${finalHeight}px`);
@@ -443,7 +443,7 @@ class SidebarDrawers {
     recalculateDrawerHeight(drawerName) {
         // 任务板块也进行高度计算
         if (drawerName === 'tasks') {
-            console.log('📂 任务板块重新计算高度');
+            console.log('[SIDEBAR] 任务板块重新计算高度');
         }
         
         if (!this.expandedDrawers.has(drawerName)) return;
@@ -483,7 +483,7 @@ class SidebarDrawers {
                 '0 个任务';
         }
         
-        console.log('📂 任务数据更新，重新计算抽屉高度');
+        console.log('[SIDEBAR] 任务数据更新，重新计算抽屉高度');
         // 任务板块需要重新计算高度以适配内容变化
         setTimeout(() => {
             this.recalculateDrawerHeight('tasks');
@@ -501,7 +501,7 @@ class SidebarDrawers {
             projectsCountEl.textContent = count > 0 ? `${count} 个项目` : '0 个项目';
         }
         
-        console.log('📂 项目数据更新，准备重新计算抽屉高度');
+        console.log('[SIDEBAR] 项目数据更新，准备重新计算抽屉高度');
         // 项目数据更新后重新计算抽屉高度，增加延迟确保DOM更新完成  
         setTimeout(() => {
             this.recalculateDrawerHeight('projects');
@@ -530,19 +530,19 @@ class SidebarDrawers {
     scheduleImmediateHeightCheck() {
         // 短延迟确保DOM完全渲染
         setTimeout(() => {
-            console.log('📂 执行立即高度检查，基于静态内容');
+            console.log('[SIDEBAR] 执行立即高度检查，基于静态内容');
             
             // 任务抽屉也进行立即高度检查
             const tasksDrawer = document.querySelector('[data-drawer="tasks"]');
             if (tasksDrawer && tasksDrawer.classList.contains('expanded')) {
-                console.log('📂 立即检查任务抽屉高度');
+                console.log('[SIDEBAR] 立即检查任务抽屉高度');
                 this.recalculateDrawerHeight('tasks');
             }
             
             // 对项目抽屉进行立即检查
             const projectsDrawer = document.querySelector('[data-drawer="projects"]');
             if (projectsDrawer && projectsDrawer.classList.contains('expanded')) {
-                console.log('📂 立即检查项目抽屉高度');
+                console.log('[SIDEBAR] 立即检查项目抽屉高度');
                 this.recalculateDrawerHeight('projects');
             }
         }, 100);
@@ -567,17 +567,17 @@ class SidebarDrawers {
      * 与其他组件协调
      */
     coordinateWithOtherComponents() {
-        console.log('📂 开始组件协调，检查并调整抽屉高度');
+        console.log('[SIDEBAR] 开始组件协调，检查并调整抽屉高度');
         
         // 检查任务管理器是否已加载数据
         if (window.taskManagerV2 && window.taskManagerV2.tasks && window.taskManagerV2.tasks.length > 0) {
-            console.log('📂 检测到任务管理器数据，重新计算任务抽屉高度');
+            console.log('[SIDEBAR] 检测到任务管理器数据，重新计算任务抽屉高度');
             this.recalculateDrawerHeight('tasks');
         }
         
         // 检查项目管理器是否已加载数据
         if (window.enhancedSidebar && window.enhancedSidebar.projects && window.enhancedSidebar.projects.length > 0) {
-            console.log('📂 检测到项目管理器数据，重新计算项目抽屉高度');
+            console.log('[SIDEBAR] 检测到项目管理器数据，重新计算项目抽屉高度');
             this.recalculateDrawerHeight('projects');
         }
     }
@@ -586,14 +586,14 @@ class SidebarDrawers {
      * 最终高度调整
      */
     finalHeightAdjustment() {
-        console.log('📂 执行最终高度调整');
+        console.log('[SIDEBAR] 执行最终高度调整');
         
         // 对所有展开的抽屉进行最终高度计算
         this.expandedDrawers.forEach(drawerName => {
             
             const drawerSection = document.querySelector(`[data-drawer="${drawerName}"]`);
             if (drawerSection && drawerSection.classList.contains('expanded')) {
-                console.log(`📂 最终调整抽屉 ${drawerName} 高度`);
+                console.log(`[SIDEBAR] 最终调整抽屉 ${drawerName} 高度`);
                 this.recalculateDrawerHeight(drawerName);
             }
         });
@@ -603,7 +603,7 @@ class SidebarDrawers {
      * 重置所有抽屉到默认状态
      */
     resetToDefaults() {
-        console.log('📂 重置所有抽屉到默认状态');
+        console.log('[SIDEBAR] 重置所有抽屉到默认状态');
         
         this.expandedDrawers.clear();
         

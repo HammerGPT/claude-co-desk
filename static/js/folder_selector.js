@@ -48,7 +48,7 @@ class FolderSelector {
             <div id="folder-selector-overlay" class="folder-selector-overlay">
                 <div id="folder-selector-modal" class="folder-selector-modal">
                     <div class="folder-selector-header">
-                        <h3>📁 选择项目文件夹</h3>
+                        <h3><img src="/static/assets/icons/interface/folder.png" width="20" height="20" alt=""> 选择项目文件夹</h3>
                         <button id="folder-close-btn" class="folder-close-btn">
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <line x1="18" y1="6" x2="6" y2="18"></line>
@@ -148,7 +148,7 @@ class FolderSelector {
             const response = await fetch('/api/config');
             if (response.ok) {
                 this.systemConfig = await response.json();
-                console.log('📁 文件夹选择器系统配置已加载:', this.systemConfig);
+                console.log('[FOLDER] 文件夹选择器系统配置已加载:', this.systemConfig);
             }
         } catch (error) {
             console.error('文件夹选择器加载系统配置失败:', error);

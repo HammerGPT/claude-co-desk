@@ -50,12 +50,12 @@ class HookManager:
             success = self._save_settings(settings)
             
             if success:
-                logger.info("✅ 临时Claude Code hooks配置成功")
+                logger.info(" 临时Claude Code hooks配置成功")
                 logger.info(f"监听脚本: {self.deploy_script_path}")
                 logger.info(f"会话标识: {session_identifier or 'any'}")
                 return True
             else:
-                logger.error("❌ 临时Claude Code hooks配置失败")
+                logger.error(" 临时Claude Code hooks配置失败")
                 return False
                 
         except Exception as e:
@@ -205,7 +205,7 @@ class HookManager:
             if removed_count > 0:
                 # 保存更新后的配置
                 self._save_settings(settings)
-                logger.info(f"✅ 总共移除了 {removed_count} 个数字员工部署hooks")
+                logger.info(f" 总共移除了 {removed_count} 个数字员工部署hooks")
             else:
                 logger.info("未找到需要移除的hooks")
             

@@ -142,14 +142,14 @@ class FilesDrawer {
         // 检查当前页签类型
         const activeTab = document.querySelector('.session-tab.active');
         if (!activeTab) {
-            console.log('🔍 isCurrentTabTaskTab: 没有找到活跃页签');
+            console.log('isCurrentTabTaskTab: 没有找到活跃页签');
             return false;
         }
         
         // 通过页签ID判断是否为任务页签
         const tabId = activeTab.id;
         const isTaskTab = tabId && tabId.startsWith('tab_task_');
-        console.log(`🔍 isCurrentTabTaskTab: 页签ID=${tabId}, 是否为任务页签=${isTaskTab}`);
+        console.log(`isCurrentTabTaskTab: 页签ID=${tabId}, 是否为任务页签=${isTaskTab}`);
         return isTaskTab;
     }
     
@@ -191,15 +191,15 @@ class FilesDrawer {
         
         try {
             const isTaskTab = this.isCurrentTabTaskTab();
-            console.log(`📁 加载文件列表 - 是否为任务页签: ${isTaskTab}`);
+            console.log(`[FILES] 加载文件列表 - 是否为任务页签: ${isTaskTab}`);
             
             if (isTaskTab) {
                 // 任务页签 - 加载任务文件
-                console.log('🎯 加载任务文件');
+                console.log(' 加载任务文件');
                 await this.loadTaskFiles();
             } else {
                 // 项目页签 - 加载项目文件
-                console.log('📂 加载项目文件');
+                console.log(' 加载项目文件');
                 await this.loadProjectFiles();
             }
         } catch (error) {
@@ -232,26 +232,26 @@ class FilesDrawer {
      */
     async loadTaskFiles() {
         const taskId = this.getCurrentTaskId();
-        console.log(`🎯 loadTaskFiles: 当前任务ID=${taskId}`);
+        console.log(` loadTaskFiles: 当前任务ID=${taskId}`);
         
         if (!taskId) {
-            console.error('🎯 loadTaskFiles: 无法获取任务ID');
+            console.error(' loadTaskFiles: 无法获取任务ID');
             this.showError('无法获取任务信息');
             return;
         }
         
         // 检查是否为MCP管理员会话
         if (taskId.startsWith('mcp-manager-')) {
-            console.log('🤖 检测到MCP管理员会话，显示特殊说明');
+            console.log(' 检测到MCP管理员会话，显示特殊说明');
             this.showMCPManagerInfo(taskId);
             return;
         }
         
-        console.log(`🎯 loadTaskFiles: 请求 /api/task-files/${taskId}`);
+        console.log(` loadTaskFiles: 请求 /api/task-files/${taskId}`);
         const response = await fetch(`/api/task-files/${taskId}`);
         if (response.ok) {
             const data = await response.json();
-            console.log('🎯 loadTaskFiles: API响应成功', data);
+            console.log(' loadTaskFiles: API响应成功', data);
             this.files = data.files || [];
             this.currentTaskInfo = {
                 taskId: data.taskId,
@@ -260,7 +260,7 @@ class FilesDrawer {
             };
             this.renderFiles();
         } else {
-            console.error('🎯 loadTaskFiles: API响应失败', response.status, response.statusText);
+            console.error(' loadTaskFiles: API响应失败', response.status, response.statusText);
             this.showError('加载任务文件失败');
         }
     }
@@ -281,7 +281,7 @@ class FilesDrawer {
             filesList.innerHTML = `
                 <div class="mcp-manager-info">
                     <div class="info-header">
-                        <h4>🤖 MCP工具管理会话</h4>
+                        <h4>MCP工具管理会话</h4>
                         <p class="info-desc">这是一个MCP工具搜索和管理会话</p>
                     </div>
                     <div class="info-content">
@@ -295,7 +295,7 @@ class FilesDrawer {
                             <strong>会话类型:</strong> MCP智能体工具搜索
                         </div>
                         <div class="info-note">
-                            <p>💡 <strong>说明:</strong></p>
+                            <p><strong>说明:</strong></p>
                             <ul>
                                 <li>此会话专门用于搜索和推荐MCP工具</li>
                                 <li>MCP管理员会通过Claude CLI提供实时交互</li>
@@ -414,7 +414,7 @@ class FilesDrawer {
                 ? this.currentTaskInfo.workDirectory 
                 : this.currentProject.path;
             
-            console.log(`📂 openFile: 文件路径=${filePath}, 项目路径=${projectPath}`);
+            console.log(` openFile: 文件路径=${filePath}, 项目路径=${projectPath}`);
             
             // 先检查文件大小和内容
             const response = await fetch(`/api/files/read?file_path=${encodeURIComponent(filePath)}&project_path=${encodeURIComponent(projectPath)}`);
@@ -474,7 +474,7 @@ class FilesDrawer {
         if (this.drawerContent) {
             this.drawerContent.innerHTML = `
                 <div class="error-files">
-                    <p>❌ ${this.escapeHtml(message)}</p>
+                    <p>${this.escapeHtml(message)}</p>
                     <button onclick="filesDrawer.loadFiles()" class="btn btn-sm btn-primary">重试</button>
                 </div>
             `;
@@ -544,7 +544,7 @@ class FilesDrawer {
                         <strong>编辑器限制：</strong>${error.maxSizeFormatted}
                     </p>
                     <div class="warning-message">
-                        <span>⚠️ 在Claude中打开此大文件可能会导致性能问题。建议使用系统默认应用打开。</span>
+                        <span>在Claude中打开此大文件可能会导致性能问题。建议使用系统默认应用打开。</span>
                     </div>
                 </div>
                 <div class="large-file-dialog-actions">
@@ -702,7 +702,7 @@ class FilesDrawer {
         const displayName = window.syntaxHighlighter ? 
             window.syntaxHighlighter.getLanguageDisplayName(language) : '文本文件';
         const fileIcon = window.syntaxHighlighter ? 
-            window.syntaxHighlighter.getFileTypeIcon(filename) : '📄';
+            window.syntaxHighlighter.getFileTypeIcon(filename) : '';
 
         // 创建编辑器模态框
         const modal = document.createElement('div');
@@ -818,7 +818,7 @@ class FilesDrawer {
             const response = await fetch('/api/config');
             if (response.ok) {
                 this.systemConfig = await response.json();
-                console.log('📁 FilesDrawer系统配置已加载:', this.systemConfig);
+                console.log('[FILES] FilesDrawer系统配置已加载:', this.systemConfig);
             }
         } catch (error) {
             console.error('FilesDrawer加载系统配置失败:', error);

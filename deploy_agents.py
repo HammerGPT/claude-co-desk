@@ -81,7 +81,7 @@ class AgentDeployer:
                 logger.info(f"非初始化会话，跳过部署: {session_identifier}")
                 return False
             
-            logger.info("✅ 检测到主目录CLAUDE.md文件已生成，准备部署数字员工")
+            logger.info(" 检测到主目录CLAUDE.md文件已生成，准备部署数字员工")
             return True
             
         except Exception as e:
@@ -130,14 +130,14 @@ class AgentDeployer:
                     # 验证复制成功
                     if target_file.exists():
                         deployed_files.append(agent_file)
-                        logger.info(f"✅ 成功部署: {agent_file}")
+                        logger.info(f" 成功部署: {agent_file}")
                     else:
                         failed_files.append(agent_file)
-                        logger.error(f"❌ 部署失败: {agent_file}")
+                        logger.error(f" 部署失败: {agent_file}")
                         
                 except Exception as e:
                     failed_files.append(agent_file)
-                    logger.error(f"❌ 复制文件失败 {agent_file}: {e}")
+                    logger.error(f" 复制文件失败 {agent_file}: {e}")
             
             # 5. 检查部署结果
             if failed_files:
@@ -156,7 +156,7 @@ class AgentDeployer:
             with open(self.deployed_marker, 'w', encoding='utf-8') as f:
                 json.dump(deployment_info, f, indent=2, ensure_ascii=False)
             
-            logger.info(f"✅ 数字员工部署完成！共部署 {len(deployed_files)} 个员工")
+            logger.info(f" 数字员工部署完成！共部署 {len(deployed_files)} 个员工")
             return True
             
         except Exception as e:
@@ -188,7 +188,7 @@ class AgentDeployer:
             )
             
             if response.status_code == 200:
-                logger.info("✅ 成功通知Heliki OS部署完成")
+                logger.info(" 成功通知Heliki OS部署完成")
                 return True
             else:
                 logger.warning(f"Heliki OS通知响应异常: {response.status_code}")
@@ -225,7 +225,7 @@ class AgentDeployer:
             )
             
             if response.status_code == 200:
-                logger.info("✅ 成功清理临时hooks配置")
+                logger.info(" 成功清理临时hooks配置")
                 return True
             else:
                 logger.warning(f"hooks清理响应异常: {response.status_code}")
@@ -250,10 +250,10 @@ class AgentDeployer:
                 
                 success = hook_manager.remove_temporary_hooks()
                 if success:
-                    logger.info("✅ 备用方案成功清理hooks")
+                    logger.info(" 备用方案成功清理hooks")
                     return True
                 else:
-                    logger.error("❌ 备用方案清理hooks失败")
+                    logger.error(" 备用方案清理hooks失败")
                     return False
                     
             except Exception as backup_error:

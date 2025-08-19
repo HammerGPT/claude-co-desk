@@ -5,7 +5,7 @@
 
 class EmployeesManager {
     constructor() {
-        console.log('🧑‍💼 EmployeesManager 初始化开始');
+        console.log('EmployeesManager 初始化开始');
         this.employees = [];
         this.systemProjectStatus = null;
         this.refreshInterval = null;
@@ -19,7 +19,7 @@ class EmployeesManager {
         this.initEventListeners();
         this.loadEmployeesStatus();
         this.startAutoRefresh();
-        console.log('✅ EmployeesManager 初始化完成');
+        console.log(' EmployeesManager 初始化完成');
     }
 
     /**
@@ -29,11 +29,11 @@ class EmployeesManager {
         // 现在员工管理通过弹窗显示，不再需要固定的DOM元素
         this.agentsTeamBtn = document.getElementById('agents-team-btn');
         
-        console.log('🔍 DOM元素检查:', {
+        console.log(' DOM元素检查:', {
             agentsTeamBtn: !!this.agentsTeamBtn
         });
         
-        console.log('✅ DOM元素初始化成功');
+        console.log(' DOM元素初始化成功');
     }
 
     /**
@@ -72,7 +72,7 @@ class EmployeesManager {
                 this.isInitialized = this.employees.length > 0;
             }
 
-            console.log('✅ 员工数据加载完成:', this.employees.length, '个员工');
+            console.log(' 员工数据加载完成:', this.employees.length, '个员工');
         } catch (error) {
             console.error('加载员工状态失败:', error);
             this.employees = [];
@@ -85,7 +85,7 @@ class EmployeesManager {
      * 显示智能体团队管理弹窗
      */
     showAgentsModal() {
-        console.log('👥 显示智能体团队管理弹窗');
+        console.log('显示智能体团队管理弹窗');
         
         // 创建弹窗容器
         const modal = document.createElement('div');
@@ -124,7 +124,7 @@ class EmployeesManager {
         if (this.systemProjectStatus && this.systemProjectStatus.needs_initialization) {
             return `
                 <div class="system-init-prompt">
-                    <div class="icon">👥</div>
+                    <div class="icon"></div>
                     <div class="title">数字员工团队未初始化</div>
                     <div class="description">
                         将在您的主目录初始化Claude项目，
@@ -161,7 +161,7 @@ class EmployeesManager {
             </div>
             <div class="agents-detail">
                 <div class="agent-detail-placeholder">
-                    <div class="placeholder-icon">👥</div>
+                    <div class="placeholder-icon"></div>
                     <div class="placeholder-text">Select an agent to view details</div>
                 </div>
             </div>
@@ -205,7 +205,7 @@ class EmployeesManager {
         if (!agent || !agent.file_path) {
             container.innerHTML = `
                 <div class="agent-detail-placeholder">
-                    <div class="placeholder-icon">❌</div>
+                    <div class="placeholder-icon"></div>
                     <div class="placeholder-text">No file path available for this agent</div>
                 </div>
             `;
@@ -237,7 +237,7 @@ class EmployeesManager {
             console.error('读取智能体文件失败:', error);
             container.innerHTML = `
                 <div class="agent-detail-placeholder">
-                    <div class="placeholder-icon">❌</div>
+                    <div class="placeholder-icon"></div>
                     <div class="placeholder-text">Failed to load agent documentation</div>
                     <div style="font-size: 12px; margin-top: 8px; opacity: 0.7;">Error: ${error.message}</div>
                 </div>
@@ -259,7 +259,7 @@ class EmployeesManager {
             <div class="agent-file-viewer">
                 <div class="agent-file-header">
                     <div class="file-info">
-                        <div class="file-name">📄 ${filename}</div>
+                        <div class="file-name"> ${filename}</div>
                         <div class="agent-info">
                             <span class="agent-name">${agent.name || agent.id}</span>
                             ${agent.color ? `<span class="agent-color-dot" style="background-color: ${agent.color}"></span>` : ''}
@@ -297,11 +297,11 @@ class EmployeesManager {
     handleInitClick(e) {
         e.preventDefault();
         e.stopPropagation();
-        console.log('🎯 初始化按钮被点击');
+        console.log('初始化按钮被点击');
         
         // 防重复点击
         if (this.isInitializing) {
-            console.warn('⚠️ 初始化正在进行中，忽略重复点击');
+            console.warn('初始化正在进行中，忽略重复点击');
             return;
         }
         
@@ -317,7 +317,7 @@ class EmployeesManager {
         
         this.employeesList.innerHTML = `
             <div class="system-init-prompt">
-                <div class="icon">⚠️</div>
+                <div class="icon"></div>
                 <div class="title">加载失败</div>
                 <div class="description">
                     无法加载员工团队状态，请检查系统连接
@@ -340,7 +340,7 @@ class EmployeesManager {
      * 初始化系统 - 使用页签机制
      */
     async initializeSystem() {
-        console.log('🚀 initializeSystem() 被调用 - 使用页签机制');
+        console.log('initializeSystem() 被调用 - 使用页签机制');
         
         // 设置正在初始化状态
         this.isInitializing = true;
@@ -348,20 +348,20 @@ class EmployeesManager {
         try {
             // 生成会话ID（用于hook标识）
             const sessionId = this.generateSessionId();
-            console.log('🔑 生成会话ID:', sessionId);
+            console.log(' 生成会话ID:', sessionId);
             
             // 设置临时hook监听初始化完成
             await this.setupInitializationHook(sessionId);
             // 检查系统项目状态
             if (!this.systemProjectStatus) {
-                console.error('❌ 系统项目状态未加载');
+                console.error('系统项目状态未加载');
                 alert('系统状态未加载，请稍后重试');
                 return;
             }
             
             // 检查 enhancedSidebar 是否可用
             if (!window.enhancedSidebar) {
-                console.error('❌ enhancedSidebar 未初始化');
+                console.error('enhancedSidebar 未初始化');
                 alert('页签系统未加载，请刷新页面重试');
                 return;
             }
@@ -369,15 +369,15 @@ class EmployeesManager {
             // 构造系统项目对象
             const systemProject = {
                 name: '系统根目录',
-                displayName: '🏠 系统根目录',
+                displayName: ' 系统根目录',
                 path: this.systemProjectStatus.root_directory,
                 fullPath: this.systemProjectStatus.root_directory
             };
             
-            console.log('🏗️ 准备创建系统初始化会话:', systemProject);
+            console.log(' 准备创建系统初始化会话:', systemProject);
             
             // 创建专用的初始化会话页签（使用已生成的sessionId）
-            const sessionName = '🚀 系统初始化';
+            const sessionName = '系统初始化';
             
             // 构建完整的初始化命令 - 直接使用Claude CLI组合命令  
             const guidanceText = `你现在要初始化用户电脑的根目录/主目录 (~/)，包含用户的全部数字生活内容，可能会包含：
@@ -419,7 +419,7 @@ class EmployeesManager {
             const escapedGuidanceText = guidanceText.replace(/"/g, '\\"');
             const initialCommand = `claude "${escapedGuidanceText}"`;
             
-            console.log('🚀 构建初始化命令:', {
+            console.log('构建初始化命令:', {
                 guidanceTextLength: guidanceText.length,
                 escapedTextLength: escapedGuidanceText.length,
                 commandLength: initialCommand.length,
@@ -442,13 +442,13 @@ class EmployeesManager {
             // 切换到新会话
             window.enhancedSidebar.switchToSession(sessionId);
             
-            console.log('✅ 系统初始化会话已创建:', sessionId);
+            console.log(' 系统初始化会话已创建:', sessionId);
             
             // 显示通知
             this.showInitializationNotification();
             
         } catch (error) {
-            console.error('❌ 创建初始化会话失败:', error);
+            console.error('创建初始化会话失败:', error);
             alert('创建初始化会话失败: ' + error.message);
             
             // 如果初始化失败，清理hook设置
@@ -494,7 +494,7 @@ class EmployeesManager {
         notification.innerHTML = `
             <div style="display: flex; flex-direction: column; gap: 8px;">
                 <div style="display: flex; align-items: center; gap: 8px;">
-                    <span>🚀</span>
+                    <span></span>
                     <span style="font-weight: 600;">系统初始化已启动</span>
                 </div>
                 <div style="font-size: 12px; opacity: 0.9; margin-bottom: 8px;">
@@ -607,7 +607,7 @@ class EmployeesManager {
 
 请直接执行 /init 命令开始分析，并严格按照上述流程完成初始化。`;
 
-        console.log('📤 手动发送初始化引导文字:', sessionId);
+        console.log(' 手动发送初始化引导文字:', sessionId);
         
         connection.send(JSON.stringify({
             type: 'input',
@@ -638,7 +638,7 @@ class EmployeesManager {
         
         successNotification.innerHTML = `
             <div style="display: flex; align-items: center; gap: 8px;">
-                <span>✅</span>
+                <span></span>
                 <span>引导文字已手动发送</span>
             </div>
         `;
@@ -677,11 +677,11 @@ class EmployeesManager {
      * 设置WebSocket监听器
      */
     setupWebSocketListener() {
-        console.log('🔧 开始设置员工管理器WebSocket监听器...');
+        console.log('开始设置员工管理器WebSocket监听器...');
         
         // 监听全局WebSocket消息
         if (window.websocketManager) {
-            console.log('✅ WebSocket管理器已存在，直接注册监听器');
+            console.log(' WebSocket管理器已存在，直接注册监听器');
             // 如果WebSocket管理器存在，直接注册监听器
             this.registerWebSocketHandler();
         } else {
@@ -691,15 +691,15 @@ class EmployeesManager {
             const maxAttempts = 50; // 5秒超时
             const checkWebSocketManager = () => {
                 attempts++;
-                console.log(`🔍 尝试查找WebSocket管理器... (第${attempts}次)`);
+                console.log(` 尝试查找WebSocket管理器... (第${attempts}次)`);
                 
                 if (window.websocketManager) {
-                    console.log('✅ WebSocket管理器已找到，注册监听器');
+                    console.log(' WebSocket管理器已找到，注册监听器');
                     this.registerWebSocketHandler();
                 } else if (attempts < maxAttempts) {
                     setTimeout(checkWebSocketManager, 100);
                 } else {
-                    console.error('❌ WebSocket管理器初始化超时，将使用备用事件监听');
+                    console.error('WebSocket管理器初始化超时，将使用备用事件监听');
                 }
             };
             checkWebSocketManager();
@@ -708,9 +708,9 @@ class EmployeesManager {
         // 也可以通过全局事件监听（备用方案）
         document.addEventListener('websocketMessage', (event) => {
             const message = event.detail;
-            console.log('📨 员工管理器收到全局WebSocket事件:', message);
+            console.log('员工管理器收到全局WebSocket事件:', message);
             if (message.type === 'agents_deployed') {
-                console.log('✅ 检测到agents_deployed消息，准备处理');
+                console.log(' 检测到agents_deployed消息，准备处理');
                 this.handleAgentsDeployed(message);
             }
         });
@@ -720,8 +720,8 @@ class EmployeesManager {
      * 注册WebSocket处理器
      */
     registerWebSocketHandler() {
-        console.log('📡 注册数字员工部署WebSocket监听器');
-        console.log('🔍 WebSocket管理器状态:', {
+        console.log('注册数字员工部署WebSocket监听器');
+        console.log(' WebSocket管理器状态:', {
             exists: !!window.websocketManager,
             hasOnMessage: !!(window.websocketManager && window.websocketManager.onMessage),
             isConnected: window.websocketManager ? window.websocketManager.isConnected : false
@@ -730,12 +730,12 @@ class EmployeesManager {
         // 通过WebSocket管理器注册消息处理器
         if (window.websocketManager && window.websocketManager.onMessage) {
             window.websocketManager.onMessage('agents_deployed', (message) => {
-                console.log('🎯 WebSocket管理器收到agents_deployed消息:', message);
+                console.log('WebSocket管理器收到agents_deployed消息:', message);
                 this.handleAgentsDeployed(message);
             });
-            console.log('✅ WebSocket监听器注册成功');
+            console.log(' WebSocket监听器注册成功');
         } else {
-            console.warn('⚠️ WebSocket管理器不可用，使用备用方案');
+            console.warn('WebSocket管理器不可用，使用备用方案');
         }
     }
     
@@ -743,8 +743,8 @@ class EmployeesManager {
      * 处理数字员工部署完成消息
      */
     handleAgentsDeployed(message) {
-        console.log('🎉 收到数字员工部署完成通知:', message);
-        console.log('📊 消息内容分析:', {
+        console.log('收到数字员工部署完成通知:', message);
+        console.log(' 消息内容分析:', {
             type: message.type,
             status: message.status,
             agentCount: message.agent_count,
@@ -758,11 +758,11 @@ class EmployeesManager {
         
         // 重新加载员工状态
         setTimeout(() => {
-            console.log('🔄 开始重新加载员工状态...');
+            console.log('开始重新加载员工状态...');
             this.loadEmployeesStatus().then(() => {
-                console.log('✅ 员工状态重新加载完成');
+                console.log(' 员工状态重新加载完成');
             }).catch((error) => {
-                console.error('❌ 员工状态重新加载失败:', error);
+                console.error('员工状态重新加载失败:', error);
             });
         }, 1000); // 延迟1秒确保文件已完全部署
     }
@@ -790,17 +790,17 @@ class EmployeesManager {
         
         const agentCount = message.agent_count || message.deployed_agents?.length || 5;
         const agentNames = [
-            '📁 文档管理员',
-            '💼 工作助理', 
-            '💰 财务助理',
-            '🔍 信息收集员',
-            '⚡ 全栈工程师'
+            ' 文档管理员',
+            ' 工作助理', 
+            ' 财务助理',
+            ' 信息收集员',
+            ' 全栈工程师'
         ];
         
         notification.innerHTML = `
             <div style="display: flex; flex-direction: column; gap: 12px;">
                 <div style="display: flex; align-items: center; gap: 10px;">
-                    <span style="font-size: 24px;">🎉</span>
+                    <span style="font-size: 24px;"></span>
                     <div>
                         <div style="font-weight: 600; font-size: 16px;">数字员工团队部署成功！</div>
                         <div style="font-size: 12px; opacity: 0.9;">已部署 ${agentCount} 个专业数字员工</div>
@@ -871,7 +871,7 @@ class EmployeesManager {
      */
     async setupInitializationHook(sessionId) {
         try {
-            console.log('🔧 设置初始化hook，会话ID:', sessionId);
+            console.log('设置初始化hook，会话ID:', sessionId);
             
             const response = await fetch('/api/hooks/setup-temporary', {
                 method: 'POST',
@@ -885,10 +885,10 @@ class EmployeesManager {
             
             if (response.ok) {
                 const result = await response.json();
-                console.log('✅ 初始化hook设置成功:', result);
+                console.log(' 初始化hook设置成功:', result);
             } else {
                 const error = await response.json();
-                console.error('❌ 初始化hook设置失败:', error);
+                console.error('初始化hook设置失败:', error);
                 throw new Error(error.error || '设置hook失败');
             }
             
@@ -903,7 +903,7 @@ class EmployeesManager {
      */
     async cleanupInitializationHook() {
         try {
-            console.log('🧹 清理初始化hook...');
+            console.log('清理初始化hook...');
             
             const response = await fetch('/api/hooks/remove-temporary', {
                 method: 'POST',
@@ -914,10 +914,10 @@ class EmployeesManager {
             
             if (response.ok) {
                 const result = await response.json();
-                console.log('✅ 初始化hook清理成功:', result);
+                console.log(' 初始化hook清理成功:', result);
             } else {
                 const error = await response.json();
-                console.error('❌ 初始化hook清理失败:', error);
+                console.error('初始化hook清理失败:', error);
             }
             
         } catch (error) {
