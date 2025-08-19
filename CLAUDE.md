@@ -6,6 +6,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Heliki OS 是基于Claude Code构建的数字员工协作平台，通过Web界面提供智能化的系统级AI服务。项目从简单的Claude CLI UI化工具演进为具备自主学习能力的数字员工管理平台，采用Python + FastAPI后端和原生前端技术栈。
 
+**🌟 开源状态：项目已完成开源准备，所有硬编码已清理，可安全部署到任何环境。**
+
 ## 产品战略定位
 
 ### 核心产品定位
@@ -129,12 +131,24 @@ curl http://localhost:3005/health
 - `app.py` - FastAPI应用主入口，包含WebSocket路由和API端点
 - `claude_cli.py` - Claude CLI集成模块，负责进程管理和通信  
 - `projects_manager.py` - 项目管理器，处理Claude项目扫描和会话管理
+- `config.py` - 🆕 统一配置系统，环境无关配置管理
+- `tasks_storage.py` - 任务持久化存储管理
+- `task_scheduler.py` - 定时任务调度器
+- `mission_manager.py` - 任务执行目录管理
+- `deploy_agents.py` - 数字员工自动部署系统
+
+**核心API端点:**
+- `/api/config` - 🆕 系统配置API，前后端配置同步
+- `/api/projects` - 项目列表API，获取可用的Claude项目
+- `/api/files/read` - 文件读取API，支持跨平台路径
+- `/api/files/write` - 文件写入API
+- `/api/task-files/{task_id}` - 任务文件管理API
+- `/api/system-project/status` - 系统项目状态API
+- `/api/system-project/agents` - 数字员工状态API
 
 **WebSocket接口:**
 - `/ws` - 聊天接口WebSocket，处理Claude对话
-- `/shell` - 终端接口WebSocket，提供Shell交互
-- `/api/projects` - 项目列表API，获取可用的Claude项目
-- `/api/file-tree/{project_path:path}` - 文件树API，浏览项目文件
+- `/shell` - 终端接口WebSocket，提供Shell交互，支持PTY
 
 **核心类:**
 - `ClaudeCLIIntegration` - Claude CLI进程集成和管理 (claude_cli.py:17)
@@ -147,15 +161,22 @@ curl http://localhost:3005/health
 - `app.js` - 主应用协调器，环境检测和标签管理
 - `websocket.js` - WebSocket管理和消息路由  
 - `chat.js` - 聊天界面，消息渲染和Claude交互
-- `sidebar.js` - 侧边栏，项目列表和选择
-- `terminal.js` - 终端模拟器，Shell集成
+- `sidebar_enhanced.js` - 🆕 增强侧边栏，项目会话层级结构
+- `session_terminal.js` - 🆕 会话终端管理器，支持PTY Shell
+- `task_manager_v2.js` - 🆕 任务管理器V2，支持定时任务
+- `employees_manager.js` - 🆕 数字员工团队管理器
 
 **扩展组件:**
-- `file_tree.js` - 文件树组件，文件浏览和导航
-- `files_drawer.js` - 文件抽屉组件，文件管理界面
-- `session_terminal.js` - 会话终端组件，支持会话恢复
-- `sidebar_enhanced.js` - 增强侧边栏，更丰富的项目管理
+- `files_drawer.js` - 文件抽屉组件，文件管理界面，支持任务文件
+- `dashboard.js` - 🆕 任务管理器仪表板，系统概览
+- `folder_selector.js` - 文件夹选择器，新建项目功能
 - `syntax_highlighter.js` - 语法高亮组件
+- `path_autocomplete.js` - 路径自动补全组件
+
+**配置系统 (🆕 开源关键):**
+- 所有组件支持 `loadConfig()` 动态配置加载
+- 统一的 `getUserHome()` 方法替代硬编码路径
+- `formatHomePath()` 跨平台路径显示格式化
 
 **CSS架构:**
 - `main.css` - CSS变量系统和全局样式
@@ -453,9 +474,25 @@ else:
 
 ## 协作指南
 
-### 开发需求处理原则
+### 🚨 硬编码严格禁令
+**项目已完成开源准备，绝对禁止任何形式的硬编码！**
+
+**已彻底清理的硬编码类型：**
+- ❌ 用户路径：`/Users/yuhao` → ✅ 使用 `Config.get_user_home()`
+- ❌ 用户名：`yuhao` → ✅ 使用系统配置API
+- ❌ 服务器地址：`localhost:3005` → ✅ 使用环境变量 `HELIKI_HOST`, `HELIKI_PORT`
+- ❌ Claude CLI路径：`/Users/yuhao/.local/bin/claude` → ✅ 动态检测
+- ❌ 固定回复文本 → ✅ 使用配置系统
+
+**配置系统架构：**
+- 后端：`config.py` 提供统一配置管理
+- API：`/api/config` 提供前后端配置同步
+- 前端：各组件通过 `loadConfig()` 获取动态配置
+- 环境变量：支持 `HELIKI_HOST`, `HELIKI_PORT` 等自定义
+
+**开发需求处理原则：**
 - 修改任何需求、功能以及修复bug，必须首先告诉我你在Claudecodeui项目中寻找对应的解决方案（找到或者对方没有实现）
 - 在todos中始终要告诉我此次行动的目标
 - 分析Claudecodeui的解决方案
 - 提供你的解决办法(不要过度设计)
-- 不允许在项目中使用硬编码，Heliki OS设计是要适配不同的环境的。即使要使用硬编码必须明确告知，经过同意后再使用
+- **绝对禁止硬编码**：任何路径、URL、用户信息都必须通过配置系统获取
