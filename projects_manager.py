@@ -729,7 +729,7 @@ class SystemProjectManager:
             logger.info(f"开始初始化系统项目: {status['root_directory']}")
             
             # 使用Claude Code在用户主目录下初始化项目
-            logger.info("🏗️ 使用Claude Code初始化用户主目录...")
+            logger.info(" 使用Claude Code初始化用户主目录...")
             
             # 创建Claude CLI实例
             claude_cli = ClaudeCLIIntegration()
@@ -755,24 +755,24 @@ class SystemProjectManager:
             # 等待Claude初始化完成(增加超时时间到60秒)
             if await SystemProjectManager._verify_claude_initialization(timeout=60):
                 # 部署默认智能体
-                logger.info("🧑‍💼 开始部署默认智能体...")
+                logger.info(" 开始部署默认智能体...")
                 deploy_result = await SystemProjectManager.deploy_default_agents()
                 
                 if deploy_result['success']:
-                    logger.info("✅ 系统项目初始化完成")
+                    logger.info(" 系统项目初始化完成")
                     return {
                         'success': True, 
                         'message': '系统项目初始化完成',
                         'agents_deployed': deploy_result['deployed_count']
                     }
                 else:
-                    logger.error("❌ 智能体部署失败")
+                    logger.error(" 智能体部署失败")
                     return {
                         'success': False,
                         'message': f'智能体部署失败: {deploy_result.get("message", "未知错误")}'
                     }
             else:
-                logger.error("❌ Claude项目初始化失败")
+                logger.error(" Claude项目初始化失败")
                 return {
                     'success': False,
                     'message': 'Claude项目初始化超时，请确保Claude CLI正常工作'

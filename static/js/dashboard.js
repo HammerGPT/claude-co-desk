@@ -5,7 +5,7 @@
 
 class TaskManagerDashboard {
     constructor() {
-        console.log('📊 TaskManagerDashboard 初始化开始');
+        console.log(' TaskManagerDashboard 初始化开始');
         this.systemStatus = null;
         this.taskStats = { total: 0, immediate: 0 }; // 初始显示0
         this.mcpStatus = undefined; // 初始状态为undefined，表示未开始加载
@@ -83,7 +83,7 @@ class TaskManagerDashboard {
      * 处理会话切换
      */
     handleSessionSwitch(sessionData) {
-        console.log('📊 Dashboard收到会话切换事件:', sessionData);
+        console.log(' Dashboard收到会话切换事件:', sessionData);
         // 有活跃会话时隐藏仪表板，显示session-header
         this.hideDashboard();
         this.showSessionHeader();
@@ -93,7 +93,7 @@ class TaskManagerDashboard {
      * 显示仪表板
      */
     showDashboard() {
-        console.log('📊 显示任务管理器仪表板');
+        console.log(' 显示任务管理器仪表板');
         if (this.dashboardContainer) {
             this.dashboardContainer.style.display = '';
         }
@@ -186,7 +186,7 @@ class TaskManagerDashboard {
                 // 保存配置供其他方法使用
                 this.systemConfig = config;
                 
-                console.log('📋 系统配置已加载:', config);
+                console.log('系统配置已加载:', config);
             }
         } catch (error) {
             console.error('加载系统配置失败:', error);
@@ -432,7 +432,7 @@ class TaskManagerDashboard {
         if (data.userHomeStatus && data.userHomeStatus.count > 0) {
             html += `
                 <div class="project-mcp-section">
-                    <h6>📂 工作目录 (${data.userHomeStatus.count}个)</h6>
+                    <h6><img src="/static/assets/icons/interface/folder.png" width="16" height="16" alt=""> 工作目录 (${data.userHomeStatus.count}个)</h6>
                     <div class="project-path">${this.formatHomePath(data.userHomeStatus.projectPath)}</div>
                     ${this.renderMCPToolsList(data.userHomeStatus.tools || [], 'compact')}
                 </div>
@@ -443,7 +443,7 @@ class TaskManagerDashboard {
         data.projectStatuses.forEach(project => {
             html += `
                 <div class="project-mcp-section">
-                    <h6>📂 ${project.projectName} (${project.mcpStatus.count}个)</h6>
+                    <h6><img src="/static/assets/icons/interface/folder.png" width="16" height="16" alt=""> ${project.projectName} (${project.mcpStatus.count}个)</h6>
                     <div class="project-path">${this.formatHomePath(project.projectPath)}</div>
                     ${this.renderMCPToolsList(project.mcpStatus.tools || [], 'compact')}
                 </div>
@@ -524,7 +524,7 @@ class TaskManagerDashboard {
     renderInitializationAction() {
         return `
             <div class="dashboard-action-btn init-system-highlight" id="init-system-action">
-                <div class="dashboard-action-icon">🚀</div>
+                <div class="dashboard-action-icon"></div>
                 <div class="dashboard-action-content">
                     <h4>初始化数字员工系统</h4>
                     <p>配置您的专属AI团队，开始智能化工作流程</p>
@@ -559,7 +559,7 @@ class TaskManagerDashboard {
      * 处理初始化系统
      */
     handleInitializeSystem() {
-        console.log('🚀 从仪表板启动系统初始化');
+        console.log('从仪表板启动系统初始化');
         
         // 使用员工管理器的初始化功能
         if (window.employeesManager) {
@@ -574,7 +574,7 @@ class TaskManagerDashboard {
      * 处理管理数字员工
      */
     handleManageAgents() {
-        console.log('👥 从仪表板打开数字员工管理');
+        console.log('从仪表板打开数字员工管理');
         
         // 使用员工管理器的显示功能
         if (window.employeesManager) {
@@ -589,7 +589,7 @@ class TaskManagerDashboard {
      * 处理创建任务
      */
     handleCreateTask() {
-        console.log('📋 从仪表板创建新任务');
+        console.log('从仪表板创建新任务');
         
         // 使用任务管理器的快速添加功能
         if (window.taskManager) {
@@ -604,7 +604,7 @@ class TaskManagerDashboard {
      * 处理浏览项目
      */
     handleViewProjects() {
-        console.log('📁 从仪表板浏览项目');
+        console.log('[DASHBOARD] 从仪表板浏览项目');
         
         // 展开项目抽屉
         if (window.sidebarDrawers) {
@@ -626,7 +626,7 @@ class TaskManagerDashboard {
             
             <div class="dashboard-actions">
                 <div class="dashboard-action-btn" onclick="dashboard.loadDashboardData()">
-                    <div class="dashboard-action-icon">🔄</div>
+                    <div class="dashboard-action-icon"></div>
                     <div class="dashboard-action-content">
                         <h4>重新加载</h4>
                         <p>重新获取系统状态信息</p>

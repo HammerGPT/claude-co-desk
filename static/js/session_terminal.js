@@ -266,10 +266,10 @@ class SessionTerminal {
     async connectSession(sessionId, project, originalSession = null, initialCommand = null) {
         // 检查是否正在连接中
         if (this.connectingStates.get(sessionId)) {
-            console.warn('⚠️ 连接正在进行中，忽略重复请求', sessionId);
+            console.warn('[WARN] 连接正在进行中，忽略重复请求', sessionId);
             const terminalData = this.terminals.get(sessionId);
             if (terminalData && terminalData.terminal) {
-                terminalData.terminal.writeln('\x1b[33m⚠️ 连接正在进行中，请稍候...\x1b[0m');
+                terminalData.terminal.writeln('\x1b[33m[WARN] 连接正在进行中，请稍候...\x1b[0m');
             }
             return;
         }
@@ -519,7 +519,7 @@ class SessionTerminal {
                     
                     // 手动设置尺寸
                     terminalData.terminal.resize(safeCols, safeRows);
-                    console.log(`🔧 已修正为安全尺寸: ${safeCols}x${safeRows}`, sessionId);
+                    console.log(` 已修正为安全尺寸: ${safeCols}x${safeRows}`, sessionId);
                 } else {
                     console.log(`✅ 终端尺寸正常: ${cols}x${rows}`, sessionId);
                 }
@@ -539,7 +539,7 @@ class SessionTerminal {
             // 使用默认尺寸作为后备
             if (terminalData.terminal) {
                 terminalData.terminal.resize(80, 24);
-                console.log('🔧 使用默认后备尺寸: 80x24', sessionId);
+                console.log(' 使用默认后备尺寸: 80x24', sessionId);
             }
         }
     }
@@ -628,17 +628,17 @@ class SessionTerminal {
      * 尝试恢复终端状态 - 移植自terminal.js
      */
     _tryRecoverTerminalState(sessionId) {
-        console.log('🔧 [TERMINAL DEBUG] 尝试恢复终端状态...', sessionId);
+        console.log(' [TERMINAL DEBUG] 尝试恢复终端状态...', sessionId);
         
         const terminalData = this.terminals.get(sessionId);
         if (!terminalData || !terminalData.terminal) {
-            console.error('🔧 [TERMINAL DEBUG] 终端实例不存在，无法恢复', sessionId);
+            console.error(' [TERMINAL DEBUG] 终端实例不存在，无法恢复', sessionId);
             return false;
         }
         
         // 检查终端是否需要重新初始化
         if (!terminalData.terminal.buffer || !terminalData.terminal.buffer.active) {
-            console.log('🔧 [TERMINAL DEBUG] 终端缓冲区异常，尝试刷新...', sessionId);
+            console.log(' [TERMINAL DEBUG] 终端缓冲区异常，尝试刷新...', sessionId);
             
             try {
                 // 尝试触发终端重新渲染

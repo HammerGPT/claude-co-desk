@@ -6,8 +6,8 @@
     <title>Heliki OS</title>
     
     <!-- Favicon -->
-    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
-    <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
+    <link rel="icon" type="image/png" sizes="16x16" href="/static/assets/icons/system/favicon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/static/assets/icons/system/favicon.png">
     
     <!-- PWA Manifest -->
     <link rel="manifest" href="/static/manifest.json">
@@ -18,8 +18,8 @@
     <meta name="apple-mobile-web-app-title" content="Heliki OS">
     
     <!-- Theme Color -->
-    <meta name="theme-color" content="#ffffff">
-    <meta name="msapplication-TileColor" content="#ffffff">
+    <meta name="theme-color" content="#2E8B8B">
+    <meta name="msapplication-TileColor" content="#2E8B8B">
     
     <!-- 防止iOS缩放 -->
     <meta name="format-detection" content="telephone=no">
@@ -36,6 +36,7 @@
     <link rel="stylesheet" href="/static/css/components.css">
     <link rel="stylesheet" href="/static/css/enhanced_components.css">
     <link rel="stylesheet" href="/static/css/session_mode.css">
+    <link rel="stylesheet" href="/static/css/icons.css">
     
     <!-- CSS修复已移动到components.css -->
 </head>
@@ -54,7 +55,9 @@
         <!-- 环境检测失败界面 -->
         <div id="environment-error" class="environment-error hidden">
             <div class="error-content">
-                <div class="error-icon">⚠️</div>
+                <div class="error-icon">
+                    <img src="/static/assets/icons/status/warning.png" width="48" height="48" alt="警告">
+                </div>
                 <h2>环境配置不完整</h2>
                 <div id="environment-status" class="environment-status">
                     <!-- 动态填充环境状态 -->
@@ -71,17 +74,12 @@
             <!-- 移动端顶部栏 -->
             <div id="mobile-header" class="mobile-header">
                 <button id="mobile-menu-btn" class="mobile-menu-btn">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
-                    </svg>
+                    <img src="/static/assets/icons/interface/menu.png" width="20" height="20" alt="菜单">
                 </button>
                 <h1 class="mobile-title">Heliki OS</h1>
                 <div class="mobile-actions">
                     <button id="mobile-settings-btn" class="mobile-action-btn">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                        </svg>
+                        <img src="/static/assets/icons/interface/tools.png" width="20" height="20" alt="设置">
                     </button>
                 </div>
             </div>
@@ -93,9 +91,7 @@
                     <div class="sidebar-header">
                         <div class="logo-container">
                             <div class="logo">
-                                <svg class="logo-icon" viewBox="0 0 24 24" fill="currentColor">
-                                    <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
-                                </svg>
+                                <img src="/static/assets/icons/system/logo.png" width="32" height="32" alt="Heliki OS">
                             </div>
                             <h1 class="logo-text">Heliki OS</h1>
                         </div>
@@ -298,16 +294,10 @@
                     <div class="settings-sidebar">
                         <div class="settings-menu">
                             <button class="settings-menu-item active" data-section="mcp-tools">
-                                🔧 MCP工具
-                            </button>
-                            <button class="settings-menu-item" data-section="theme">
-                                🎨 界面主题
-                            </button>
-                            <button class="settings-menu-item" data-section="notifications">
-                                🔔 通知设置
+                                <img src="/static/assets/icons/interface/tools.png" width="16" height="16" alt=""> MCP工具
                             </button>
                             <button class="settings-menu-item" data-section="about">
-                                ℹ️ 关于系统
+                                <img src="/static/assets/icons/interface/info.png" width="16" height="16" alt=""> 关于系统
                             </button>
                         </div>
                     </div>
@@ -344,7 +334,7 @@
                             <!-- 已安装工具列表 -->
                             <div class="mcp-installed-tools">
                                 <div class="tools-list-header">
-                                    <h5>📦 已安装工具 <span id="mcp-tools-count-wrapper">(<span id="mcp-tools-count">0</span>个)</span></h5>
+                                    <h5><img src="/static/assets/icons/interface/package.png" width="16" height="16" alt=""> 已安装工具 <span id="mcp-tools-count-wrapper">(<span id="mcp-tools-count">0</span>个)</span></h5>
                                 </div>
                                 <div id="mcp-tools-list" class="mcp-tools-list">
                                     <div class="loading-placeholder">加载工具列表中...</div>
@@ -353,21 +343,6 @@
                         </div>
                         
                         <!-- 其他设置内容占位符 -->
-                        <div id="settings-theme" class="settings-section">
-                            <div class="settings-section-header">
-                                <h4>界面主题</h4>
-                                <p class="settings-section-desc">自定义界面外观和主题</p>
-                            </div>
-                            <p>主题设置功能开发中...</p>
-                        </div>
-                        
-                        <div id="settings-notifications" class="settings-section">
-                            <div class="settings-section-header">
-                                <h4>通知设置</h4>
-                                <p class="settings-section-desc">配置系统通知和提醒</p>
-                            </div>
-                            <p>通知设置功能开发中...</p>
-                        </div>
                         
                         <div id="settings-about" class="settings-section">
                             <div class="settings-section-header">
@@ -899,9 +874,9 @@
             if (typeof TaskManager !== 'undefined') {
                 window.taskManagerV2 = new TaskManager(); // V2版本任务管理器
                 window.taskManager = window.taskManagerV2; // 统一引用
-                console.log('✅ TaskManager 实例创建成功');
+                console.log('TaskManager 实例创建成功');
             } else {
-                console.error('❌ TaskManager 类未定义，延迟重试...');
+                console.error('TaskManager 类未定义，延迟重试...');
                 setTimeout(initTaskManager, 100); // 100ms后重试
             }
         }

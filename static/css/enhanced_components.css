@@ -587,6 +587,9 @@
   transition: all 0.2s ease;
   color: hsl(var(--foreground));
   font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .settings-menu-item:hover {

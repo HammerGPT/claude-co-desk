@@ -69,7 +69,7 @@ class Terminal {
 
         // 禁用窗口大小变化时的终端调整，使用固定尺寸
         // window.addEventListener('resize', () => {
-        //     console.log('🚫 已禁用动态尺寸调整，使用固定120x30');
+        //     console.log(' 已禁用动态尺寸调整，使用固定120x30');
         // });
     }
 
@@ -78,7 +78,7 @@ class Terminal {
      */
     initTerminal() {
         if (!this.terminalWrapper || !window.Terminal) {
-            console.error('❌ xterm.js未加载或终端容器不存在');
+            console.error(' xterm.js未加载或终端容器不存在');
             return;
         }
 
@@ -89,7 +89,7 @@ class Terminal {
             }, 150);
 
         } catch (error) {
-            console.error('❌ 初始化xterm.js终端失败:', error);
+            console.error(' 初始化xterm.js终端失败:', error);
         }
     }
 
@@ -166,7 +166,7 @@ class Terminal {
         this.terminal.open(this.terminalWrapper);
 
         // 使用固定尺寸，不进行动态调整
-        console.log('✅ 使用固定终端尺寸: 120x30');
+        console.log(' 使用固定终端尺寸: 120x30');
 
         // 处理终端输入 - 恢复简单版本，避免过度过滤
         this.terminal.onData((data) => {
@@ -179,11 +179,11 @@ class Terminal {
 
         // 禁用终端大小变化处理，使用固定尺寸
         this.terminal.onResize(({ cols, rows }) => {
-            console.log(`🚫 终端尺寸变化被忽略: ${cols}x${rows}，保持固定120x30`);
+            console.log(` 终端尺寸变化被忽略: ${cols}x${rows}，保持固定120x30`);
         });
 
         this.isInitialized = true;
-        console.log('✅ xterm.js终端初始化完成');
+        console.log(' xterm.js终端初始化完成');
 
         // 添加xterm.js事件监听器进行调试
         this._addTerminalEventListeners();
@@ -203,7 +203,7 @@ class Terminal {
         try {
             // 获取容器实际尺寸
             const containerRect = this.terminalWrapper.getBoundingClientRect();
-            console.log(`📐 容器尺寸: ${containerRect.width}x${containerRect.height}`);
+            console.log(` 容器尺寸: ${containerRect.width}x${containerRect.height}`);
 
             // 确保容器有实际尺寸
             if (containerRect.width > 100 && containerRect.height > 50) {
@@ -213,7 +213,7 @@ class Terminal {
                 const maxCols = Math.floor((containerRect.width - 20) / charWidth);
                 const maxRows = Math.floor((containerRect.height - 20) / charHeight);
                 
-                console.log(`📏 预计算尺寸: ${maxCols}x${maxRows}`);
+                console.log(` 预计算尺寸: ${maxCols}x${maxRows}`);
                 
                 // 使用fitAddon调整
                 this.fitAddon.fit();
@@ -223,16 +223,16 @@ class Terminal {
                 const rows = this.terminal.rows;
                 
                 if (cols > 500 || rows > 200 || cols < 20 || rows < 5) {
-                    console.warn(`⚠️ 检测到异常尺寸 ${cols}x${rows}，使用安全默认值`);
+                    console.warn(` 检测到异常尺寸 ${cols}x${rows}，使用安全默认值`);
                     // 使用安全的默认尺寸
                     const safeCols = Math.min(Math.max(maxCols, 80), 150);
                     const safeRows = Math.min(Math.max(maxRows, 24), 50);
                     
                     // 手动设置尺寸
                     this.terminal.resize(safeCols, safeRows);
-                    console.log(`🔧 已修正为安全尺寸: ${safeCols}x${safeRows}`);
+                    console.log(` 已修正为安全尺寸: ${safeCols}x${safeRows}`);
                 } else {
-                    console.log(`✅ 终端尺寸正常: ${cols}x${rows}`);
+                    console.log(` 终端尺寸正常: ${cols}x${rows}`);
                 }
                 
                 // 如果已连接，通知后端
@@ -241,15 +241,15 @@ class Terminal {
                 }
             } else {
                 // 容器尺寸为0，延迟重试
-                console.warn('⚠️ 容器尺寸太小，延迟重试...');
+                console.warn(' 容器尺寸太小，延迟重试...');
                 setTimeout(() => this._fitTerminalSize(), 200);
             }
         } catch (error) {
-            console.error('❌ 调整终端大小失败:', error);
+            console.error(' 调整终端大小失败:', error);
             // 使用默认尺寸作为后备
             if (this.terminal) {
                 this.terminal.resize(80, 24);
-                console.log('🔧 使用默认后备尺寸: 80x24');
+                console.log(' 使用默认后备尺寸: 80x24');
             }
         }
     }
@@ -260,7 +260,7 @@ class Terminal {
      */
     initWebSocketHandlers() {
         if (!window.shellWsManager) {
-            console.error('❌ Shell WebSocket管理器不存在');
+            console.error(' Shell WebSocket管理器不存在');
             return;
         }
 
@@ -268,7 +268,7 @@ class Terminal {
         window.shellWsManager.onMessage('output', (data) => {
             if (this.terminal && data.data) {
                 // 基本的输出监控（简化版）
-                console.log(`📤 [TERMINAL] 输出:`, {
+                console.log(` [TERMINAL] 输出:`, {
                     length: data.data.length,
                     preview: data.data.substring(0, 50) + (data.data.length > 50 ? '...' : '')
                 });
@@ -278,13 +278,13 @@ class Terminal {
                 
                 // 基本的终端状态检查
                 if (this.terminal && this.terminal.buffer) {
-                    console.log(`🔍 [TERMINAL DEBUG] 写入终端:`, {
+                    console.log(` [TERMINAL DEBUG] 写入终端:`, {
                         outputLength: output.length,
                         terminalBufferLength: this.terminal.buffer.active?.length || 0
                     });
                     this.terminal.write(output);
                 } else {
-                    console.warn(`🔍 [TERMINAL DEBUG] 终端状态异常，跳过写入:`, {
+                    console.warn(` [TERMINAL DEBUG] 终端状态异常，跳过写入:`, {
                         hasTerminal: !!this.terminal,
                         hasBuffer: !!this.terminal?.buffer,
                         hasActive: !!this.terminal?.buffer?.active,
@@ -315,10 +315,10 @@ class Terminal {
                 }
                 
                 // 显示重连成功提示
-                this.terminal.writeln('\x1b[32m✅ 连接已恢复\x1b[0m');
+                this.terminal.writeln('\x1b[32m 连接已恢复\x1b[0m');
             } else if (!connected && this.terminal) {
                 // 连接断开时显示提示，但不清除终端内容
-                this.terminal.writeln('\x1b[33m⚠️ 连接已断开，正在尝试重连...\x1b[0m');
+                this.terminal.writeln('\x1b[33m 连接已断开，正在尝试重连...\x1b[0m');
             }
         });
     }
@@ -329,8 +329,8 @@ class Terminal {
     async connect() {
         // 检查是否正在连接中
         if (this.isConnecting) {
-            console.warn('⚠️ 连接正在进行中，忽略重复请求');
-            this.terminal.writeln('\x1b[33m⚠️ 连接正在进行中，请稍候...\x1b[0m');
+            console.warn(' 连接正在进行中，忽略重复请求');
+            this.terminal.writeln('\x1b[33m 连接正在进行中，请稍候...\x1b[0m');
             return;
         }
 
@@ -340,7 +340,7 @@ class Terminal {
         this.updateConnectionStatus(false);
 
         try {
-            console.log('🔧 开始连接终端...', {
+            console.log(' 开始连接终端...', {
                 project: this.selectedProject?.name,
                 session: this.selectedSession?.id,
                 hasSession: !!this.selectedSession
@@ -348,7 +348,7 @@ class Terminal {
 
             // 检查终端是否已初始化
             if (!this.isInitialized) {
-                this.terminal.writeln('\x1b[31m❌ 终端未初始化\x1b[0m');
+                this.terminal.writeln('\x1b[31m 终端未初始化\x1b[0m');
                 return;
             }
 
@@ -357,36 +357,36 @@ class Terminal {
                 const selectedProject = window.sidebar?.getSelectedProject();
                 if (selectedProject) {
                     this.selectedProject = selectedProject;
-                    console.log('✅ 从侧边栏获取到项目:', selectedProject);
+                    console.log(' 从侧边栏获取到项目:', selectedProject);
                 } else {
-                    this.terminal.writeln('\x1b[31m⚠️ 请先选择一个项目\x1b[0m');
-                    console.error('❌ 没有选中的项目');
+                    this.terminal.writeln('\x1b[31m 请先选择一个项目\x1b[0m');
+                    console.error(' 没有选中的项目');
                     return;
                 }
             }
 
             // 如果已经连接，先断开
             if (this.isConnected) {
-                console.log('🔄 检测到已有连接，先断开...');
+                console.log(' 检测到已有连接，先断开...');
                 this.disconnect();
                 await new Promise(resolve => setTimeout(resolve, 500));
             }
 
             // 显示简单的连接状态（避免与后端输出重复）
-            this.terminal.write(`\x1b[36m🔗 正在连接...\x1b[0m\r\n`);
+            this.terminal.write(`\x1b[36m 正在连接...\x1b[0m\r\n`);
 
             // 初始化WebSocket处理器
             this.initWebSocketHandlers();
 
             // 连接WebSocket
             await window.shellWsManager.connect();
-            console.log('✅ Shell WebSocket连接已建立');
+            console.log(' Shell WebSocket连接已建立');
 
             // 使用固定尺寸发送初始化消息
             const fixedCols = 120;
             const fixedRows = 30;
             
-            console.log(`📐 发送固定终端尺寸: ${fixedCols}x${fixedRows}`);
+            console.log(` 发送固定终端尺寸: ${fixedCols}x${fixedRows}`);
 
             // 发送初始化消息
             const success = window.shellWsManager.initTerminal(
@@ -398,14 +398,14 @@ class Terminal {
             );
 
             if (success) {
-                console.log('✅ 终端初始化消息已发送');
+                console.log(' 终端初始化消息已发送');
             } else {
                 throw new Error('发送初始化消息失败');
             }
 
         } catch (error) {
-            console.error('❌ 终端连接错误:', error);
-            this.terminal.writeln(`\x1b[31m❌ 连接失败: ${error.message}\x1b[0m`);
+            console.error(' 终端连接错误:', error);
+            this.terminal.writeln(`\x1b[31m 连接失败: ${error.message}\x1b[0m`);
             this.isConnected = false;
         } finally {
             // 无论成功失败都要释放连接锁
@@ -425,10 +425,10 @@ class Terminal {
             }
             // 保持终端内容，只显示断开提示
             if (this.terminal) {
-                this.terminal.writeln('\x1b[33m🔌 连接已断开\x1b[0m');
+                this.terminal.writeln('\x1b[33m 连接已断开\x1b[0m');
             }
         } catch (error) {
-            console.error('❌ 断开连接时发生错误:', error);
+            console.error(' 断开连接时发生错误:', error);
         }
     }
 
@@ -445,11 +445,11 @@ class Terminal {
      * 重启终端
      */
     restart() {
-        console.log('🔄 重启终端...');
+        console.log(' 重启终端...');
         
         // 防止在连接过程中重启
         if (this.isConnecting) {
-            this.terminal.writeln('\x1b[33m⚠️ 正在连接中，请稍候...\x1b[0m');
+            this.terminal.writeln('\x1b[33m 正在连接中，请稍候...\x1b[0m');
             return;
         }
         
@@ -469,10 +469,10 @@ class Terminal {
             
             // 如果有选中的项目，显示提示
             if (this.selectedProject) {
-                this.terminal.writeln(`\x1b[90m📁 已选择项目: ${this.selectedProject.display_name || this.selectedProject.name}\x1b[0m`);
+                this.terminal.writeln(`\x1b[90m[PROJECT] 已选择项目: ${this.selectedProject.display_name || this.selectedProject.name}\x1b[0m`);
                 if (this.selectedSession) {
                     const sessionInfo = this.selectedSession.summary || this.selectedSession.id.substring(0, 8);
-                    this.terminal.writeln(`\x1b[90m📋 已选择会话: ${sessionInfo}\x1b[0m`);
+                    this.terminal.writeln(`\x1b[90m 已选择会话: ${sessionInfo}\x1b[0m`);
                 }
                 this.terminal.writeln('');
             }
@@ -496,7 +496,7 @@ class Terminal {
      * 处理URL打开
      */
     handleUrlOpen(url) {
-        this.terminal.writeln(`\x1b[32m🌐 正在打开浏览器: ${url}\x1b[0m`);
+        this.terminal.writeln(`\x1b[32m 正在打开浏览器: ${url}\x1b[0m`);
         
         // 在新标签页中打开URL
         window.open(url, '_blank');
@@ -537,7 +537,7 @@ class Terminal {
      * 设置选中的项目
      */
     setSelectedProject(project) {
-        console.log('📁 Terminal: 项目切换', { 
+        console.log('[TERMINAL] 项目切换', { 
             from: this.selectedProject?.name, 
             to: project?.name,
             isConnecting: this.isConnecting
@@ -545,8 +545,8 @@ class Terminal {
         
         // 如果正在连接中，显示警告并忽略
         if (this.isConnecting) {
-            console.warn('⚠️ 正在连接中，忽略项目切换请求');
-            this.terminal.writeln('\x1b[33m⚠️ 正在连接中，请稍候...\x1b[0m');
+            console.warn(' 正在连接中，忽略项目切换请求');
+            this.terminal.writeln('\x1b[33m 正在连接中，请稍候...\x1b[0m');
             return;
         }
         
@@ -558,8 +558,8 @@ class Terminal {
         
         // 显示项目切换信息
         if (this.isConnected) {
-            this.terminal.writeln(`\x1b[33m\n📁 切换到项目: ${project?.display_name || project?.name}\x1b[0m`);
-            this.terminal.writeln(`\x1b[90m💡 点击"连接"按钮切换到此项目\x1b[0m`);
+            this.terminal.writeln(`\x1b[33m\n[PROJECT] 切换到项目: ${project?.display_name || project?.name}\x1b[0m`);
+            this.terminal.writeln(`\x1b[90m 点击"连接"按钮切换到此项目\x1b[0m`);
         }
     }
 
@@ -567,7 +567,7 @@ class Terminal {
      * 设置选中的会话
      */
     setSelectedSession(project, session) {
-        console.log('🔄 Terminal: 会话切换', { 
+        console.log(' Terminal: 会话切换', { 
             project: project?.name, 
             session: session?.id,
             currentlyConnected: this.isConnected,
@@ -576,8 +576,8 @@ class Terminal {
         
         // 如果正在连接中，显示警告并忽略
         if (this.isConnecting) {
-            console.warn('⚠️ 正在连接中，忽略会话切换请求');
-            this.terminal.writeln('\x1b[33m⚠️ 正在连接中，请稍候...\x1b[0m');
+            console.warn(' 正在连接中，忽略会话切换请求');
+            this.terminal.writeln('\x1b[33m 正在连接中，请稍候...\x1b[0m');
             return;
         }
         
@@ -590,13 +590,13 @@ class Terminal {
         
         // 显示会话切换信息
         const sessionInfo = session ? session.summary || session.id.substring(0, 8) : '新会话';
-        this.terminal.writeln(`\x1b[33m📋 已选择会话: ${sessionInfo}\x1b[0m`);
+        this.terminal.writeln(`\x1b[33m 已选择会话: ${sessionInfo}\x1b[0m`);
         
         // 如果已连接，提示用户重新连接
         if (this.isConnected) {
-            this.terminal.writeln(`\x1b[90m💡 点击"连接"按钮切换到此会话\x1b[0m`);
+            this.terminal.writeln(`\x1b[90m 点击"连接"按钮切换到此会话\x1b[0m`);
         } else {
-            this.terminal.writeln(`\x1b[90m💡 点击"连接"按钮开始会话\x1b[0m`);
+            this.terminal.writeln(`\x1b[90m 点击"连接"按钮开始会话\x1b[0m`);
         }
     }
 
@@ -639,7 +639,7 @@ class Terminal {
 
         // 监听终端渲染事件
         this.terminal.onRender((event) => {
-            console.log(`🔍 [XTERM DEBUG] 终端渲染事件:`, {
+            console.log(` [XTERM DEBUG] 终端渲染事件:`, {
                 start: event.start,
                 end: event.end,
                 bufferLength: this.terminal?.buffer?.active?.length || 0,
@@ -653,7 +653,7 @@ class Terminal {
 
         // 监听缓冲区变化
         this.terminal.onScroll((yDisp) => {
-            console.log(`🔍 [XTERM DEBUG] 滚动事件:`, {
+            console.log(` [XTERM DEBUG] 滚动事件:`, {
                 yDisp,
                 bufferLength: this.terminal?.buffer?.active?.length || 0,
                 viewportY: this.terminal?.buffer?.active?.viewportY || 0,
@@ -663,14 +663,14 @@ class Terminal {
 
         // 监听选择变化
         this.terminal.onSelectionChange(() => {
-            console.log(`🔍 [XTERM DEBUG] 选择变化事件:`, {
+            console.log(` [XTERM DEBUG] 选择变化事件:`, {
                 hasSelection: this.terminal.hasSelection(),
                 bufferLength: this.terminal?.buffer?.active?.length || 0,
                 timestamp: new Date().toISOString()
             });
         });
 
-        console.log('🔍 [XTERM DEBUG] 事件监听器已添加');
+        console.log(' [XTERM DEBUG] 事件监听器已添加');
     }
 
     /**
@@ -679,7 +679,7 @@ class Terminal {
     initDebugEventListeners() {
         // 监听页面可见性变化
         document.addEventListener('visibilitychange', () => {
-            console.log(`🔍 [PAGE DEBUG] 页面可见性变化:`, {
+            console.log(` [PAGE DEBUG] 页面可见性变化:`, {
                 hidden: document.hidden,
                 visibilityState: document.visibilityState,
                 hasFocus: document.hasFocus(),
@@ -690,7 +690,7 @@ class Terminal {
 
         // 监听窗口焦点变化
         window.addEventListener('focus', () => {
-            console.log(`🔍 [PAGE DEBUG] 窗口获得焦点:`, {
+            console.log(` [PAGE DEBUG] 窗口获得焦点:`, {
                 terminalActive: this.isActive(),
                 isConnected: this.isConnected,
                 terminalBufferLength: this.terminal?.buffer?.active?.length,
@@ -699,7 +699,7 @@ class Terminal {
         });
 
         window.addEventListener('blur', () => {
-            console.log(`🔍 [PAGE DEBUG] 窗口失去焦点:`, {
+            console.log(` [PAGE DEBUG] 窗口失去焦点:`, {
                 terminalActive: this.isActive(),
                 isConnected: this.isConnected,
                 terminalBufferLength: this.terminal?.buffer?.active?.length,
@@ -709,7 +709,7 @@ class Terminal {
 
         // 监听文档焦点变化
         document.addEventListener('focusin', (event) => {
-            console.log(`🔍 [PAGE DEBUG] 文档焦点进入:`, {
+            console.log(` [PAGE DEBUG] 文档焦点进入:`, {
                 target: event.target.tagName,
                 targetId: event.target.id,
                 terminalActive: this.isActive(),
@@ -718,7 +718,7 @@ class Terminal {
         });
 
         document.addEventListener('focusout', (event) => {
-            console.log(`🔍 [PAGE DEBUG] 文档焦点离开:`, {
+            console.log(` [PAGE DEBUG] 文档焦点离开:`, {
                 target: event.target.tagName,
                 targetId: event.target.id,
                 terminalActive: this.isActive(),
@@ -732,12 +732,12 @@ class Terminal {
         /*
         // 这些事件监听器会导致切换标签页时自动断开，已禁用
         window.addEventListener('beforeunload', () => {
-            console.log('🔄 [PAGE DEBUG] 页面即将卸载，清理终端连接');
+            console.log(' [PAGE DEBUG] 页面即将卸载，清理终端连接');
             this.cleanup();
         });
 
         window.addEventListener('pagehide', () => {
-            console.log('🔄 [PAGE DEBUG] 页面隐藏，清理终端连接');
+            console.log(' [PAGE DEBUG] 页面隐藏，清理终端连接');
             this.cleanup();
         });
 
@@ -746,23 +746,23 @@ class Terminal {
         });
         */
 
-        console.log('🔍 [PAGE DEBUG] 浏览器事件监听器已添加');
+        console.log(' [PAGE DEBUG] 浏览器事件监听器已添加');
     }
 
     /**
      * 尝试恢复终端状态
      */
     _tryRecoverTerminalState() {
-        console.log('🔧 [TERMINAL DEBUG] 尝试恢复终端状态...');
+        console.log(' [TERMINAL DEBUG] 尝试恢复终端状态...');
         
         if (!this.terminal) {
-            console.error('🔧 [TERMINAL DEBUG] 终端实例不存在，无法恢复');
+            console.error(' [TERMINAL DEBUG] 终端实例不存在，无法恢复');
             return false;
         }
         
         // 检查终端是否需要重新初始化
         if (!this.terminal.buffer || !this.terminal.buffer.active) {
-            console.log('🔧 [TERMINAL DEBUG] 终端缓冲区异常，尝试刷新...');
+            console.log(' [TERMINAL DEBUG] 终端缓冲区异常，尝试刷新...');
             
             try {
                 // 尝试触发终端重新渲染
@@ -772,14 +772,14 @@ class Terminal {
                 
                 // 检查恢复结果
                 if (this.terminal.buffer && this.terminal.buffer.active) {
-                    console.log('✅ [TERMINAL DEBUG] 终端状态恢复成功');
+                    console.log(' [TERMINAL DEBUG] 终端状态恢复成功');
                     return true;
                 } else {
-                    console.warn('⚠️ [TERMINAL DEBUG] 终端状态恢复失败');
+                    console.warn(' [TERMINAL DEBUG] 终端状态恢复失败');
                     return false;
                 }
             } catch (error) {
-                console.error('❌ [TERMINAL DEBUG] 终端状态恢复出错:', error);
+                console.error(' [TERMINAL DEBUG] 终端状态恢复出错:', error);
                 return false;
             }
         }
@@ -799,7 +799,7 @@ class Terminal {
      */
     onActivate() {
         // 面板激活时只做日志记录，不进行任何终端内容操作
-        console.log('📺 终端面板激活，使用固定尺寸120x30');
+        console.log(' 终端面板激活，使用固定尺寸120x30');
         
         // 移除任何可能导致终端内容丢失的writeln操作
         // 焦点切换时不应该向终端写入任何内容
@@ -816,12 +816,12 @@ class Terminal {
      * 清理终端资源 - 修复标签页关闭时连接未断开的问题
      */
     cleanup() {
-        console.log('🧹 [TERMINAL CLEANUP] 开始清理终端资源...');
+        console.log(' [TERMINAL CLEANUP] 开始清理终端资源...');
         
         try {
             // 1. 断开WebSocket连接
             if (this.isConnected && window.shellWsManager) {
-                console.log('🧹 [TERMINAL CLEANUP] 断开Shell WebSocket连接');
+                console.log(' [TERMINAL CLEANUP] 断开Shell WebSocket连接');
                 window.shellWsManager.manualDisconnect();
             }
             
@@ -844,10 +844,10 @@ class Terminal {
                 this.terminal.writeln('\x1b[90m终端连接已清理\x1b[0m');
             }
             
-            console.log('✅ [TERMINAL CLEANUP] 终端资源清理完成');
+            console.log(' [TERMINAL CLEANUP] 终端资源清理完成');
             
         } catch (error) {
-            console.error('❌ [TERMINAL CLEANUP] 清理过程中出现错误:', error);
+            console.error(' [TERMINAL CLEANUP] 清理过程中出现错误:', error);
         }
     }
 }

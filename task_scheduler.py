@@ -49,7 +49,7 @@ class TaskScheduler:
         self.mission_manager = MissionManager()  # 初始化任务目录管理器
         self.main_loop = None  # 保存主事件循环引用
         
-        logger.info("🕐 TaskScheduler 初始化完成")
+        logger.info(" TaskScheduler 初始化完成")
     
     def start(self):
         """启动任务调度器"""
@@ -60,9 +60,9 @@ class TaskScheduler:
         # 保存主事件循环引用，用于跨线程异步调用
         try:
             self.main_loop = asyncio.get_running_loop()
-            logger.info("📡 已保存主事件循环引用")
+            logger.info("已保存主事件循环引用")
         except RuntimeError:
-            logger.warning("⚠️ 无法获取当前事件循环，WebSocket通信可能受影响")
+            logger.warning(" 无法获取当前事件循环，WebSocket通信可能受影响")
             self.main_loop = None
         
         # 先从存储文件加载任务
@@ -71,7 +71,7 @@ class TaskScheduler:
         self.running = True
         self.scheduler_thread = threading.Thread(target=self._run_scheduler, daemon=True)
         self.scheduler_thread.start()
-        logger.info("🚀 任务调度器已启动")
+        logger.info(" 任务调度器已启动")
     
     def stop(self):
         """停止任务调度器"""
@@ -79,11 +79,11 @@ class TaskScheduler:
         schedule.clear()
         if self.scheduler_thread:
             self.scheduler_thread.join(timeout=5)
-        logger.info("⏹️ 任务调度器已停止")
+        logger.info(" 任务调度器已停止")
     
     def _run_scheduler(self):
         """运行调度器循环"""
-        logger.info("📅 任务调度器循环启动")
+        logger.info("任务调度器循环启动")
         while self.running:
             try:
                 # 添加调试信息：显示当前时间和待执行任务
@@ -134,9 +134,9 @@ class TaskScheduler:
             if task.enabled and task_data.get('executionMode') == 'scheduled':
                 self.scheduled_tasks[task.id] = task
                 self._schedule_task(task)
-                logger.info(f"➕ 添加定时任务: {task.name} - {task.schedule_frequency} {task.schedule_time}")
+                logger.info(f"添加定时任务: {task.name} - {task.schedule_frequency} {task.schedule_time}")
             else:
-                logger.info(f"➕ 保存立即执行任务: {task.name}")
+                logger.info(f"保存立即执行任务: {task.name}")
             
             # 自动保存到存储文件
             self._save_tasks_to_storage()
@@ -160,7 +160,7 @@ class TaskScheduler:
                     self._unschedule_task(task)
                     del self.scheduled_tasks[task_id]
                     
-                logger.info(f"➖ 移除任务: {task.name}")
+                logger.info(f"移除任务: {task.name}")
                 
                 # 自动保存到存储文件
                 self._save_tasks_to_storage()
@@ -180,7 +180,7 @@ class TaskScheduler:
             original_task = None
             if task_id in self.all_tasks:
                 original_task = self.all_tasks[task_id]
-                logger.info(f"🔄 更新现有任务: {original_task.name}")
+                logger.info(f" 更新现有任务: {original_task.name}")
             
             # 确保任务数据完整性，保留原有的创建时间等信息
             if original_task:
@@ -198,7 +198,7 @@ class TaskScheduler:
             # 重新添加任务
             success = self.add_scheduled_task(task_data)
             if success:
-                logger.info(f"✅ 任务更新成功: {task_data.get('name', 'Unknown')}")
+                logger.info(f" 任务更新成功: {task_data.get('name', 'Unknown')}")
                 # 注意：add_scheduled_task 已经会自动保存，这里不需要重复保存
             return success
             
@@ -215,10 +215,10 @@ class TaskScheduler:
                 
                 if enabled:
                     self._schedule_task(task)
-                    logger.info(f"✅ 启用定时任务: {task.name}")
+                    logger.info(f" 启用定时任务: {task.name}")
                 else:
                     self._unschedule_task(task)
-                    logger.info(f"⏸️ 禁用定时任务: {task.name}")
+                    logger.info(f" 禁用定时任务: {task.name}")
                 
                 # 自动保存到存储文件
                 self._save_tasks_to_storage()
@@ -238,17 +238,17 @@ class TaskScheduler:
             
             # 创建任务执行函数 - 修复异步调用问题
             def execute_task():
-                logger.info(f"🚀 schedule库正在触发任务执行: {task.name}")
+                logger.info(f" schedule库正在触发任务执行: {task.name}")
                 self._execute_task_sync(task)
             
             # 根据频率设置调度
             if task.schedule_frequency == 'daily':
                 schedule.every().day.at(task.schedule_time).do(execute_task).tag(task.id)
-                logger.info(f"📅 任务 {task.name} 已设置为每日 {task.schedule_time} 执行")
+                logger.info(f"任务 {task.name} 已设置为每日 {task.schedule_time} 执行")
             elif task.schedule_frequency == 'weekly':
                 # 默认设置为每周一执行，可以后续扩展为指定星期几
                 schedule.every().monday.at(task.schedule_time).do(execute_task).tag(task.id)
-                logger.info(f"📅 任务 {task.name} 已设置为每周一 {task.schedule_time} 执行")
+                logger.info(f"任务 {task.name} 已设置为每周一 {task.schedule_time} 执行")
                 
         except Exception as e:
             logger.error(f"设置任务调度失败: {e}")
@@ -257,7 +257,7 @@ class TaskScheduler:
         """从schedule库移除任务"""
         try:
             schedule.clear(task.id)
-            logger.info(f"🗑️ 任务 {task.name} 已从调度中移除")
+            logger.info(f" 任务 {task.name} 已从调度中移除")
         except Exception as e:
             logger.error(f"移除任务调度失败: {e}")
     
@@ -302,14 +302,14 @@ class TaskScheduler:
                 # 保存更改
                 self._save_tasks_to_storage()
                 
-                logger.info(f"🗑️ 任务已标记为删除: {task.name}")
+                logger.info(f" 任务已标记为删除: {task.name}")
                 return True
                 
-            logger.warning(f"⚠️ 要删除的任务不存在: {task_id}")
+            logger.warning(f" 要删除的任务不存在: {task_id}")
             return False
             
         except Exception as e:
-            logger.error(f"❌ 删除任务失败: {task_id} - {e}")
+            logger.error(f" 删除任务失败: {task_id} - {e}")
             return False
     
     def get_next_run_times(self) -> Dict[str, str]:
@@ -370,9 +370,9 @@ class TaskScheduler:
                     
                     # 添加调试日志
                     if task.session_id:
-                        logger.info(f"🔍 从存储加载任务 {task.name}，包含session_id: {task.session_id}")
+                        logger.info(f" 从存储加载任务 {task.name}，包含session_id: {task.session_id}")
                     else:
-                        logger.debug(f"🔍 从存储加载任务 {task.name}，无session_id")
+                        logger.debug(f" 从存储加载任务 {task.name}，无session_id")
                     
                     # 添加到all_tasks
                     self.all_tasks[task.id] = task
@@ -387,7 +387,7 @@ class TaskScheduler:
                 except Exception as e:
                     logger.error(f"加载任务失败: {task_data.get('name', 'Unknown')} - {e}")
                     
-            logger.info(f"📂 从存储文件恢复 {loaded_count} 个任务，其中 {scheduled_count} 个定时任务")
+            logger.info(f"从存储文件恢复 {loaded_count} 个任务，其中 {scheduled_count} 个定时任务")
             
         except Exception as e:
             logger.error(f"加载任务数据失败: {e}")
@@ -421,9 +421,9 @@ class TaskScheduler:
                 
             success = self.storage.save_tasks(tasks_data)
             if success:
-                logger.debug(f"💾 任务数据已保存到存储文件")
+                logger.debug(f"任务数据已保存到存储文件")
             else:
-                logger.error("❌ 保存任务数据失败")
+                logger.error(" 保存任务数据失败")
                 
         except Exception as e:
             logger.error(f"保存任务数据失败: {e}")
@@ -431,7 +431,7 @@ class TaskScheduler:
     def _execute_task_sync(self, task: ScheduledTask):
         """同步方式执行定时任务 - 修复异步调用问题"""
         try:
-            logger.info(f"🎯 开始执行定时任务: {task.name}")
+            logger.info(f" 开始执行定时任务: {task.name}")
             
             # 更新最后执行时间
             task.last_run = datetime.now().isoformat()
@@ -461,7 +461,7 @@ class TaskScheduler:
                 # 添加verbose日志模式
                 if task.verbose_logs:
                     base_command_parts.append('--verbose')
-                    logger.info(f"🔍 定时任务已添加--verbose参数到命令")
+                    logger.info(f" 定时任务已添加--verbose参数到命令")
                 
                 # 添加资源文件引用
                 if task.resources:
@@ -486,13 +486,13 @@ class TaskScheduler:
                     # 没有参数，直接用双引号包围整个命令
                     full_task_command = f'"{full_command_content}"'
                 
-                logger.info(f"📋 定时任务构建命令: {full_task_command}")
+                logger.info(f" 定时任务构建命令: {full_task_command}")
                 
                 # 使用与手动任务完全相同的消息格式
                 session_data = {
                     'type': 'create-task-tab',
                     'taskId': task.id,
-                    'taskName': f"📋 {task.name}",
+                    'taskName': f" {task.name}",
                     'initialCommand': full_task_command,  # 与手动任务字段名一致
                     'workingDirectory': os.path.expanduser('~'),  # 与手动任务一致的工作目录
                     'scheduledExecution': True  # 标识这是定时任务
@@ -508,26 +508,26 @@ class TaskScheduler:
                         )
                         # 等待完成（设置超时避免阻塞）
                         future.result(timeout=10)
-                        logger.info(f"✅ 定时任务 {task.name} WebSocket消息已发送，页签应该创建")
+                        logger.info(f" 定时任务 {task.name} WebSocket消息已发送，页签应该创建")
                         
                     else:
                         # 如果没有可用的主事件循环
-                        logger.error(f"❌ 主事件循环不可用，无法发送WebSocket消息: {task.name}")
-                        logger.info(f"📋 定时任务 {task.name} 应该执行命令: {command}")
+                        logger.error(f" 主事件循环不可用，无法发送WebSocket消息: {task.name}")
+                        logger.info(f" 定时任务 {task.name} 应该执行命令: {command}")
                         
                         # 作为备用方案，尝试直接记录到日志供调试
-                        logger.error(f"🚨 定时任务执行失败 - 需要手动创建页签执行: {command}")
+                        logger.error(f"定时任务执行失败 - 需要手动创建页签执行: {command}")
                         
                 except Exception as e:
-                    logger.error(f"❌ WebSocket消息发送异常: {e}")
-                    logger.info(f"📋 定时任务 {task.name} 应该执行命令: {command}")
+                    logger.error(f" WebSocket消息发送异常: {e}")
+                    logger.info(f" 定时任务 {task.name} 应该执行命令: {command}")
                     
                     # 记录详细的错误信息供调试
                     import traceback
                     logger.error(f"详细错误信息: {traceback.format_exc()}")
             else:
                 logger.warning("WebSocket管理器未初始化，无法发送任务执行请求")
-                logger.info(f"📋 定时任务 {task.name} 应该执行命令: {command}")
+                logger.info(f" 定时任务 {task.name} 应该执行命令: {command}")
             
         except Exception as e:
             logger.error(f"执行定时任务失败: {task.name} - {e}")
@@ -539,15 +539,15 @@ class TaskScheduler:
             if task_id in self.all_tasks:
                 task = self.all_tasks[task_id]
                 task.session_id = session_id
-                logger.info(f"💾 更新任务 {task.name} 的session_id: {session_id}")
+                logger.info(f"更新任务 {task.name} 的session_id: {session_id}")
                 
                 # 保存到存储文件
                 self._save_tasks_to_storage()
                 return True
             else:
-                logger.warning(f"⚠️ 未找到任务 {task_id}，无法更新session_id")
+                logger.warning(f" 未找到任务 {task_id}，无法更新session_id")
                 return False
                 
         except Exception as e:
-            logger.error(f"❌ 更新任务session_id失败: {task_id} - {e}")
+            logger.error(f" 更新任务session_id失败: {task_id} - {e}")
             return False

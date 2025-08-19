@@ -305,34 +305,34 @@ class SyntaxHighlighter {
     getFileTypeIcon(filename) {
         const language = this.getLanguageFromExtension(filename);
         const icons = {
-            'javascript': '📄',
-            'typescript': '📘',
-            'jsx': '⚛️',
-            'tsx': '⚛️',
-            'python': '🐍',
-            'html': '🌐',
-            'css': '🎨',
-            'scss': '🎨',
-            'sass': '🎨',
-            'json': '📋',
-            'xml': '📄',
-            'yaml': '⚙️',
-            'markdown': '📝',
-            'bash': '💻',
-            'java': '☕',
-            'c': '⚙️',
-            'cpp': '⚙️',
-            'go': '🚀',
-            'rust': '🦀',
-            'php': '🐘',
-            'ruby': '💎',
-            'swift': '🍎',
-            'sql': '🗄️',
-            'docker': '🐳',
-            'text': '📄'
+            'javascript': '',
+            'typescript': '',
+            'jsx': '',
+            'tsx': '',
+            'python': '',
+            'html': '',
+            'css': '',
+            'scss': '',
+            'sass': '',
+            'json': '',
+            'xml': '',
+            'yaml': '',
+            'markdown': '',
+            'bash': '',
+            'java': '',
+            'c': '',
+            'cpp': '',
+            'go': '',
+            'rust': '',
+            'php': '',
+            'ruby': '',
+            'swift': '',
+            'sql': '',
+            'docker': '',
+            'text': ''
         };
         
-        return icons[language] || '📄';
+        return icons[language] || '';
     }
     
     /**

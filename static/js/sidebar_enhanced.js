@@ -382,7 +382,7 @@ class EnhancedSidebar {
         });
 
         // 渲染完成后，通知抽屉管理器重新计算高度
-        console.log('🎯 项目列表渲染完成，通知抽屉管理器重新计算高度');
+        console.log(' 项目列表渲染完成，通知抽屉管理器重新计算高度');
         this.notifyDrawerHeightUpdate('projects');
     }
 
@@ -592,11 +592,11 @@ class EnhancedSidebar {
         const session = allSessions.find(s => s.id === sessionId);
         if (!session) return;
 
-        console.log(`🎯 点击会话: ${sessionId}`);
+        console.log(` 点击会话: ${sessionId}`);
 
         // 检查会话是否已经活跃（已打开标签）
         if (this.activeSessions.has(sessionId)) {
-            console.log(`🔄 切换到已连接的会话: ${sessionId}`);
+            console.log(` 切换到已连接的会话: ${sessionId}`);
             
             // 直接切换到已有的会话标签
             this.switchToSession(sessionId);
@@ -620,7 +620,7 @@ class EnhancedSidebar {
                 this.showSessionConnectModal(project, session);
             } else {
                 // 已连接会话，仅切换页签
-                console.log(`🔄 切换到已连接会话: ${sessionId}`);
+                console.log(` 切换到已连接会话: ${sessionId}`);
             }
         } else {
             // 降级处理：直接显示连接对话框
@@ -1712,7 +1712,7 @@ class EnhancedSidebar {
                     '全局';
                 const pathDisplay = this.formatHomePath(data.projectPath);
                 mcpHeader.innerHTML = `
-                    <span>🔧 MCP工具</span>
+                    <img src="/static/assets/icons/interface/tools.png" width="16" height="16" alt=""> <span>MCP工具</span>
                     <small style="font-weight: normal; color: #888; margin-left: 8px;">
                         ${projectName} (${pathDisplay})
                     </small>
@@ -2034,7 +2034,7 @@ class EnhancedSidebar {
      * 恢复项目和会话选择状态（配合终端状态恢复）
      */
     async restoreSelection(projectData, sessionData) {
-        console.log('🔄 恢复侧边栏选择状态:', {
+        console.log(' 恢复侧边栏选择状态:', {
             project: projectData?.name,
             session: sessionData?.id
         });
@@ -2155,7 +2155,7 @@ class EnhancedSidebar {
             }
         }
         
-        console.log(`🎯 创建新任务页签: ${taskName} (ID: ${taskId})`);
+        console.log(` 创建新任务页签: ${taskName} (ID: ${taskId})`);
         
         // 为任务创建伪项目会话数据，以便switchToSession能正常工作
         const taskSessionData = {
@@ -2275,7 +2275,7 @@ class EnhancedSidebar {
      * 更新会话状态显示
      */
     updateSessionStates(stateData) {
-        console.log(`🔄 更新会话状态显示: ${stateData.activeSessions.length} 个活跃会话`);
+        console.log(` 更新会话状态显示: ${stateData.activeSessions.length} 个活跃会话`);
         
         // 重新渲染项目列表以更新状态指示器
         this.renderProjects();
@@ -2285,7 +2285,7 @@ class EnhancedSidebar {
      * 处理会话选择变化
      */
     handleSessionSelectionChange(changeData) {
-        console.log(`🎯 会话选择变化:`, changeData);
+        console.log(` 会话选择变化:`, changeData);
         
         // 重新渲染以更新选中状态
         if (changeData.session) {
@@ -2395,7 +2395,7 @@ class EnhancedSidebar {
         setTimeout(() => {
             if (window.sidebarDrawers) {
                 window.sidebarDrawers.recalculateDrawerHeight(drawerName);
-                console.log(`🎯 已通知抽屉管理器重新计算 ${drawerName} 抽屉高度`);
+                console.log(` 已通知抽屉管理器重新计算 ${drawerName} 抽屉高度`);
             }
         }, 50);
         

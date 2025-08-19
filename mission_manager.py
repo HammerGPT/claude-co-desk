@@ -24,15 +24,15 @@ class MissionManager:
         """
         self.base_mission_dir = Path(base_mission_dir).resolve()
         self._ensure_base_directory()
-        logger.info(f"📁 MissionManager初始化: {self.base_mission_dir}")
+        logger.info(f"MissionManager初始化: {self.base_mission_dir}")
     
     def _ensure_base_directory(self):
         """确保mission基础目录存在"""
         try:
             self.base_mission_dir.mkdir(parents=True, exist_ok=True)
-            logger.info(f"✅ Mission基础目录已创建: {self.base_mission_dir}")
+            logger.info(f" Mission基础目录已创建: {self.base_mission_dir}")
         except Exception as e:
-            logger.error(f"❌ 创建mission基础目录失败: {e}")
+            logger.error(f" 创建mission基础目录失败: {e}")
             raise
     
     def _generate_random_suffix(self, length: int = 6) -> str:
@@ -76,11 +76,11 @@ class MissionManager:
             with open(info_file, 'w', encoding='utf-8') as f:
                 json.dump(task_info, f, ensure_ascii=False, indent=2)
             
-            logger.info(f"✅ 为任务 '{task_name}' ({task_id}) 创建工作目录: {task_dir}")
+            logger.info(f" 为任务 '{task_name}' ({task_id}) 创建工作目录: {task_dir}")
             return str(task_dir)
             
         except Exception as e:
-            logger.error(f"❌ 创建任务目录失败: {task_id} - {e}")
+            logger.error(f" 创建任务目录失败: {task_id} - {e}")
             raise
     
     def list_task_files(self, work_directory: str) -> List[Dict[str, Any]]:
@@ -95,7 +95,7 @@ class MissionManager:
         """
         try:
             if not work_directory or not os.path.exists(work_directory):
-                logger.warning(f"⚠️ 任务目录不存在: {work_directory}")
+                logger.warning(f" 任务目录不存在: {work_directory}")
                 return []
             
             work_dir = Path(work_directory)
@@ -145,17 +145,17 @@ class MissionManager:
                                 files.append(file_info)
                                 
                 except Exception as e:
-                    logger.warning(f"⚠️ 处理文件失败: {item} - {e}")
+                    logger.warning(f" 处理文件失败: {item} - {e}")
                     continue
             
             # 按名称排序
             files.sort(key=lambda x: (x["is_directory"], x["name"].lower()))
             
-            logger.info(f"📂 任务目录 {work_directory} 包含 {len(files)} 个文件/目录")
+            logger.info(f"任务目录 {work_directory} 包含 {len(files)} 个文件/目录")
             return files
             
         except Exception as e:
-            logger.error(f"❌ 列出任务文件失败: {work_directory} - {e}")
+            logger.error(f" 列出任务文件失败: {work_directory} - {e}")
             return []
     
     def get_task_directory_info(self, work_directory: str) -> Optional[Dict[str, Any]]:
@@ -187,7 +187,7 @@ class MissionManager:
             }
             
         except Exception as e:
-            logger.error(f"❌ 获取目录信息失败: {work_directory} - {e}")
+            logger.error(f" 获取目录信息失败: {work_directory} - {e}")
             return None
     
     def cleanup_empty_directories(self) -> int:
@@ -208,14 +208,14 @@ class MissionManager:
                             import shutil
                             shutil.rmtree(item)
                             cleaned_count += 1
-                            logger.info(f"🗑️ 清理空目录: {item}")
+                            logger.info(f" 清理空目录: {item}")
                         except Exception as e:
-                            logger.warning(f"⚠️ 清理目录失败: {item} - {e}")
+                            logger.warning(f" 清理目录失败: {item} - {e}")
                             
             if cleaned_count > 0:
-                logger.info(f"🧹 清理完成，删除了 {cleaned_count} 个空目录")
+                logger.info(f" 清理完成，删除了 {cleaned_count} 个空目录")
                 
         except Exception as e:
-            logger.error(f"❌ 清理目录失败: {e}")
+            logger.error(f" 清理目录失败: {e}")
             
         return cleaned_count

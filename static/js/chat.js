@@ -219,7 +219,7 @@ class ChatInterface {
                             <span class="tool-icon">${toolIcon}</span>
                             <span class="tool-name">${message.toolName}</span>
                             <span class="tool-status ${toolResultClass}">
-                                ${message.toolError ? '❌' : '✅'}
+                                ${message.toolError ? '' : ''}
                             </span>
                         </div>
                         ${message.toolInput ? `
@@ -248,7 +248,7 @@ class ChatInterface {
         } else if (message.type === 'error') {
             messageEl.innerHTML = `
                 <div class="message-bubble error" style="background: hsl(var(--destructive)); color: hsl(var(--destructive-foreground));">
-                    <div class="message-content">❌ ${this.escapeHtml(message.content)}</div>
+                    <div class="message-content"> ${this.escapeHtml(message.content)}</div>
                     <div class="message-time">${this.formatTime(message.timestamp)}</div>
                 </div>
             `;
@@ -344,7 +344,7 @@ class ChatInterface {
      * 处理工具使用
      */
     handleToolUse(toolUse) {
-        const toolMessage = `🔧 使用工具: ${toolUse.name}`;
+        const toolMessage = `<img src="/static/assets/icons/interface/tools.png" width="16" height="16" alt=""> 使用工具: ${toolUse.name}`;
         this.addAssistantMessage(toolMessage, 'tool');
     }
 
@@ -724,7 +724,7 @@ class ChatInterface {
         if (this.chatMessages) {
             this.chatMessages.innerHTML = `
                 <div class="error-message">
-                    <p>❌ ${this.escapeHtml(message)}</p>
+                    <p> ${this.escapeHtml(message)}</p>
                 </div>
             `;
         }
@@ -769,21 +769,21 @@ class ChatInterface {
      */
     getToolIcon(toolName) {
         const icons = {
-            'Read': '📖',
-            'Write': '✏️',
-            'Edit': '📝',
-            'MultiEdit': '📝',
-            'Bash': '💻',
-            'LS': '📁',
-            'Glob': '🔍',
-            'Grep': '🔍',
-            'TodoWrite': '📝',
-            'TodoRead': '📋',
-            'WebFetch': '🌐',
-            'WebSearch': '🔍',
-            'Task': '⚙️'
+            'Read': '',
+            'Write': '',
+            'Edit': '',
+            'MultiEdit': '',
+            'Bash': '',
+            'LS': '<img src="/static/assets/icons/interface/folder.png" width="16" height="16" alt="">',
+            'Glob': '',
+            'Grep': '',
+            'TodoWrite': '',
+            'TodoRead': '',
+            'WebFetch': '',
+            'WebSearch': '',
+            'Task': ''
         };
-        return icons[toolName] || '🔧';
+        return icons[toolName] || '<img src="/static/assets/icons/interface/tools.png" width="16" height="16" alt="">';
     }
 
     /**
@@ -807,7 +807,7 @@ class ChatInterface {
             try {
                 const parsed = JSON.parse(result);
                 if (parsed.success) {
-                    return '<div class="todo-success">✅ Todo列表已更新</div>';
+                    return '<div class="todo-success"> Todo列表已更新</div>';
                 }
             } catch (e) {
                 // 继续使用默认处理
@@ -842,7 +842,7 @@ class ChatInterface {
      * 连接到指定会话
      */
     connectToSession(session) {
-        console.log(`🔗 连接到会话:`, session);
+        console.log(` 连接到会话:`, session);
         
         // 设置选中的会话和项目
         this.selectedSession = session;
@@ -862,14 +862,14 @@ class ChatInterface {
         // 设置当前会话ID
         this.currentSessionId = session.id;
         
-        console.log(`✅ 已连接到会话: ${session.id}`);
+        console.log(` 已连接到会话: ${session.id}`);
     }
 
     /**
      * 处理会话完成事件
      */
     handleSessionComplete(sessionId, exitCode = 0) {
-        console.log(`🏁 会话完成: ${sessionId}, 退出码: ${exitCode}`);
+        console.log(` 会话完成: ${sessionId}, 退出码: ${exitCode}`);
         
         // 标记会话为非活跃
         if (window.app) {

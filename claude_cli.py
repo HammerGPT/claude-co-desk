@@ -50,7 +50,7 @@ class ClaudeCLIIntegration:
             }))
             return
         
-        logger.info(f"🎯 使用Claude CLI路径: {claude_executable}")
+        logger.info(f" 使用Claude CLI路径: {claude_executable}")
         
         # 构建Claude CLI命令参数 - 使用claude命令而非绝对路径
         args = ['claude']
@@ -120,7 +120,7 @@ class ClaudeCLIIntegration:
             
             # 构建完整的shell命令字符串（使用与PTY Shell相同的方式）
             shell_command = f'cd "{working_dir}" && {" ".join(args)}'
-            logger.info(f"🐚 Shell命令: {shell_command}")
+            logger.info(f" Shell命令: {shell_command}")
             
             # 启动Claude进程 - 使用bash -c方式（与PTY Shell保持一致）
             process = await asyncio.create_subprocess_exec(
@@ -139,19 +139,19 @@ class ClaudeCLIIntegration:
             async def handle_stdout():
                 nonlocal captured_session_id, session_created_sent
                 
-                logger.info("🚀 开始监听Claude CLI stdout...")
+                logger.info(" 开始监听Claude CLI stdout...")
                 try:
                     while True:
                         # 使用更小的缓冲区并添加超时
                         try:
                             line = await asyncio.wait_for(process.stdout.readline(), timeout=30.0)
                             if not line:
-                                logger.info("📜 Claude CLI stdout结束")
+                                logger.info(" Claude CLI stdout结束")
                                 break
                         except asyncio.TimeoutError:
                             logger.warning("⏰ Claude CLI stdout读取超时，检查进程状态...")
                             if process.returncode is not None:
-                                logger.info(f"🔚 Claude CLI进程已结束，返回码: {process.returncode}")
+                                logger.info(f" Claude CLI进程已结束，返回码: {process.returncode}")
                                 break
                             continue
                         
@@ -160,11 +160,11 @@ class ClaudeCLIIntegration:
                             if not raw_output:
                                 continue
                             
-                            logger.info(f"📤 Claude CLI stdout: {raw_output[:200]}{'...' if len(raw_output) > 200 else ''}")
+                            logger.info(f" Claude CLI stdout: {raw_output[:200]}{'...' if len(raw_output) > 200 else ''}")
                             
                             try:
                                 response = json.loads(raw_output)
-                                logger.info(f"✅ 解析JSON成功: type={response.get('type')}, session_id={response.get('session_id')}")
+                                logger.info(f" 解析JSON成功: type={response.get('type')}, session_id={response.get('session_id')}")
                                 
                                 # 捕获session ID
                                 if response.get('session_id') and not captured_session_id:
@@ -183,11 +183,11 @@ class ClaudeCLIIntegration:
                                             from app import task_scheduler  # 延迟导入避免循环依赖
                                             success = task_scheduler.update_task_session_id(task_id, captured_session_id)
                                             if success:
-                                                logger.info(f"✅ 任务 {task_id} 的session_id已保存")
+                                                logger.info(f" 任务 {task_id} 的session_id已保存")
                                             else:
-                                                logger.warning(f"⚠️ 保存任务 {task_id} 的session_id失败")
+                                                logger.warning(f" 保存任务 {task_id} 的session_id失败")
                                         except Exception as e:
-                                            logger.error(f"❌ 保存任务session_id时出错: {e}")
+                                            logger.error(f" 保存任务session_id时出错: {e}")
                                     
                                     # 发送session-created事件（仅新会话，不包括任务执行）
                                     if not session_id and not session_created_sent and not task_id:
@@ -196,41 +196,41 @@ class ClaudeCLIIntegration:
                                             'type': 'session-created',
                                             'sessionId': captured_session_id
                                         }))
-                                        logger.info("📨 发送session-created事件")
+                                        logger.info(" 发送session-created事件")
                                 
                                 # 发送解析的响应到WebSocket
                                 await websocket.send_text(json.dumps({
                                     'type': 'claude-response',
                                     'data': response
                                 }))
-                                logger.info("📤 发送claude-response到前端")
+                                logger.info(" 发送claude-response到前端")
                                 
                             except json.JSONDecodeError as je:
-                                logger.info(f"📄 非JSON响应: {raw_output[:100]}{'...' if len(raw_output) > 100 else ''}")
+                                logger.info(f" 非JSON响应: {raw_output[:100]}{'...' if len(raw_output) > 100 else ''}")
                                 # 发送原始文本
                                 await websocket.send_text(json.dumps({
                                     'type': 'claude-output',
                                     'data': raw_output
                                 }))
-                                logger.info("📤 发送claude-output到前端")
+                                logger.info(" 发送claude-output到前端")
                         
                         except Exception as e:
-                            logger.error(f"❌ 处理单行stdout时出错: {e}")
+                            logger.error(f" 处理单行stdout时出错: {e}")
                             
                 except Exception as e:
-                    logger.error(f"❌ handle_stdout异常: {e}")
+                    logger.error(f" handle_stdout异常: {e}")
                 finally:
-                    logger.info("🔚 handle_stdout结束")
+                    logger.info(" handle_stdout结束")
             
             # 处理stderr
             async def handle_stderr():
-                logger.info("🚀 开始监听Claude CLI stderr...")
+                logger.info(" 开始监听Claude CLI stderr...")
                 try:
                     while True:
                         try:
                             line = await asyncio.wait_for(process.stderr.readline(), timeout=10.0)
                             if not line:
-                                logger.info("📜 Claude CLI stderr结束")
+                                logger.info(" Claude CLI stderr结束")
                                 break
                         except asyncio.TimeoutError:
                             if process.returncode is not None:
@@ -240,18 +240,18 @@ class ClaudeCLIIntegration:
                         try:
                             error_output = line.decode('utf-8').strip()
                             if error_output:
-                                logger.error(f"🚨 Claude CLI stderr: {error_output}")
+                                logger.error(f"Claude CLI stderr: {error_output}")
                                 if websocket:
                                     await websocket.send_text(json.dumps({
                                         'type': 'claude-error',
                                         'error': error_output
                                     }))
                         except Exception as e:
-                            logger.error(f"❌ 处理stderr时出错: {e}")
+                            logger.error(f" 处理stderr时出错: {e}")
                 except Exception as e:
-                    logger.error(f"❌ handle_stderr异常: {e}")
+                    logger.error(f" handle_stderr异常: {e}")
                 finally:
-                    logger.info("🔚 handle_stderr结束")
+                    logger.info(" handle_stderr结束")
             
             # 启动异步处理任务
             stdout_task = asyncio.create_task(handle_stdout())
@@ -434,7 +434,7 @@ class ClaudeCLIIntegration:
             }))
             return
         
-        logger.info(f"🎯 继续会话使用Claude CLI路径: {claude_executable}")
+        logger.info(f" 继续会话使用Claude CLI路径: {claude_executable}")
         
         # 构建Claude CLI命令参数 - 使用claude命令，claude -c 是交互式命令，不需要其他参数
         args = ['claude']
@@ -448,12 +448,12 @@ class ClaudeCLIIntegration:
         # 最后添加 -c 参数继续上个会话
         args.append('-c')
         
-        logger.info(f"🚀 启动Claude继续会话")
-        logger.info(f"📍 完整命令: {' '.join(args)}")
-        logger.info(f"📍 命令数组: {args}")
-        logger.info(f"📁 工作目录: {working_dir}")
+        logger.info(f" 启动Claude继续会话")
+        logger.info(f" 完整命令: {' '.join(args)}")
+        logger.info(f" 命令数组: {args}")
+        logger.info(f"工作目录: {working_dir}")
         logger.info(f"🆔 会话信息 - sessionId: {session_id}, 项目: {project_name}")
-        logger.info(f"⚠️  关键: 使用 claude -c 继续上个会话（而非新建会话）")
+        logger.info(f"  关键: 使用 claude -c 继续上个会话（而非新建会话）")
         
         try:
             # 配置终端环境变量，支持完整ANSI颜色
@@ -484,18 +484,18 @@ class ClaudeCLIIntegration:
             
             # 处理stdout（流式JSON响应）
             async def handle_stdout():
-                logger.info("🚀 开始监听Claude继续会话 stdout...")
+                logger.info(" 开始监听Claude继续会话 stdout...")
                 try:
                     while True:
                         try:
                             line = await asyncio.wait_for(process.stdout.readline(), timeout=30.0)
                             if not line:
-                                logger.info("📜 Claude继续会话 stdout结束")
+                                logger.info(" Claude继续会话 stdout结束")
                                 break
                         except asyncio.TimeoutError:
                             logger.warning("⏰ Claude继续会话 stdout读取超时，检查进程状态...")
                             if process.returncode is not None:
-                                logger.info(f"🔚 Claude继续会话进程已结束，返回码: {process.returncode}")
+                                logger.info(f" Claude继续会话进程已结束，返回码: {process.returncode}")
                                 break
                             continue
                         
@@ -504,11 +504,11 @@ class ClaudeCLIIntegration:
                             if not raw_output:
                                 continue
                             
-                            logger.info(f"📤 Claude继续会话 stdout: {raw_output[:200]}{'...' if len(raw_output) > 200 else ''}")
+                            logger.info(f" Claude继续会话 stdout: {raw_output[:200]}{'...' if len(raw_output) > 200 else ''}")
                             
                             try:
                                 response = json.loads(raw_output)
-                                logger.info(f"✅ 解析JSON成功: type={response.get('type')}")
+                                logger.info(f" 解析JSON成功: type={response.get('type')}")
                                 
                                 # 发送解析后的响应到WebSocket
                                 await websocket.send_text(json.dumps({
@@ -516,29 +516,29 @@ class ClaudeCLIIntegration:
                                     'data': response
                                 }))
                             except json.JSONDecodeError:
-                                logger.info(f"📄 非JSON响应: {raw_output}")
+                                logger.info(f" 非JSON响应: {raw_output}")
                                 # 发送原始文本
                                 await websocket.send_text(json.dumps({
                                     'type': 'claude-output',
                                     'data': raw_output
                                 }))
                         except Exception as e:
-                            logger.error(f"❌ 处理stdout行异常: {e}")
+                            logger.error(f" 处理stdout行异常: {e}")
                             
                 except Exception as e:
-                    logger.error(f"❌ handle_stdout异常: {e}")
+                    logger.error(f" handle_stdout异常: {e}")
                 finally:
-                    logger.info("🔚 handle_stdout结束")
+                    logger.info(" handle_stdout结束")
             
             # 处理stderr
             async def handle_stderr():
-                logger.info("🚀 开始监听Claude继续会话 stderr...")
+                logger.info(" 开始监听Claude继续会话 stderr...")
                 try:
                     while True:
                         try:
                             line = await asyncio.wait_for(process.stderr.readline(), timeout=30.0)
                             if not line:
-                                logger.info("📜 Claude继续会话 stderr结束")
+                                logger.info(" Claude继续会话 stderr结束")
                                 break
                         except asyncio.TimeoutError:
                             if process.returncode is not None:
@@ -548,19 +548,19 @@ class ClaudeCLIIntegration:
                         try:
                             stderr_output = line.decode('utf-8').strip()
                             if stderr_output:
-                                logger.error(f"📤 Claude继续会话 stderr: {stderr_output}")
+                                logger.error(f" Claude继续会话 stderr: {stderr_output}")
                                 if websocket:
                                     await websocket.send_text(json.dumps({
                                         'type': 'claude-error',
                                         'error': stderr_output
                                     }))
                         except Exception as e:
-                            logger.error(f"❌ 处理stderr行异常: {e}")
+                            logger.error(f" 处理stderr行异常: {e}")
                             
                 except Exception as e:
-                    logger.error(f"❌ handle_stderr异常: {e}")
+                    logger.error(f" handle_stderr异常: {e}")
                 finally:
-                    logger.info("🔚 handle_stderr结束")
+                    logger.info(" handle_stderr结束")
             
             # 启动异步处理任务
             stdout_task = asyncio.create_task(handle_stdout())

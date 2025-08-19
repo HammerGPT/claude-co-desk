@@ -3199,8 +3199,8 @@ div.session-header div.session-actions button.action-btn:hover {
 }
 
 .session-tab.task-tab .session-tab-title::before {
-  content: "📋 ";
-  margin-right: 4px;
+  content: "";
+  margin-right: 0px;
 }
 
 /* 强制CSS更新 - 时间戳: 2025-01-15-17:30 */
