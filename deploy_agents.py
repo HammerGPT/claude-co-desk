@@ -34,7 +34,10 @@ class AgentDeployer:
         self.source_dir = self.project_dir / "static" / "agents"
         self.target_dir = Path.home() / ".claude" / "agents"
         self.deployed_marker = self.target_dir / ".heliki_agents_deployed"
-        self.heliki_api_url = "http://localhost:3005/api/agents-deployed"
+        # 从环境变量获取Heliki OS API地址，默认为localhost:3005
+        heliki_host = os.getenv('HELIKI_HOST', 'localhost')
+        heliki_port = os.getenv('HELIKI_PORT', '3005')
+        self.heliki_api_url = f"http://{heliki_host}:{heliki_port}/api/agents-deployed"
         
         # 预期的数字员工文件列表
         self.expected_agents = [
@@ -212,8 +215,11 @@ class AgentDeployer:
                 "timestamp": datetime.now().isoformat()
             }
             
+            heliki_host = os.getenv('HELIKI_HOST', 'localhost')
+            heliki_port = os.getenv('HELIKI_PORT', '3005')
+            cleanup_url = f"http://{heliki_host}:{heliki_port}/api/hooks/remove-temporary"
             response = requests.post(
-                "http://localhost:3005/api/hooks/remove-temporary",
+                cleanup_url,
                 json=cleanup_data,
                 timeout=10
             )

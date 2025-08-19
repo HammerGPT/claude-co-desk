@@ -14,9 +14,11 @@ class FolderSelector {
         this.searchQuery = '';
         this.allFolders = []; // 保存所有文件夹用于搜索
         this.workingDirectory = null; // 工作目录，从用户环境获取
+        this.systemConfig = null; // 系统配置
         
         this.initElements();
         this.initEventListeners();
+        this.loadConfig(); // 加载系统配置
     }
 
     /**
@@ -139,6 +141,21 @@ class FolderSelector {
     }
 
     /**
+     * 加载系统配置
+     */
+    async loadConfig() {
+        try {
+            const response = await fetch('/api/config');
+            if (response.ok) {
+                this.systemConfig = await response.json();
+                console.log('📁 文件夹选择器系统配置已加载:', this.systemConfig);
+            }
+        } catch (error) {
+            console.error('文件夹选择器加载系统配置失败:', error);
+        }
+    }
+
+    /**
      * 获取工作目录
      */
     async getWorkingDirectory() {
@@ -157,11 +174,15 @@ class FolderSelector {
             console.error('获取工作目录失败:', error);
         }
         
-        // 备用方案 - 使用用户家目录
+        // 备用方案 - 使用系统配置
+        if (!this.workingDirectory && this.systemConfig?.userHome) {
+            this.workingDirectory = this.systemConfig.userHome;
+        }
+        
+        // 最终备用方案 - 如果系统配置也未加载
         if (!this.workingDirectory) {
-            // 尝试检测用户名来构建正确的路径
-            const username = navigator.userAgent.includes('Mac') ? 'yuhao' : 'user';
-            this.workingDirectory = navigator.userAgent.includes('Mac') ? `/Users/${username}` : `/home/${username}`;
+            console.warn('无法获取用户主目录，使用系统根目录');
+            this.workingDirectory = '/';
         }
         
         return this.workingDirectory;

@@ -10,9 +10,11 @@ class FilesDrawer {
         this.files = [];
         this.expandedDirs = new Set();
         this.loading = false;
+        this.systemConfig = null; // 存储系统配置
         
         this.initElements();
         this.initEventListeners();
+        this.loadConfig(); // 加载配置
     }
 
     /**
@@ -271,7 +273,7 @@ class FilesDrawer {
         this.currentTaskInfo = {
             taskId: sessionId,
             taskName: 'MCP工具管理会话',
-            workDirectory: '/Users/yuhao'
+            workDirectory: this.getUserHome()
         };
         
         const filesList = document.querySelector('#files-list');
@@ -806,6 +808,35 @@ class FilesDrawer {
             modal.remove();
         }
         this.selectedFile = null;
+    }
+
+    /**
+     * 加载系统配置
+     */
+    async loadConfig() {
+        try {
+            const response = await fetch('/api/config');
+            if (response.ok) {
+                this.systemConfig = await response.json();
+                console.log('📁 FilesDrawer系统配置已加载:', this.systemConfig);
+            }
+        } catch (error) {
+            console.error('FilesDrawer加载系统配置失败:', error);
+        }
+    }
+
+    /**
+     * 获取用户主目录（跨平台兼容）
+     */
+    getUserHome() {
+        // 首选：使用系统配置
+        if (this.systemConfig?.userHome) {
+            return this.systemConfig.userHome;
+        }
+        
+        // 前端无法直接获取系统路径，必须依赖后端配置API
+        console.warn('FilesDrawer系统配置未加载，无法获取用户主目录');
+        return null;
     }
 }
 

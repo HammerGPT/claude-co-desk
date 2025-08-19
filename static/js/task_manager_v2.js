@@ -11,6 +11,7 @@ class TaskManager {
         this.currentView = 'empty'; // 'empty', 'detail', 'form'
         this.resources = [];
         this.currentEditingTask = null;
+        this.systemConfig = null; // 存储系统配置
         
         this.initElements();
         this.initEventListeners();
@@ -27,13 +28,57 @@ class TaskManager {
             this.loadTasks(); // 重新加载任务列表
         });
         
-        // 初始化时加载任务列表
-        this.loadTasks();
+        // 初始化时先加载配置，再加载任务列表
+        this.init();
         
         // 初始化路径自动补全功能
         this.initPathAutocomplete();
         
         console.log('✅ TaskManager V2 初始化完成');
+    }
+
+    /**
+     * 异步初始化 - 加载配置后再加载任务
+     */
+    async init() {
+        try {
+            await this.loadConfig();
+            this.loadTasks();
+        } catch (error) {
+            console.error('TaskManager初始化失败:', error);
+            this.loadTasks(); // 即使配置加载失败也要加载任务
+        }
+    }
+
+    /**
+     * 加载系统配置
+     */
+    async loadConfig() {
+        try {
+            const response = await fetch('/api/config');
+            if (response.ok) {
+                this.systemConfig = await response.json();
+                console.log('📋 TaskManager系统配置已加载:', this.systemConfig);
+            }
+        } catch (error) {
+            console.error('加载系统配置失败:', error);
+        }
+    }
+
+    /**
+     * 获取用户主目录（跨平台兼容）
+     */
+    getUserHome() {
+        // 首选：使用系统配置
+        if (this.systemConfig?.userHome) {
+            return this.systemConfig.userHome;
+        }
+        
+        // 备选：使用浏览器环境推断
+        // 注意：这是前端代码，无法直接获取系统路径
+        // 因此必须依赖后端配置API
+        console.warn('系统配置未加载，无法获取用户主目录');
+        return null;
     }
 
     /**
@@ -1806,7 +1851,7 @@ class TaskManager {
                     taskId: task.id,
                     taskName: task.name,
                     sessionId: task.sessionId,
-                    workDirectory: '/Users/yuhao'  // 固定使用用户家目录，确保能找到会话文件
+                    workDirectory: this.getUserHome()  // 使用跨平台兼容的用户主目录
                 };
                 this.showExecutionFeedback(`继续任务: ${task.name}`);
             } else {
@@ -2143,8 +2188,8 @@ class TaskManager {
         
         // 工作目录获取函数
         const getWorkingDirectory = () => {
-            // 默认使用用户家目录，任务基于此目录执行
-            return '/Users/yuhao';
+            // 使用跨平台兼容的用户主目录，任务基于此目录执行
+            return this.getUserHome();
         };
         
         // 为主任务表单的手动输入框添加自动补全

@@ -27,6 +27,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from claude_cli import claude_cli
 from projects_manager import ProjectManager
 from task_scheduler import TaskScheduler
+from config import Config
 import os
 import mimetypes
 import aiofiles
@@ -1118,7 +1119,7 @@ class PTYShellHandler:
             claude_dir = Path.home() / ".claude" / "projects"
             
             # 构建项目路径对应的文件路径
-            # 例如: /Users/yuhao -> -Users-yuhao
+            # 例如: /home/user -> -home-user
             if self.project_path:
                 project_file_path = self.project_path.replace("/", "-")
                 session_dir = claude_dir / project_file_path
@@ -1621,6 +1622,11 @@ async def read_root():
         html_content = f.read()
     return HTMLResponse(content=html_content)
 
+@app.get("/api/config")
+async def get_config():
+    """获取系统配置API"""
+    return JSONResponse(content=Config.get_frontend_config())
+
 @app.get("/api/environment")
 async def check_environment():
     """环境检测API"""
@@ -1951,7 +1957,9 @@ async def get_project_files(project_name: str):
         )
 
 @app.get("/api/browse-folders")
-async def browse_folders(path: str = "/Users/yuhao", max_depth: int = 2):
+async def browse_folders(path: str = None, max_depth: int = 2):
+    if path is None:
+        path = Config.get_user_home()
     """浏览文件夹树API，只返回文件夹结构"""
     try:
         folder_path = Path(path).resolve()
@@ -2634,7 +2642,7 @@ def parse_mcp_tools_output(output: str) -> tuple[list, int]:
     Checking MCP server health...
     
     playwright: npx @playwright/mcp - ✓ Connected
-    weather: /Users/yuhao/.local/bin/uv - ✗ Failed
+    weather: ~/.local/bin/uv - ✗ Failed
     
     返回: (tools_list, tools_count)
     """
@@ -3177,10 +3185,11 @@ if __name__ == "__main__":
     print(f"🕐 任务调度器将通过应用生命周期自动启动...")
     
     try:
+        server_config = Config.get_server_config()
         uvicorn.run(
             "app:app", 
-            host="localhost", 
-            port=3005, 
+            host=server_config['host'], 
+            port=server_config['port'], 
             reload=False,
             log_level="info",
             # WebSocket长连接配置 - 设置极长超时时间实现静默连接
