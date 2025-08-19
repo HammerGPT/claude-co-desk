@@ -11,7 +11,7 @@ class TaskManagerDashboard {
         this.mcpStatus = undefined; // 初始状态为undefined，表示未开始加载
         this.claudeInfo = {
             version: '1.0.73 (Claude Code)',
-            path: '/Users/yuhao/.local/bin/claude'
+            path: null // 将通过API动态获取
         };
         this.agentsCount = 0;
         this.isInitialized = false;
@@ -156,6 +156,9 @@ class TaskManagerDashboard {
             // 立即渲染Dashboard，显示加载状态
             this.updateDashboard();
             
+            // 首先加载系统配置
+            await this.loadConfigAsync();
+            
             // 并行加载所有数据，不阻塞页面显示
             this.loadBasicDataAsync();
             this.loadMCPStatusAsync();
@@ -164,6 +167,40 @@ class TaskManagerDashboard {
             console.error('加载仪表板数据失败:', error);
             this.renderErrorState();
         }
+    }
+
+    /**
+     * 加载系统配置
+     */
+    async loadConfigAsync() {
+        try {
+            const response = await fetch('/api/config');
+            if (response.ok) {
+                const config = await response.json();
+                
+                // 更新Claude CLI路径信息
+                if (config.claudeCliPath) {
+                    this.claudeInfo.path = config.claudeCliPath;
+                }
+                
+                // 保存配置供其他方法使用
+                this.systemConfig = config;
+                
+                console.log('📋 系统配置已加载:', config);
+            }
+        } catch (error) {
+            console.error('加载系统配置失败:', error);
+        }
+    }
+
+    /**
+     * 格式化路径显示（将用户主目录替换为~）
+     */
+    formatHomePath(path) {
+        if (!path || !this.systemConfig?.userHome) {
+            return path || '';
+        }
+        return path.replace(this.systemConfig.userHome, '~');
     }
 
     /**
@@ -183,7 +220,7 @@ class TaskManagerDashboard {
             this.taskStats = { total: 0, immediate: 0 };
             this.claudeInfo = {
                 version: '1.0.73 (Claude Code)',
-                path: '/Users/yuhao/.local/bin/claude'
+                path: this.systemConfig?.claudeCliPath || 'Claude CLI未找到'
             };
             this.agentsCount = 0;
             this.updateDashboard();
@@ -224,7 +261,7 @@ class TaskManagerDashboard {
             this.taskStats = { total: 0, immediate: 0 };
             this.claudeInfo = {
                 version: '1.0.73 (Claude Code)',
-                path: '/Users/yuhao/.local/bin/claude'
+                path: this.systemConfig?.claudeCliPath || 'Claude CLI未找到'
             };
             this.agentsCount = 0;
         }
@@ -260,7 +297,7 @@ class TaskManagerDashboard {
             } else {
                 this.claudeInfo = {
                     version: '1.0.73 (Claude Code)',
-                    path: '/Users/yuhao/.local/bin/claude'
+                    path: this.systemConfig?.claudeCliPath || 'claude'
                 };
             }
 
@@ -277,7 +314,7 @@ class TaskManagerDashboard {
             // 使用默认值
             this.claudeInfo = {
                 version: '1.0.73 (Claude Code)',
-                path: '/Users/yuhao/.local/bin/claude'
+                path: this.systemConfig?.claudeCliPath || 'Claude CLI未找到'
             };
             this.agentsCount = 0; // 错误时显示0而不是硬编码的5
         }
@@ -396,7 +433,7 @@ class TaskManagerDashboard {
             html += `
                 <div class="project-mcp-section">
                     <h6>📂 工作目录 (${data.userHomeStatus.count}个)</h6>
-                    <div class="project-path">${data.userHomeStatus.projectPath.replace('/Users/yuhao/', '~/')}</div>
+                    <div class="project-path">${this.formatHomePath(data.userHomeStatus.projectPath)}</div>
                     ${this.renderMCPToolsList(data.userHomeStatus.tools || [], 'compact')}
                 </div>
             `;
@@ -407,7 +444,7 @@ class TaskManagerDashboard {
             html += `
                 <div class="project-mcp-section">
                     <h6>📂 ${project.projectName} (${project.mcpStatus.count}个)</h6>
-                    <div class="project-path">${project.projectPath.replace('/Users/yuhao/', '~/')}</div>
+                    <div class="project-path">${this.formatHomePath(project.projectPath)}</div>
                     ${this.renderMCPToolsList(project.mcpStatus.tools || [], 'compact')}
                 </div>
             `;
@@ -447,7 +484,7 @@ class TaskManagerDashboard {
                             </div>
                             <div class="status-item">
                                 <span class="status-label">执行路径:</span>
-                                <span class="status-value code">${this.claudeInfo ? this.claudeInfo.path : '/Users/yuhao/.local/bin/claude'}</span>
+                                <span class="status-value code">${this.claudeInfo ? this.claudeInfo.path : (this.systemConfig?.claudeCliPath || 'Claude CLI未找到')}</span>
                             </div>
                             <div class="status-item">
                                 <span class="status-label">智能体数量:</span>

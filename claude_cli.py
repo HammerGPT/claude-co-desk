@@ -11,6 +11,7 @@ import subprocess
 from pathlib import Path
 from typing import Dict, List, Any, Optional
 import os
+from config import Config
 
 logger = logging.getLogger(__name__)
 
@@ -58,8 +59,8 @@ class ClaudeCLIIntegration:
         if command and command.strip():
             args.append(f'"{command}"')
         
-        # 使用根目录作为工作目录（任务都在根目录执行）
-        working_dir = "/"
+        # 使用Claude CLI默认工作目录（用户主目录）
+        working_dir = Config.get_default_working_directory()
         
         # 处理会话恢复
         if resume and session_id:

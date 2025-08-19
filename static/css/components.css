@@ -4240,7 +4240,7 @@ div.session-header div.session-actions button.action-btn:hover {
 
 /* 智能体管理弹窗样式 */
 .agents-modal .modal-content {
-  display: grid;
+  display: grid !important;
   grid-template-columns: 300px 1fr;
   grid-template-rows: auto 1fr;
   height: 100%;
@@ -4254,10 +4254,14 @@ div.session-header div.session-actions button.action-btn:hover {
 
 .agents-modal .agents-sidebar {
   width: auto; /* 覆盖固定宽度，使用Grid的列宽 */
+  grid-column: 1;
+  grid-row: 2;
 }
 
 .agents-modal .agents-detail {
   width: auto; /* 确保使用Grid的列宽 */
+  grid-column: 2;
+  grid-row: 2;
 }
 
 

@@ -131,9 +131,14 @@ def test_api_endpoint():
         
         print("   发送测试请求到API端点...")
         
+        # 从环境变量获取API地址
+        heliki_host = os.getenv('HELIKI_HOST', 'localhost')
+        heliki_port = os.getenv('HELIKI_PORT', '3005')
+        api_url = f"http://{heliki_host}:{heliki_port}/api/agents-deployed"
+        
         # 发送POST请求
         response = requests.post(
-            "http://localhost:3005/api/agents-deployed",
+            api_url,
             json=test_data,
             timeout=5
         )

@@ -21,11 +21,13 @@ class EnhancedSidebar {
             isLoading: false
         };
         this.searchFilter = '';
+        this.systemConfig = null; // 系统配置
         
         this.initElements();
         this.initEventListeners();
         this.initSessionStateHandlers();
         this.startTimeUpdater();
+        this.loadConfig(); // 加载系统配置
     }
 
     /**
@@ -174,6 +176,31 @@ class EnhancedSidebar {
         }, 60000); // 每分钟更新一次
     }
 
+
+    /**
+     * 加载系统配置
+     */
+    async loadConfig() {
+        try {
+            const response = await fetch('/api/config');
+            if (response.ok) {
+                this.systemConfig = await response.json();
+                console.log('🔧 侧边栏系统配置已加载:', this.systemConfig);
+            }
+        } catch (error) {
+            console.error('侧边栏加载系统配置失败:', error);
+        }
+    }
+
+    /**
+     * 格式化路径显示（将用户主目录替换为~）
+     */
+    formatHomePath(path) {
+        if (!path || !this.systemConfig?.userHome) {
+            return path || '';
+        }
+        return path.replace(this.systemConfig.userHome, '~');
+    }
 
     /**
      * 加载项目列表
@@ -1683,7 +1710,7 @@ class EnhancedSidebar {
                 const projectName = data.isProjectSpecific ? 
                     (this.selectedProject?.name || '项目') : 
                     '全局';
-                const pathDisplay = data.projectPath.replace('/Users/yuhao/', '~/');
+                const pathDisplay = this.formatHomePath(data.projectPath);
                 mcpHeader.innerHTML = `
                     <span>🔧 MCP工具</span>
                     <small style="font-weight: normal; color: #888; margin-left: 8px;">

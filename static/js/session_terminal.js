@@ -284,7 +284,7 @@ class SessionTerminal {
         this.connectingStates.set(sessionId, true);
 
         try {
-            const wsUrl = `ws://localhost:3005/shell`;
+            const wsUrl = `ws://${window.location.host}/shell`;
             const ws = new WebSocket(wsUrl);
             
             ws.onopen = () => {
