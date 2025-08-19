@@ -37,6 +37,7 @@ class EnhancedSidebar {
         this.refreshBtn = document.getElementById('refresh-projects');
         this.settingsBtn = document.getElementById('settings-btn');
         this.newProjectBtn = document.getElementById('new-project');
+        
         this.sidebarOverlay = document.getElementById('sidebar-overlay');
         this.mobileMenuBtn = document.getElementById('mobile-menu-btn');
         this.searchInput = this.createSearchInput();
@@ -118,7 +119,8 @@ class EnhancedSidebar {
         });
 
         // 新建项目按钮
-        this.newProjectBtn?.addEventListener('click', () => {
+        this.newProjectBtn?.addEventListener('click', (e) => {
+            e.stopPropagation(); // 阻止事件冒泡
             this.showNewProjectDialog();
         });
 
@@ -1031,9 +1033,15 @@ class EnhancedSidebar {
      * 显示新建项目对话框
      */
     showNewProjectDialog() {
-        const path = prompt('请输入项目路径:');
-        if (path && path.trim()) {
-            this.createProject(path.trim());
+        // 使用文件夹选择器替代prompt
+        if (window.folderSelector && typeof window.folderSelector.open === 'function') {
+            window.folderSelector.open();
+        } else {
+            console.error('文件夹选择器未加载，回退到原始方式');
+            const path = prompt('请输入项目路径:');
+            if (path && path.trim()) {
+                this.createProject(path.trim());
+            }
         }
     }
 

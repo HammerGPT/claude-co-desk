@@ -3316,6 +3316,46 @@ div.session-header div.session-actions button.action-btn:hover {
   color: hsl(var(--muted-foreground));
 }
 
+/* 状态信息容器样式 */
+.status-info-container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.status-item {
+  display: flex;
+  align-items: center;
+}
+
+.status-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.status-option {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  font-size: 10px;
+  font-weight: 500;
+  border-radius: 3px;
+  white-space: nowrap;
+}
+
+.status-option.auto-mode {
+  background: hsl(var(--primary) / 0.15);
+  color: hsl(var(--primary));
+  border: 1px solid hsl(var(--primary) / 0.3);
+}
+
+.status-option.verbose-logs {
+  background: hsl(220, 50%, 50% / 0.15);
+  color: hsl(220, 50%, 45%);
+  border: 1px solid hsl(220, 50%, 50% / 0.3);
+}
+
 .delete-task-btn {
   background: none;
   border: none;
@@ -4525,4 +4565,473 @@ div.session-header div.session-actions button.action-btn:hover {
 .agent-file-content .token.function,
 .agent-file-content .token.class-name {
   color: #8b5cf6;
+}
+
+/* ===== 文件夹选择器样式 ===== */
+.folder-selector-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  z-index: 1000;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  animation: fadeIn 0.2s ease-in-out;
+}
+
+.folder-selector-overlay.open {
+  display: flex;
+}
+
+.folder-selector-modal {
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  border-radius: 8px;
+  width: 600px;
+  max-width: 95vw;
+  height: 500px;
+  max-height: 85vh;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  display: flex;
+  flex-direction: column;
+  animation: slideIn 0.3s ease-in-out;
+}
+
+.folder-selector-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid hsl(var(--border));
+  background: hsl(var(--muted) / 0.3);
+}
+
+.folder-selector-header h3 {
+  margin: 0;
+  color: hsl(var(--foreground));
+  font-size: 16px;
+  font-weight: 600;
+}
+
+/* 搜索容器样式 */
+.folder-search-container {
+  padding: 12px 20px;
+  border-bottom: 1px solid hsl(var(--border));
+  background: hsl(var(--muted) / 0.1);
+}
+
+.folder-search-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.folder-search-icon {
+  position: absolute;
+  left: 10px;
+  color: hsl(var(--muted-foreground));
+  z-index: 1;
+}
+
+.folder-search-input {
+  width: 100%;
+  padding: 8px 12px 8px 36px;
+  border: 1px solid hsl(var(--border));
+  border-radius: 6px;
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+  font-size: 14px;
+  transition: all 0.2s ease;
+}
+
+.folder-search-input:focus {
+  outline: none;
+  border-color: hsl(var(--primary));
+  box-shadow: 0 0 0 2px hsl(var(--primary) / 0.1);
+}
+
+.folder-search-input::placeholder {
+  color: hsl(var(--muted-foreground));
+}
+
+.folder-search-clear {
+  position: absolute;
+  right: 8px;
+  background: none;
+  border: none;
+  color: hsl(var(--muted-foreground));
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.folder-search-clear:hover {
+  background: hsl(var(--muted));
+  color: hsl(var(--foreground));
+}
+
+.folder-search-clear.hidden {
+  display: none;
+}
+
+/* 文件夹导航样式 */
+.folder-navigation {
+  padding: 12px 20px;
+  border-bottom: 1px solid hsl(var(--border));
+  background: hsl(var(--muted) / 0.05);
+}
+
+.folder-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.folder-nav-btn {
+  background: hsl(var(--secondary));
+  border: 1px solid hsl(var(--border));
+  color: hsl(var(--secondary-foreground));
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.folder-nav-btn:hover:not(:disabled) {
+  background: hsl(var(--secondary) / 0.8);
+}
+
+.folder-nav-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.breadcrumb-path {
+  font-family: monospace;
+  font-size: 13px;
+  color: hsl(var(--foreground));
+  background: hsl(var(--muted) / 0.3);
+  padding: 6px 10px;
+  border-radius: 4px;
+  border: 1px solid hsl(var(--border));
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.folder-close-btn {
+  background: none;
+  border: none;
+  color: hsl(var(--muted-foreground));
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.folder-close-btn:hover {
+  background: hsl(var(--muted));
+  color: hsl(var(--foreground));
+}
+
+.folder-selector-content {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.folder-tree {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px 0;
+  background: hsl(var(--background));
+}
+
+.folder-tree::-webkit-scrollbar {
+  width: 6px;
+}
+
+.folder-tree::-webkit-scrollbar-track {
+  background: hsl(var(--muted) / 0.3);
+}
+
+.folder-tree::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted-foreground) / 0.3);
+  border-radius: 3px;
+}
+
+.folder-tree::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground) / 0.5);
+}
+
+.folder-item {
+  margin: 1px 0;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+}
+
+.folder-content {
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.2s ease;
+  border-radius: 4px;
+  margin: 0 8px;
+  flex: 1;
+}
+
+.folder-content:hover {
+  background: hsl(var(--accent) / 0.1);
+}
+
+.folder-item.selected .folder-content {
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+}
+
+.folder-item.existing-project .folder-content {
+  background: hsl(var(--muted) / 0.5);
+  color: hsl(var(--muted-foreground));
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.folder-item.existing-project .folder-content:hover {
+  background: hsl(var(--muted) / 0.5);
+}
+
+.folder-icon {
+  margin-right: 8px;
+  display: flex;
+  align-items: center;
+  color: hsl(var(--muted-foreground));
+}
+
+.folder-item.selected .folder-icon {
+  color: hsl(var(--primary-foreground));
+}
+
+.folder-name {
+  flex: 1;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.existing-badge {
+  background: hsl(var(--muted));
+  color: hsl(var(--muted-foreground));
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 10px;
+  margin-left: 8px;
+  font-weight: 500;
+}
+
+.enter-hint {
+  background: hsl(var(--primary) / 0.1);
+  color: hsl(var(--primary));
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 8px;
+  margin-left: 8px;
+  font-weight: 400;
+  opacity: 0.7;
+}
+
+.expand-arrow {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  color: hsl(var(--muted-foreground));
+  font-size: 12px;
+  line-height: 16px;
+  text-align: center;
+  user-select: none;
+  transition: color 0.2s ease;
+  margin-right: 4px;
+}
+
+.expand-arrow:hover {
+  color: hsl(var(--foreground));
+}
+
+.expand-placeholder {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  margin-right: 4px;
+}
+
+.folder-selector-footer {
+  border-top: 1px solid hsl(var(--border));
+  padding: 16px 20px;
+  background: hsl(var(--muted) / 0.2);
+}
+
+.current-path {
+  margin-bottom: 12px;
+  font-size: 13px;
+  color: hsl(var(--muted-foreground));
+}
+
+.path-label {
+  font-weight: 500;
+  margin-right: 8px;
+}
+
+.path-value {
+  color: hsl(var(--foreground));
+  font-family: monospace;
+  background: hsl(var(--muted) / 0.5);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.folder-selector-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.folder-selector-buttons .btn {
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 1px solid transparent;
+}
+
+.folder-selector-buttons .btn-secondary {
+  background: hsl(var(--secondary));
+  color: hsl(var(--secondary-foreground));
+  border-color: hsl(var(--border));
+}
+
+.folder-selector-buttons .btn-secondary:hover {
+  background: hsl(var(--secondary) / 0.8);
+}
+
+.folder-selector-buttons .btn-primary {
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+}
+
+.folder-selector-buttons .btn-primary:hover:not(:disabled) {
+  background: hsl(var(--primary) / 0.9);
+}
+
+.folder-selector-buttons .btn-primary:disabled {
+  background: hsl(var(--muted));
+  color: hsl(var(--muted-foreground));
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.loading-spinner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  color: hsl(var(--muted-foreground));
+  font-size: 14px;
+}
+
+.empty-folders {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  color: hsl(var(--muted-foreground));
+  font-size: 14px;
+}
+
+.error-message {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  color: hsl(var(--destructive));
+  font-size: 14px;
+  text-align: center;
+}
+
+.error-message .btn {
+  margin-top: 12px;
+  padding: 6px 12px;
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  border: none;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.error-message .btn:hover {
+  background: hsl(var(--primary) / 0.9);
+}
+
+/* 防止body滚动当模态框打开时 */
+body.modal-open {
+  overflow: hidden;
+}
+
+/* 动画效果 */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .folder-selector-modal {
+    width: 95vw;
+    height: 80vh;
+    margin: 0 10px;
+  }
+  
+  .folder-selector-header,
+  .folder-selector-footer {
+    padding: 12px 16px;
+  }
+  
+  .folder-content {
+    padding: 12px;
+  }
+  
+  .folder-name {
+    font-size: 15px;
+  }
 }
