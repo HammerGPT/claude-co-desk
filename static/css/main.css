@@ -31,6 +31,12 @@
   --sidebar-width: 320px;
   --mobile-header-height: 60px;
   --tab-bar-height: 48px;
+  
+  /* 滚动条变量 */
+  --scrollbar-width: 6px;
+  --scrollbar-track-color: transparent;
+  --scrollbar-thumb-color: hsl(var(--border) / 0.4);
+  --scrollbar-thumb-hover-color: hsl(var(--muted-foreground) / 0.6);
 }
 
 /* 暗色主题 (绿色海洋主题) */
@@ -54,6 +60,10 @@
   --border: 174 20% 18%;
   --input: 174 20% 18%;
   --ring: 174 64% 57%;
+  
+  /* 暗色主题滚动条变量 */
+  --scrollbar-thumb-color: hsl(var(--border) / 0.5);
+  --scrollbar-thumb-hover-color: hsl(var(--muted-foreground) / 0.7);
 }
 
 /* 全局样式重置 */
@@ -357,6 +367,50 @@ form, fieldset, legend, label {
               color 200ms ease-in-out;
 }
 
+/* 全局滚动条样式系统 */
+/* Firefox滚动条 */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+  transition: scrollbar-color 200ms ease-in-out;
+}
+
+/* 容器悬停时显示Firefox滚动条 */
+*:hover {
+  scrollbar-color: var(--scrollbar-thumb-color) var(--scrollbar-track-color);
+}
+
+/* Webkit滚动条 - 默认隐藏 */
+::-webkit-scrollbar {
+  width: var(--scrollbar-width);
+  height: var(--scrollbar-width);
+}
+
+::-webkit-scrollbar-track {
+  background: var(--scrollbar-track-color);
+}
+
+::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 3px;
+  transition: background-color 200ms ease-in-out;
+}
+
+/* 容器悬停时显示Webkit滚动条 */
+*:hover::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb-color);
+}
+
+/* 滚动条本身悬停时高亮 */
+::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover-color) !important;
+}
+
+/* 水平滚动条 */
+::-webkit-scrollbar-corner {
+  background: var(--scrollbar-track-color);
+}
+
 /* 减少动画（可访问性） */
 @media (prefers-reduced-motion: reduce) {
   *,
@@ -366,5 +420,14 @@ form, fieldset, legend, label {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+  
+  /* 无障碍模式下直接显示滚动条 */
+  * {
+    scrollbar-color: var(--scrollbar-thumb-color) var(--scrollbar-track-color);
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    background: var(--scrollbar-thumb-color);
   }
 }
