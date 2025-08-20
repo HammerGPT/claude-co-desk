@@ -1,7 +1,7 @@
 {
-  "name": "heliki-os",
+  "name": "claude-co-desk",
   "version": "1.0.0",
-  "description": "基于Claude Code构建的系统级AI操作系统",
+  "description": "基于Claude Code构建的智能协作平台",
   "main": "server.js",
   "type": "module",
   "scripts": {
@@ -10,7 +10,7 @@
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": ["claude", "ai", "terminal", "os"],
-  "author": "Heliki OS Team",
+  "author": "Claude Co-Desk Team",
   "license": "MIT",
   "dependencies": {
     "express": "^4.18.2",

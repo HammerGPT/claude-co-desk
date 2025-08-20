@@ -86,7 +86,7 @@ class App {
      * 应用初始化
      */
     async initialize() {
-        console.log(' 初始化 Heliki OS...');
+        console.log(' 初始化 Claude Co-Desk...');
         
         // 检查环境
         await this.checkEnvironment();
@@ -529,7 +529,7 @@ class App {
 
 // 应用启动
 document.addEventListener('DOMContentLoaded', () => {
-    console.log(' 启动 Heliki OS...');
+    console.log(' 启动 Claude Co-Desk...');
     window.app = new App();
 });
 

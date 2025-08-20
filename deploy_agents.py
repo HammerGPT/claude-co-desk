@@ -34,7 +34,7 @@ class AgentDeployer:
         self.source_dir = self.project_dir / "static" / "agents"
         self.target_dir = Path.home() / ".claude" / "agents"
         self.deployed_marker = self.target_dir / ".heliki_agents_deployed"
-        # 从环境变量获取Heliki OS API地址，默认为localhost:3005
+        # 从环境变量获取Claude Co-Desk API地址，默认为localhost:3005
         heliki_host = os.getenv('HELIKI_HOST', 'localhost')
         heliki_port = os.getenv('HELIKI_PORT', '3005')
         self.heliki_api_url = f"http://{heliki_host}:{heliki_port}/api/agents-deployed"
@@ -165,9 +165,9 @@ class AgentDeployer:
     
     def notify_heliki_completion(self) -> bool:
         """
-        通知Heliki OS部署完成
+        通知Claude Co-Desk部署完成
         """
-        logger.info("通知Heliki OS数字员工部署完成...")
+        logger.info("通知Claude Co-Desk数字员工部署完成...")
         
         try:
             # 准备通知数据
@@ -188,18 +188,18 @@ class AgentDeployer:
             )
             
             if response.status_code == 200:
-                logger.info(" 成功通知Heliki OS部署完成")
+                logger.info(" 成功通知Claude Co-Desk部署完成")
                 return True
             else:
-                logger.warning(f"Heliki OS通知响应异常: {response.status_code}")
+                logger.warning(f"Claude Co-Desk通知响应异常: {response.status_code}")
                 return False
                 
         except requests.exceptions.RequestException as e:
-            logger.warning(f"无法连接到Heliki OS API: {e}")
+            logger.warning(f"无法连接到Claude Co-Desk API: {e}")
             # 通知失败不影响部署成功
             return True
         except Exception as e:
-            logger.error(f"通知Heliki OS时出现错误: {e}")
+            logger.error(f"通知Claude Co-Desk时出现错误: {e}")
             return True
     
     def cleanup_hooks(self) -> bool:
@@ -209,7 +209,7 @@ class AgentDeployer:
         logger.info("开始清理临时hooks配置...")
         
         try:
-            # 发送清理请求到Heliki OS API
+            # 发送清理请求到Claude Co-Desk API
             cleanup_data = {
                 "cleanup_reason": "deployment_completed",
                 "timestamp": datetime.now().isoformat()
@@ -232,7 +232,7 @@ class AgentDeployer:
                 return False
                 
         except requests.exceptions.RequestException as e:
-            logger.warning(f"无法连接到Heliki OS清理hooks: {e}")
+            logger.warning(f"无法连接到Claude Co-Desk清理hooks: {e}")
             
             # 备用方案：直接使用HookManager清理
             try:
@@ -284,7 +284,7 @@ class AgentDeployer:
                 logger.error("部署失败")
                 return False
             
-            # 3. 通知Heliki OS
+            # 3. 通知Claude Co-Desk
             self.notify_heliki_completion()
             
             # 4. 清理临时hooks配置

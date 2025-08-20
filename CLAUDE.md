@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 项目概述
 
-Heliki OS 是基于Claude Code构建的数字员工协作平台，通过Web界面提供智能化的系统级AI服务。项目从简单的Claude CLI UI化工具演进为具备自主学习能力的数字员工管理平台，采用Python + FastAPI后端和原生前端技术栈。
+Claude Co-Desk 是基于Claude Code构建的智能协作平台，通过Web界面提供专业化的AI团队协作服务。项目从简单的Claude CLI UI化工具演进为具备自主学习能力的数字工作台，采用Python + FastAPI后端和原生前端技术栈。
 
 ** 开源状态：项目已完成开源准备，所有硬编码已清理，可安全部署到任何环境。**
 

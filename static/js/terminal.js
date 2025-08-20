@@ -189,7 +189,7 @@ class Terminal {
         this._addTerminalEventListeners();
 
         // 显示欢迎信息
-        this.terminal.writeln('\x1b[36m欢迎使用 Heliki OS Claude 终端\x1b[0m');
+        this.terminal.writeln('\x1b[36m欢迎使用 Claude Co-Desk 数字工作台\x1b[0m');
         this.terminal.writeln('\x1b[90m请选择项目和会话，然后点击"连接"开始\x1b[0m');
         this.terminal.writeln('');
     }
@@ -463,7 +463,7 @@ class Terminal {
 
         // 重新显示欢迎信息
         setTimeout(() => {
-            this.terminal.writeln('\x1b[36m欢迎使用 Heliki OS Claude 终端\x1b[0m');
+            this.terminal.writeln('\x1b[36m欢迎使用 Claude Co-Desk 数字工作台\x1b[0m');
             this.terminal.writeln('\x1b[90m请选择项目和会话，然后点击"连接"开始\x1b[0m');
             this.terminal.writeln('');
             

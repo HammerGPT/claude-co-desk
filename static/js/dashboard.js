@@ -470,8 +470,8 @@ class TaskManagerDashboard {
         this.dashboardContainer.innerHTML = `
             <div class="dashboard-content-wrapper">
                 <div class="dashboard-welcome">
-                    <h2>欢迎使用 Heliki OS 任务管理器</h2>
-                    <p>智能化的数字员工协作平台，让AI为您处理日常工作</p>
+                    <h2>欢迎使用 Claude Co-Desk 数字工作台</h2>
+                    <p>基于Claude Code的智能协作平台，释放AI对计算机的完全操控潜能</p>
                 </div>
 
                 <div class="dashboard-grid">
@@ -539,7 +539,7 @@ class TaskManagerDashboard {
     renderNormalActions() {
         return `
             <div class="dashboard-welcome-info">
-                <p>使用左侧侧边栏管理任务、数字员工团队和项目</p>
+                <p>任务：全系统操作，项目：单文件夹开发</p>
             </div>
         `;
     }

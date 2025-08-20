@@ -367,10 +367,10 @@
     "scheduleTime": "00:08",
     "enabled": true,
     "createdAt": "2025-08-16T00:02:42.073742",
-    "lastRun": "2025-08-19T00:08:26.549292",
+    "lastRun": "2025-08-20T00:08:07.360931",
     "workDirectory": "/Users/yuhao/Documents/Heliki/Heliki_OS/mission/task_1755273762_5_wc3zcu",
-    "deleted": false,
-    "executionMode": "scheduled",
+    "deleted": true,
+    "executionMode": "immediate",
     "sessionId": "dc043e4c-8683-4e8d-b703-c4fa84f3b22b"
   },
   {
@@ -386,7 +386,7 @@
     "createdAt": "2025-08-16T00:08:43.549479",
     "lastRun": null,
     "workDirectory": "/Users/yuhao/Documents/Heliki/Heliki_OS/mission/task_1755274123_3_wfua8r",
-    "deleted": false,
+    "deleted": true,
     "executionMode": "immediate",
     "sessionId": "26c628f8-8bcf-41ca-b921-86e9a92c5c3a"
   },
@@ -520,11 +520,11 @@
     "scheduleTime": "16:07",
     "enabled": true,
     "createdAt": "2025-08-18T16:06:29.379567",
-    "lastRun": "2025-08-19T16:07:25.298933",
+    "lastRun": "2025-08-20T16:07:00.256211",
     "workDirectory": "/Users/yuhao/Documents/Heliki/Heliki_OS/mission/task_1755504389_6_9lkn0a",
-    "deleted": false,
-    "executionMode": "scheduled",
-    "sessionId": "ee0b12c1-d962-49a0-8708-d2236b75b137"
+    "deleted": true,
+    "executionMode": "immediate",
+    "sessionId": "964c6c14-157d-42ce-abbf-492c1431760d"
   },
   {
     "id": "task_1755323293_5",
@@ -541,7 +541,7 @@
     "createdAt": "2025-08-16T13:48:13.310208",
     "lastRun": null,
     "workDirectory": "/Users/yuhao/Documents/Heliki/Heliki_OS/mission/task_1755323293_5_z4vm13",
-    "deleted": false,
+    "deleted": true,
     "executionMode": "immediate",
     "sessionId": null
   },
@@ -560,7 +560,7 @@
     "createdAt": "2025-08-18T22:11:38.594651",
     "lastRun": null,
     "workDirectory": "/Users/yuhao/Documents/Heliki/Heliki_OS/mission/task_1755526298_6_m3bhxe",
-    "deleted": false,
+    "deleted": true,
     "executionMode": "immediate",
     "sessionId": "1a552242-5394-4578-bab9-af421b8bc83f"
   },
@@ -575,11 +575,11 @@
     "scheduleTime": "09:00",
     "enabled": true,
     "createdAt": "2025-08-19T12:04:04.085004",
-    "lastRun": null,
+    "lastRun": "2025-08-20T09:05:15.797799",
     "workDirectory": "/Users/yuhao/Documents/Heliki/Heliki_OS/mission/task_1755576244_4_5em2eh",
-    "deleted": false,
-    "executionMode": "scheduled",
-    "sessionId": null
+    "deleted": true,
+    "executionMode": "immediate",
+    "sessionId": "3a1d2128-0123-4d21-b272-7bb1652752fa"
   },
   {
     "id": "task_1755583748_6",
@@ -596,7 +596,7 @@
     "createdAt": "2025-08-19T14:09:08.570819",
     "lastRun": null,
     "workDirectory": "/Users/yuhao/Documents/Heliki/Heliki_OS/mission/task_1755583748_6_ikdyzv",
-    "deleted": false,
+    "deleted": true,
     "executionMode": "immediate",
     "sessionId": "b1914776-8810-44e7-addd-f65d4e2f2b6d"
   }

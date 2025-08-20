@@ -240,7 +240,7 @@
   transform: translateY(-50%);
   width: 0.5rem;
   height: 0.5rem;
-  background: #10b981;
+  background: #228B64;
   border-radius: 50%;
   animation: pulse 2s infinite;
 }
@@ -699,7 +699,7 @@
 }
 
 .status-enabled {
-  background: #10b981;
+  background: #228B64;
 }
 
 .status-disabled {
@@ -1052,7 +1052,7 @@
 }
 
 .status-success {
-  background: #22c55e;
+  background: #228B64;
 }
 
 .status-error {
