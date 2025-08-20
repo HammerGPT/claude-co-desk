@@ -1,5 +1,5 @@
 /* 
- * Heliki OS - 组件样式文件
+ * Claude Co-Desk - 组件样式文件
  * 移植自claudecodeui的组件样式
  */
 
@@ -1217,7 +1217,7 @@
 .activity-indicator {
   width: 8px;
   height: 8px;
-  background: #22c55e; /* green-500 */
+  background: #228B64; /* 深绿色主题 */
   border-radius: 50%;
   animation: pulse 2s infinite;
 }
@@ -1249,7 +1249,7 @@
 .session-item.connected {
   background: hsl(var(--accent) / 0.3);
   border: 1px solid hsl(var(--primary) / 0.2);
-  border-left: 3px solid #22c55e; /* green-500 - 连接状态左边框 */
+  border-left: 3px solid #228B64; /* 深绿色主题 - 连接状态左边框 */
 }
 
 .session-item.connected .session-icon {
@@ -4477,7 +4477,7 @@ div.session-header div.session-actions button.action-btn:hover {
 .agent-file-content .token.char,
 .agent-file-content .token.builtin,
 .agent-file-content .token.inserted {
-  color: #22c55e;
+  color: #228B64;
 }
 
 .agent-file-content .token.operator,

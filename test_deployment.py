@@ -152,7 +152,7 @@ def test_api_endpoint():
             return False
             
     except requests.exceptions.ConnectionError:
-        print("    无法连接到Heliki OS服务器")
+        print("    无法连接到Claude Co-Desk服务器")
         print("   请确保运行 'python app.py' 启动服务器")
         return False
     except Exception as e:

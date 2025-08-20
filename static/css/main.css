@@ -1,5 +1,5 @@
 /* 
- * Heliki OS - 主样式文件
+ * Claude Co-Desk - 主样式文件
  * 移植自claudecodeui的Tailwind CSS设计系统
  */
 
@@ -12,7 +12,7 @@
   --card-foreground: 222.2 84% 4.9%;
   --popover: 0 0% 100%;
   --popover-foreground: 222.2 84% 4.9%;
-  --primary: 174 64% 47%;
+  --primary: 151 61% 34%;
   --primary-foreground: 210 40% 98%;
   --secondary: 158 58% 35%;
   --secondary-foreground: 210 40% 98%;
@@ -24,7 +24,7 @@
   --destructive-foreground: 210 40% 98%;
   --border: 214.3 31.8% 91.4%;
   --input: 214.3 31.8% 91.4%;
-  --ring: 174 64% 47%;
+  --ring: 151 61% 34%;
   --radius: 0.5rem;
   
   /* 自定义变量 */
@@ -47,7 +47,7 @@
   --card-foreground: 210 40% 98%;
   --popover: 174 20% 12%;
   --popover-foreground: 210 40% 98%;
-  --primary: 174 64% 57%;
+  --primary: 151 61% 44%;
   --primary-foreground: 222.2 47.4% 11.2%;
   --secondary: 158 58% 25%;
   --secondary-foreground: 210 40% 98%;
@@ -59,7 +59,7 @@
   --destructive-foreground: 210 40% 98%;
   --border: 174 20% 18%;
   --input: 174 20% 18%;
-  --ring: 174 64% 57%;
+  --ring: 151 61% 44%;
   
   /* 暗色主题滚动条变量 */
   --scrollbar-thumb-color: hsl(var(--border) / 0.5);
@@ -246,7 +246,7 @@ body {
 }
 
 .status-indicator.success {
-  color: #4ADA64;
+  color: #228B64;
 }
 
 .status-indicator.error {

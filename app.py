@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Heliki OS - 基于Claude Code的系统级AI操作系统
+Claude Co-Desk - 基于Claude Code的智能协作平台
 移植并简化自claudecodeui项目
 """
 
@@ -56,8 +56,8 @@ async def lifespan(app: FastAPI):
     task_scheduler.stop()
 
 app = FastAPI(
-    title="Heliki OS", 
-    description="基于Claude Code的AI操作系统",
+    title="Claude Co-Desk", 
+    description="基于Claude Code的智能协作平台",
     lifespan=lifespan
 )
 
@@ -3145,7 +3145,7 @@ async def shell_websocket_endpoint(websocket: WebSocket):
 # PTY处理器已包含所有必要的输入输出处理功能
 
 if __name__ == "__main__":
-    print(" 启动 Heliki OS...")
+    print(" 启动 Claude Co-Desk...")
     print(f" 项目目录: {Path.cwd()}")
     
     # 检查环境
@@ -3179,7 +3179,7 @@ if __name__ == "__main__":
         print(f"    配置Claude hooks时出错: {e}")
         print(f"    数字员工自动部署功能可能不可用")
     
-    print(f" 启动Heliki OS服务...")
+    print(f" 启动Claude Co-Desk服务...")
     
     # 任务调度器现在通过lifespan事件自动管理
     print(f" 任务调度器将通过应用生命周期自动启动...")

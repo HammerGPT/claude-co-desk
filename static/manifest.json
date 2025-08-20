@@ -1,7 +1,7 @@
 {
-  "name": "Heliki OS",
-  "short_name": "Heliki OS",
-  "description": "基于Claude Code的系统级AI操作系统",
+  "name": "Claude Co-Desk",
+  "short_name": "Claude Co-Desk",
+  "description": "基于Claude Code的智能协作平台",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
