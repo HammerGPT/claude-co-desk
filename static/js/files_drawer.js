@@ -60,6 +60,13 @@ class FilesDrawer {
         document.addEventListener('sessionSwitch', (e) => {
             this.setProject(e.detail.project);
         });
+
+        // 监听语言切换事件
+        if (window.i18n) {
+            window.i18n.addObserver(() => {
+                this.updateDrawerTitle();
+            });
+        }
     }
 
     /**
@@ -175,11 +182,11 @@ class FilesDrawer {
         if (!this.drawerTitle) return;
         
         if (this.isCurrentTabTaskTab()) {
-            this.drawerTitle.textContent = '任务文件';
+            this.drawerTitle.textContent = t('files.taskFiles');
         } else if (this.currentProject) {
-            this.drawerTitle.textContent = `${this.currentProject.name} 文件`;
+            this.drawerTitle.textContent = `${this.currentProject.name} ${t('files.projectFiles')}`;
         } else {
-            this.drawerTitle.textContent = '文件浏览器';
+            this.drawerTitle.textContent = t('files.browser');
         }
     }
 
@@ -204,7 +211,7 @@ class FilesDrawer {
             }
         } catch (error) {
             console.error('加载文件错误:', error);
-            this.showError('网络错误，无法加载文件');
+            this.showError(t('files.networkErrorRead'));
         } finally {
             this.setLoading(false);
         }
@@ -223,7 +230,7 @@ class FilesDrawer {
             this.renderFiles();
         } else {
             console.error('加载项目文件失败:', response.statusText);
-            this.showError('加载项目文件失败');
+            this.showError(t('files.loadProjectFilesFailed'));
         }
     }
     
@@ -236,7 +243,7 @@ class FilesDrawer {
         
         if (!taskId) {
             console.error(' loadTaskFiles: 无法获取任务ID');
-            this.showError('无法获取任务信息');
+            this.showError(t('files.loadTaskFilesFailed'));
             return;
         }
         
@@ -261,7 +268,7 @@ class FilesDrawer {
             this.renderFiles();
         } else {
             console.error(' loadTaskFiles: API响应失败', response.status, response.statusText);
-            this.showError('加载任务文件失败');
+            this.showError(t('files.loadTaskFilesFailed'));
         }
     }
 
@@ -321,7 +328,7 @@ class FilesDrawer {
         let html = '';
 
         if (this.files.length === 0) {
-            const emptyMessage = this.isCurrentTabTaskTab() ? '任务暂未生成文件' : '此项目暂无文件';
+            const emptyMessage = this.isCurrentTabTaskTab() ? t('files.noTaskFiles') : t('files.noProjectFiles');
             html += `
                 <div class="empty-files">
                     <p>${emptyMessage}</p>
@@ -430,7 +437,7 @@ class FilesDrawer {
                 }
                 
                 this.hideFileLoading();
-                this.showError(`无法读取文件: ${error.error || '未知错误'}`);
+                this.showError(`${t('files.readFileFailed')}: ${error.error || t('error.unknown')}`);
                 return;
             }
             
@@ -445,7 +452,7 @@ class FilesDrawer {
         } catch (error) {
             this.hideFileLoading();
             console.error('读取文件错误:', error);
-            this.showError('网络错误，无法读取文件');
+            this.showError(t('files.networkErrorRead'));
         }
     }
 
@@ -461,7 +468,7 @@ class FilesDrawer {
             this.drawerContent.innerHTML = `
                 <div class="loading-files">
                     <div class="spinner"></div>
-                    <p>加载文件中...</p>
+                    <p>${t('common.loading')}</p>
                 </div>
             `;
         }
@@ -475,7 +482,7 @@ class FilesDrawer {
             this.drawerContent.innerHTML = `
                 <div class="error-files">
                     <p>${this.escapeHtml(message)}</p>
-                    <button onclick="filesDrawer.loadFiles()" class="btn btn-sm btn-primary">重试</button>
+                    <button onclick="filesDrawer.loadFiles()" class="btn btn-sm btn-primary">${t('common.retry')}</button>
                 </div>
             `;
         }
@@ -602,11 +609,11 @@ class FilesDrawer {
                 this.showSuccessMessage('文件已用系统应用打开');
             } else {
                 console.error('打开文件失败:', result.error);
-                this.showError(result.error || '无法打开文件');
+                this.showError(result.error || t('files.openFileFailed'));
             }
         } catch (error) {
             console.error('打开文件错误:', error);
-            this.showError('网络错误，无法打开文件');
+            this.showError(t('files.networkErrorOpen'));
         }
     }
 
@@ -630,11 +637,11 @@ class FilesDrawer {
                 this.showFileEditor(fileData, filePath);
                 console.log('强制用编辑器打开大文件:', filePath);
             } else {
-                this.showError('无法读取大文件');
+                this.showError(t('files.readLargeFileFailed'));
             }
         } catch (error) {
             console.error('强制打开大文件错误:', error);
-            this.showError('网络错误，无法打开大文件');
+            this.showError(t('files.networkErrorLargeFile'));
         }
     }
 
@@ -650,7 +657,7 @@ class FilesDrawer {
             loadingEl.innerHTML = `
                 <div class="file-loading-content">
                     <div class="spinner"></div>
-                    <p>正在检查文件: ${this.escapeHtml(filename)}</p>
+                    <p>${t('files.checkingFile')}: ${this.escapeHtml(filename)}</p>
                 </div>
             `;
             this.drawerContent.appendChild(loadingEl);
@@ -785,11 +792,11 @@ class FilesDrawer {
                 this.closeFileEditor();
             } else {
                 const error = await response.json();
-                this.showError(error.error || '保存文件失败');
+                this.showError(error.error || t('files.saveFileFailed'));
             }
         } catch (error) {
             console.error('保存文件错误:', error);
-            this.showError('网络错误，无法保存文件');
+            this.showError(t('files.networkErrorSave'));
         }
     }
 

@@ -196,7 +196,7 @@
                                             <span id="current-session-name" class="current-session-name"></span>
                                         </div>
                                         <div class="session-header-buttons">
-                                            <button id="terminal-theme-toggle" class="action-btn active" title="切换到暗色模式">
+                                            <button id="terminal-theme-toggle" class="action-btn active" data-i18n-title="nav.darkMode">
                                                 <svg class="terminal-theme-icon terminal-theme-light w-4 h-4" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2">
                                                     <!-- 太阳图标 (明亮模式) -->
                                                     <g class="sun-icon">
@@ -209,7 +209,7 @@
                                                     </g>
                                                 </svg>
                                             </button>
-                                            <button id="files-drawer-btn" class="action-btn active" title="文件">
+                                            <button id="files-drawer-btn" class="action-btn active" data-i18n-title="nav.files">
                                                 <svg class="w-4 h-4" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2">
                                                     <path stroke-linecap="round" stroke-linejoin="round" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-5l-2-2H5a2 2 0 00-2 2z"></path>
                                                 </svg>
@@ -269,13 +269,13 @@
                         </div>
                     </div>
                     <div class="session-config">
-                        <label for="session-name-input">会话名称:</label>
-                        <input type="text" id="session-name-input" class="session-name-input" placeholder="新建会话">
+                        <label for="session-name-input" data-i18n="session.name">会话名称:</label>
+                        <input type="text" id="session-name-input" class="session-name-input" data-i18n-placeholder="session.placeholder">
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button id="project-connect-cancel" class="btn btn-secondary">取消</button>
-                    <button id="project-connect-confirm" class="btn btn-primary">连接</button>
+                    <button id="project-connect-cancel" class="btn btn-secondary" data-i18n="common.cancel">取消</button>
+                    <button id="project-connect-confirm" class="btn btn-primary" data-i18n="common.confirm">连接</button>
                 </div>
             </div>
         </div>
