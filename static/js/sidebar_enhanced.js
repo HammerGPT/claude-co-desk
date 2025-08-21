@@ -1133,12 +1133,16 @@ class EnhancedSidebar {
         
         menuItems.forEach(item => {
             item.addEventListener('click', () => {
-                // 移除所有active类
-                menuItems.forEach(mi => mi.classList.remove('active'));
+                // 移除所有active类并重置图标
+                menuItems.forEach(mi => {
+                    mi.classList.remove('active');
+                    this.updateMenuItemIcon(mi, false);
+                });
                 sections.forEach(section => section.classList.remove('active'));
                 
-                // 添加active类到当前项
+                // 添加active类到当前项并更新图标
                 item.classList.add('active');
+                this.updateMenuItemIcon(item, true);
                 const targetSection = item.getAttribute('data-section');
                 const targetElement = document.getElementById(`settings-${targetSection}`);
                 if (targetElement) {
@@ -1165,6 +1169,33 @@ class EnhancedSidebar {
         
         // 设置MCP WebSocket消息监听器
         this.setupMCPMessageListeners();
+        
+        // 初始化时设置默认选中项的图标
+        const defaultActiveItem = document.querySelector('.settings-menu-item.active');
+        if (defaultActiveItem) {
+            this.updateMenuItemIcon(defaultActiveItem, true);
+        }
+    }
+    
+    /**
+     * 更新设置菜单项的图标
+     */
+    updateMenuItemIcon(menuItem, isActive) {
+        const img = menuItem.querySelector('img');
+        if (!img) return;
+        
+        const section = menuItem.getAttribute('data-section');
+        const iconMap = {
+            'general': 'settings',
+            'mcp-tools': 'tools', 
+            'about': 'info'
+        };
+        
+        const iconName = iconMap[section];
+        if (iconName) {
+            const suffix = isActive ? '_active' : '';
+            img.src = `/static/assets/icons/interface/${iconName}${suffix}.png`;
+        }
     }
     
     /**
