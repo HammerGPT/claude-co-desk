@@ -479,8 +479,8 @@ class SidebarDrawers {
                 tasksData.tasks.filter(task => task.status === 'active').length : 0;
             
             tasksCountEl.textContent = count > 0 ? 
-                `${count} 个任务${activeCount > 0 ? ` (${activeCount} 活跃)` : ''}` : 
-                '0 个任务';
+                `${count} ${t('sidebar.tasksCount')}${activeCount > 0 ? ` (${activeCount} 活跃)` : ''}` : 
+                t('sidebar.noTasks');
         }
         
         console.log('[SIDEBAR] 任务数据更新，重新计算抽屉高度');
@@ -498,7 +498,7 @@ class SidebarDrawers {
         const projectsCountEl = document.getElementById('projects-count');
         if (projectsCountEl && projectsData) {
             const count = Array.isArray(projectsData.projects) ? projectsData.projects.length : 0;
-            projectsCountEl.textContent = count > 0 ? `${count} 个项目` : '0 个项目';
+            projectsCountEl.textContent = count > 0 ? `${count} ${t('sidebar.projectsCount')}` : t('sidebar.noProjects');
         }
         
         console.log('[SIDEBAR] 项目数据更新，准备重新计算抽屉高度');

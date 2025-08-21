@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
@@ -47,8 +47,8 @@
         <div id="loading-screen" class="loading-screen">
             <div class="loading-content">
                 <div class="spinner"></div>
-                <h2>正在启动 Claude Co-Desk</h2>
-                <p>正在检测环境...</p>
+                <h2 data-i18n="app.loading">正在启动 Claude Co-Desk</h2>
+                <p data-i18n="status.initializing">正在检测环境...</p>
             </div>
         </div>
         
@@ -56,15 +56,15 @@
         <div id="environment-error" class="environment-error hidden">
             <div class="error-content">
                 <div class="error-icon">
-                    <img src="/static/assets/icons/status/warning.png" width="48" height="48" alt="警告">
+                    <img src="/static/assets/icons/status/warning.png" width="48" height="48" alt="Warning">
                 </div>
-                <h2>环境配置不完整</h2>
+                <h2 data-i18n="error.incompleteEnvironment">环境配置不完整</h2>
                 <div id="environment-status" class="environment-status">
                     <!-- 动态填充环境状态 -->
                 </div>
                 <div class="error-actions">
-                    <button id="retry-check" class="btn btn-primary">重新检测</button>
-                    <button id="force-continue" class="btn btn-secondary">强制继续</button>
+                    <button id="retry-check" class="btn btn-primary" data-i18n="common.retryCheck">重新检测</button>
+                    <button id="force-continue" class="btn btn-secondary" data-i18n="common.forceContinue">强制继续</button>
                 </div>
             </div>
         </div>
@@ -96,12 +96,12 @@
                             <h1 class="logo-text">Claude Co-Desk</h1>
                         </div>
                         <div class="sidebar-actions">
-                            <button id="refresh-projects" class="action-btn" title="刷新项目">
+                            <button id="refresh-projects" class="action-btn" data-i18n-title="nav.refresh" title="Refresh Projects">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
                                 </svg>
                             </button>
-                            <button id="settings-btn" class="action-btn" title="设置">
+                            <button id="settings-btn" class="action-btn" data-i18n-title="nav.settings" title="Settings">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
@@ -116,12 +116,12 @@
                         <div class="drawer-section" data-drawer="tasks">
                             <div class="drawer-header" onclick="sidebarDrawers.toggleDrawer('tasks')">
                                 <div class="drawer-content-info">
-                                    <h3>任务</h3>
-                                    <span id="tasks-count" class="item-count">0 个任务</span>
+                                    <h3 data-i18n="nav.tasks">任务</h3>
+                                    <span id="tasks-count" class="item-count" data-i18n="sidebar.noTasks">0 个任务</span>
                                 </div>
                                 <div class="drawer-actions">
-                                    <button id="sidebar-create-task-btn" class="sidebar-create-task-btn" onclick="event.stopPropagation(); window.taskManager && window.taskManager.showQuickAddTask()" title="创建新任务">
-                                        创建新任务
+                                    <button id="sidebar-create-task-btn" class="sidebar-create-task-btn" onclick="event.stopPropagation(); window.taskManager && window.taskManager.showQuickAddTask()" data-i18n-title="nav.createTask" title="Create New Task" data-i18n="nav.createTask">
+                                        Create New Task
                                     </button>
                                     <button id="agents-team-btn" class="agents-team-btn" onclick="event.stopPropagation(); window.employeesManager && window.employeesManager.showAgentsModal()" title="数字员工团队">
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -139,8 +139,8 @@
                                 <div id="tasks-list" class="tasks-list">
                                     <!-- 动态填充任务列表 -->
                                     <div class="empty-tasks">
-                                        <p>暂无任务</p>
-                                        <button class="create-first-task-btn" onclick="window.taskManager && window.taskManager.showQuickAddTask()">创建新任务</button>
+                                        <p data-i18n="task.noTasksEmpty">暂无任务</p>
+                                        <button class="create-first-task-btn" onclick="window.taskManager && window.taskManager.showQuickAddTask()" data-i18n="task.createFirst">创建新任务</button>
                                     </div>
                                 </div>
                             </div>
@@ -150,11 +150,11 @@
                         <div class="drawer-section" data-drawer="projects">
                             <div class="drawer-header" onclick="sidebarDrawers.toggleDrawer('projects')">
                                 <div class="drawer-content-info">
-                                    <h3>项目</h3>
-                                    <span id="projects-count" class="item-count">0 个项目</span>
+                                    <h3 data-i18n="nav.projects">项目</h3>
+                                    <span id="projects-count" class="item-count" data-i18n="sidebar.noProjects">0 个项目</span>
                                 </div>
                                 <div class="drawer-actions">
-                                    <button id="new-project" class="new-project-btn" title="新建项目">
+                                    <button id="new-project" class="new-project-btn" data-i18n-title="nav.newProject" title="New Project">
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
                                         </svg>
@@ -287,42 +287,62 @@
         <div id="settings-modal" class="modal-overlay hidden">
             <div class="modal-content large-modal">
                 <div class="modal-header">
-                    <h3>系统设置</h3>
+                    <h3 data-i18n="settings.title">系统设置</h3>
                     <button id="settings-modal-close" class="modal-close">×</button>
                 </div>
                 <div class="modal-body settings-modal-body">
                     <div class="settings-sidebar">
                         <div class="settings-menu">
-                            <button class="settings-menu-item active" data-section="mcp-tools">
-                                <img src="/static/assets/icons/interface/tools.png" width="16" height="16" alt=""> MCP工具
+                            <button class="settings-menu-item active" data-section="general">
+                                <img src="/static/assets/icons/interface/settings.png" width="16" height="16" alt=""> <span data-i18n="settings.general">通用设置</span>
+                            </button>
+                            <button class="settings-menu-item" data-section="mcp-tools">
+                                <img src="/static/assets/icons/interface/tools.png" width="16" height="16" alt=""> <span data-i18n="mcp.tools">MCP工具</span>
                             </button>
                             <button class="settings-menu-item" data-section="about">
-                                <img src="/static/assets/icons/interface/info.png" width="16" height="16" alt=""> 关于系统
+                                <img src="/static/assets/icons/interface/info.png" width="16" height="16" alt=""> <span data-i18n="settings.about">关于系统</span>
                             </button>
                         </div>
                     </div>
                     <div class="settings-content">
-                        <!-- MCP工具管理内容 -->
-                        <div id="settings-mcp-tools" class="settings-section active">
+                        <!-- 通用设置内容 -->
+                        <div id="settings-general" class="settings-section active">
                             <div class="settings-section-header">
-                                <h4>MCP工具管理</h4>
-                                <p class="settings-section-desc">管理Claude的MCP（Model Context Protocol）工具扩展</p>
+                                <h4 data-i18n="settings.general">通用设置</h4>
+                            </div>
+                            <div class="settings-form">
+                                <div class="form-group">
+                                    <label data-i18n="settings.language">语言</label>
+                                    <select id="language-selector" class="form-control">
+                                        <option value="en">English</option>
+                                        <option value="zh">中文</option>
+                                    </select>
+                                    <small class="form-text text-muted" data-i18n="settings.languageDescription">选择界面显示语言</small>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- MCP工具管理内容 -->
+                        <div id="settings-mcp-tools" class="settings-section">
+                            <div class="settings-section-header">
+                                <h4 data-i18n="mcp.management">MCP工具管理</h4>
+                                <p class="settings-section-desc" data-i18n="mcp.description">管理Claude的MCP（Model Context Protocol）工具扩展</p>
                             </div>
                             
                             <!-- 项目选择器 -->
                             <div class="mcp-project-selector">
                                 <div class="mcp-selector-row">
                                     <div class="form-group">
-                                        <label for="mcp-project-select">工作项目：</label>
+                                        <label for="mcp-project-select" data-i18n="mcp.workProject">工作项目：</label>
                                         <select id="mcp-project-select" class="form-control">
                                             <!-- 动态加载项目列表 -->
                                         </select>
                                     </div>
                                     <div class="mcp-actions">
-                                        <button id="add-mcp-tool" class="btn btn-primary">
+                                        <button id="add-mcp-tool" class="btn btn-primary" data-i18n="mcp.addTool">
                                             添加MCP工具
                                         </button>
-                                        <button id="refresh-mcp-tools" class="action-btn" title="刷新列表">
+                                        <button id="refresh-mcp-tools" class="action-btn" data-i18n-title="mcp.refresh" title="Refresh List">
                                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
                                             </svg>
@@ -334,10 +354,10 @@
                             <!-- 已安装工具列表 -->
                             <div class="mcp-installed-tools">
                                 <div class="tools-list-header">
-                                    <h5><img src="/static/assets/icons/interface/package.png" width="16" height="16" alt=""> 已安装工具 <span id="mcp-tools-count-wrapper">(<span id="mcp-tools-count">0</span>个)</span></h5>
+                                    <h5><img src="/static/assets/icons/interface/package.png" width="16" height="16" alt=""> <span data-i18n="mcp.installedTools">已安装工具</span> <span id="mcp-tools-count-wrapper">(<span id="mcp-tools-count">0</span><span data-i18n="mcp.toolsCountUnit">个</span>)</span></h5>
                                 </div>
                                 <div id="mcp-tools-list" class="mcp-tools-list">
-                                    <div class="loading-placeholder">加载工具列表中...</div>
+                                    <div class="loading-placeholder" data-i18n="mcp.loadingTools">加载工具列表中...</div>
                                 </div>
                             </div>
                         </div>
@@ -346,13 +366,13 @@
                         
                         <div id="settings-about" class="settings-section">
                             <div class="settings-section-header">
-                                <h4>关于系统</h4>
-                                <p class="settings-section-desc">系统信息和版本详情</p>
+                                <h4 data-i18n="settings.about">关于系统</h4>
+                                <p class="settings-section-desc" data-i18n="settings.aboutDescription">系统信息和版本详情</p>
                             </div>
                             <div class="system-info">
-                                <p><strong>Claude Co-Desk</strong></p>
-                                <p>数字员工协作平台</p>
-                                <p>基于Claude Code构建</p>
+                                <p><strong><span data-i18n="settings.aboutTitle">Claude Co-Desk</span></strong></p>
+                                <p><span data-i18n="settings.aboutSubtitle">数字员工协作平台</span></p>
+                                <p><span data-i18n="settings.aboutBuiltWith">基于Claude Code构建</span></p>
                             </div>
                         </div>
                     </div>
@@ -364,14 +384,14 @@
         <div id="mcp-add-modal" class="modal-overlay hidden">
             <div class="modal-content large-modal">
                 <div class="modal-header">
-                    <h3>📦 添加MCP工具</h3>
+                    <h3 data-i18n="mcp.addTool">📦 添加MCP工具</h3>
                     <button id="mcp-add-modal-close" class="modal-close">×</button>
                 </div>
                 
                 <!-- 目标路径提示区域 -->
                 <div class="mcp-target-path">
                     <div class="path-info">
-                        <span class="path-label">目标项目：</span>
+                        <span class="path-label" data-i18n="mcp.workProject">目标项目：</span>
                         <span id="mcp-target-project-name" class="path-project-name">未选择项目</span>
                         <span id="mcp-target-project-path" class="path-project-path">(/path/to/project)</span>
                     </div>
@@ -420,13 +440,13 @@
                 <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
                     <form id="standalone-task-form" class="standalone-form">
                             <div class="form-group">
-                                <label for="standalone-task-name">任务名称</label>
-                                <input type="text" id="standalone-task-name" class="form-control" placeholder="例如：信息收集任务" required>
+                                <label for="standalone-task-name" data-i18n="task.name">任务名称</label>
+                                <input type="text" id="standalone-task-name" class="form-control" data-i18n-placeholder="task.nameExample" placeholder="例如：信息收集任务" required>
                             </div>
                             
                             <div class="form-group">
-                                <label for="standalone-task-goal">任务目标</label>
-                                <textarea id="standalone-task-goal" class="form-control" rows="4" placeholder="描述任务的具体目标和要求..." required></textarea>
+                                <label for="standalone-task-goal" data-i18n="task.goal">任务目标</label>
+                                <textarea id="standalone-task-goal" class="form-control" rows="4" data-i18n-placeholder="task.goalPlaceholder" placeholder="描述任务的具体目标和要求..." required></textarea>
                             </div>
                             
                             <div class="form-group">
@@ -436,8 +456,8 @@
                                         <span class="switch-slider"></span>
                                     </div>
                                     <div>
-                                        <label for="standalone-skip-permissions" class="switch-label">全自动模式</label>
-                                        <div class="switch-description">启用后将自动跳过权限确认，提升执行效率</div>
+                                        <label for="standalone-skip-permissions" class="switch-label" data-i18n="task.autoMode">全自动模式</label>
+                                        <div class="switch-description" data-i18n="task.autoModeDescription">启用后将自动跳过权限确认，提升执行效率</div>
                                     </div>
                                 </div>
                                 <div class="toggle-switch">
@@ -446,26 +466,26 @@
                                         <span class="switch-slider"></span>
                                     </div>
                                     <div>
-                                        <label for="standalone-verbose-logs" class="switch-label">打开任务日志</label>
-                                        <div class="switch-description">显示详细的执行过程和调试信息</div>
+                                        <label for="standalone-verbose-logs" class="switch-label" data-i18n="task.verboseLogs">打开任务日志</label>
+                                        <div class="switch-description" data-i18n="task.verboseLogsDescription">显示详细的执行过程和调试信息</div>
                                     </div>
                                 </div>
                             </div>
                             
                             <div class="form-group">
-                                <label>资源文件</label>
+                                <label data-i18n="task.resourceFiles">资源文件</label>
                                 <div class="resource-help">
-                                    <p class="text-muted">选择需要模型引用/读取的文件或者文件夹</p>
+                                    <p class="text-muted" data-i18n="task.resourceHelp">选择需要模型引用/读取的文件或者文件夹</p>
                                 </div>
                                 <div id="standalone-resource-selector" class="resource-selector">
                                     <div class="resource-add-methods">
                                         <div class="manual-path">
-                                            <input type="text" id="standalone-manual-path" class="form-control" placeholder="输入关键词智能搜索文件/文件夹，点击下拉项即可添加">
+                                            <input type="text" id="standalone-manual-path" class="form-control" data-i18n-placeholder="task.resourcePlaceholder" placeholder="输入关键词智能搜索文件/文件夹，点击下拉项即可添加">
                                             <button type="button" id="standalone-add-manual-path" class="btn btn-outline btn-sm" style="display: none;">
                                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
                                                 </svg>
-                                                添加
+                                                <span data-i18n="task.addButton">添加</span>
                                             </button>
                                         </div>
                                     </div>
@@ -476,25 +496,25 @@
                             </div>
                             
                             <div class="form-group">
-                                <label>执行方式</label>
+                                <label data-i18n="task.executionMode">执行方式</label>
                                 <div class="radio-group">
                                     <div class="radio-item">
                                         <input type="radio" id="standalone-execute-immediate" name="standalone-execution-mode" value="immediate" checked>
-                                        <label for="standalone-execute-immediate">立即执行</label>
+                                        <label for="standalone-execute-immediate" data-i18n="task.executeImmediate">立即执行</label>
                                     </div>
                                     <div class="radio-item">
                                         <input type="radio" id="standalone-execute-scheduled" name="standalone-execution-mode" value="scheduled">
-                                        <label for="standalone-execute-scheduled">定时执行</label>
+                                        <label for="standalone-execute-scheduled" data-i18n="task.executeScheduled">定时执行</label>
                                     </div>
                                 </div>
                             </div>
                             
                             <div class="form-group" id="standalone-schedule-settings" style="display: none;">
-                                <label for="standalone-schedule-time">定时设置</label>
+                                <label for="standalone-schedule-time" data-i18n="task.scheduleSettings">定时设置</label>
                                 <div class="schedule-input">
                                     <select id="standalone-schedule-frequency" class="form-control">
-                                        <option value="daily">每日</option>
-                                        <option value="weekly">每周</option>
+                                        <option value="daily" data-i18n="task.scheduleDaily">每日</option>
+                                        <option value="weekly" data-i18n="task.scheduleWeekly">每周</option>
                                     </select>
                                     <input type="time" id="standalone-schedule-time" class="form-control" value="09:00">
                                 </div>
@@ -502,8 +522,8 @@
                     </form>
                 </div>
                 <div class="modal-footer">
-                    <button id="standalone-cancel-task" class="btn btn-secondary">取消</button>
-                    <button id="standalone-create-task" class="btn btn-primary">创建任务</button>
+                    <button id="standalone-cancel-task" class="btn btn-secondary" data-i18n="task.cancel">取消</button>
+                    <button id="standalone-create-task" class="btn btn-primary" data-i18n="task.create">创建任务</button>
                 </div>
             </div>
         </div>
@@ -512,7 +532,7 @@
         <div id="standalone-task-detail-modal" class="modal-overlay hidden">
             <div class="modal-content large-modal">
                 <div class="modal-header">
-                    <h3 id="standalone-detail-title">任务详情</h3>
+                    <h3 id="standalone-detail-title" data-i18n="task.details">任务详情</h3>
                     <button id="standalone-task-detail-close" class="modal-close">×</button>
                 </div>
                 <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
@@ -526,19 +546,19 @@
                         </div>
                         <div class="detail-content">
                             <div class="detail-item">
-                                <label>任务目标</label>
+                                <label data-i18n="task.goal">任务目标</label>
                                 <div id="standalone-detail-task-goal" class="detail-value"></div>
                             </div>
                             <div class="detail-item">
-                                <label>执行模式</label>
+                                <label data-i18n="task.executionModeLabel">执行模式</label>
                                 <div id="standalone-detail-execution-mode" class="detail-value"></div>
                             </div>
                             <div class="detail-item">
-                                <label>资源文件</label>
+                                <label data-i18n="task.resourceFiles">资源文件</label>
                                 <div id="standalone-detail-resources" class="detail-value"></div>
                             </div>
                             <div class="detail-item">
-                                <label>状态信息</label>
+                                <label data-i18n="task.statusInfo">状态信息</label>
                                 <div id="standalone-detail-status" class="detail-value"></div>
                             </div>
                         </div>
@@ -547,13 +567,13 @@
                     <!-- 任务编辑表单 -->
                     <form id="standalone-edit-form" class="standalone-form hidden">
                             <div class="form-group">
-                                <label for="standalone-edit-task-name">任务名称</label>
-                                <input type="text" id="standalone-edit-task-name" class="form-control" placeholder="例如：信息收集任务" required>
+                                <label for="standalone-edit-task-name" data-i18n="task.name">任务名称</label>
+                                <input type="text" id="standalone-edit-task-name" class="form-control" data-i18n-placeholder="task.nameExample" placeholder="例如：信息收集任务" required>
                             </div>
                             
                             <div class="form-group">
-                                <label for="standalone-edit-task-goal">任务目标</label>
-                                <textarea id="standalone-edit-task-goal" class="form-control" rows="4" placeholder="描述任务的具体目标和要求..." required></textarea>
+                                <label for="standalone-edit-task-goal" data-i18n="task.goal">任务目标</label>
+                                <textarea id="standalone-edit-task-goal" class="form-control" rows="4" data-i18n-placeholder="task.goalPlaceholder" placeholder="描述任务的具体目标和要求..." required></textarea>
                             </div>
                             
                             <div class="form-group">
@@ -563,8 +583,8 @@
                                         <span class="switch-slider"></span>
                                     </div>
                                     <div>
-                                        <label for="standalone-edit-skip-permissions" class="switch-label">全自动模式</label>
-                                        <div class="switch-description">启用后将自动跳过权限确认，提升执行效率</div>
+                                        <label for="standalone-edit-skip-permissions" class="switch-label" data-i18n="task.autoMode">全自动模式</label>
+                                        <div class="switch-description" data-i18n="task.autoModeDescription">启用后将自动跳过权限确认，提升执行效率</div>
                                     </div>
                                 </div>
                                 <div class="toggle-switch">
@@ -573,26 +593,26 @@
                                         <span class="switch-slider"></span>
                                     </div>
                                     <div>
-                                        <label for="standalone-edit-verbose-logs" class="switch-label">打开任务日志</label>
-                                        <div class="switch-description">显示详细的执行过程和调试信息</div>
+                                        <label for="standalone-edit-verbose-logs" class="switch-label" data-i18n="task.verboseLogs">打开任务日志</label>
+                                        <div class="switch-description" data-i18n="task.verboseLogsDescription">显示详细的执行过程和调试信息</div>
                                     </div>
                                 </div>
                             </div>
                             
                             <div class="form-group">
-                                <label>资源文件</label>
+                                <label data-i18n="task.resourceFiles">资源文件</label>
                                 <div class="resource-help">
-                                    <p class="text-muted">选择需要模型引用/读取的文件或者文件夹</p>
+                                    <p class="text-muted" data-i18n="task.resourceHelp">选择需要模型引用/读取的文件或者文件夹</p>
                                 </div>
                                 <div id="standalone-edit-resource-selector" class="resource-selector">
                                     <div class="resource-add-methods">
                                         <div class="manual-path">
-                                            <input type="text" id="standalone-edit-manual-path" class="form-control" placeholder="输入关键词智能搜索文件/文件夹，点击下拉项即可添加">
+                                            <input type="text" id="standalone-edit-manual-path" class="form-control" data-i18n-placeholder="task.resourcePlaceholder" placeholder="输入关键词智能搜索文件/文件夹，点击下拉项即可添加">
                                             <button type="button" id="standalone-edit-add-manual-path" class="btn btn-outline btn-sm" style="display: none;">
                                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
                                                 </svg>
-                                                添加
+                                                <span data-i18n="task.addButton">添加</span>
                                             </button>
                                         </div>
                                     </div>
@@ -603,25 +623,25 @@
                             </div>
                             
                             <div class="form-group">
-                                <label>执行方式</label>
+                                <label data-i18n="task.executionMode">执行方式</label>
                                 <div class="radio-group">
                                     <div class="radio-item">
                                         <input type="radio" id="standalone-edit-execute-immediate" name="standalone-edit-execution-mode" value="immediate" checked>
-                                        <label for="standalone-edit-execute-immediate">立即执行</label>
+                                        <label for="standalone-edit-execute-immediate" data-i18n="task.executeImmediate">立即执行</label>
                                     </div>
                                     <div class="radio-item">
                                         <input type="radio" id="standalone-edit-execute-scheduled" name="standalone-edit-execution-mode" value="scheduled">
-                                        <label for="standalone-edit-execute-scheduled">定时执行</label>
+                                        <label for="standalone-edit-execute-scheduled" data-i18n="task.executeScheduled">定时执行</label>
                                     </div>
                                 </div>
                             </div>
                             
                             <div class="form-group" id="standalone-edit-schedule-settings" style="display: none;">
-                                <label for="standalone-edit-schedule-time">定时设置</label>
+                                <label for="standalone-edit-schedule-time" data-i18n="task.scheduleSettings">定时设置</label>
                                 <div class="schedule-input">
                                     <select id="standalone-edit-schedule-frequency" class="form-control">
-                                        <option value="daily">每日</option>
-                                        <option value="weekly">每周</option>
+                                        <option value="daily" data-i18n="task.scheduleDaily">每日</option>
+                                        <option value="weekly" data-i18n="task.scheduleWeekly">每周</option>
                                     </select>
                                     <input type="time" id="standalone-edit-schedule-time" class="form-control" value="09:00">
                                 </div>
@@ -630,13 +650,13 @@
                 </div>
                 <div class="modal-footer">
                     <div id="standalone-detail-footer" class="modal-footer-buttons">
-                        <button id="standalone-delete-task-btn" class="btn btn-danger">删除</button>
-                        <button id="standalone-edit-task-btn" class="btn btn-outline">编辑</button>
-                        <button id="standalone-execute-task-btn" class="btn btn-primary">执行</button>
+                        <button id="standalone-delete-task-btn" class="btn btn-danger" data-i18n="task.delete">删除</button>
+                        <button id="standalone-edit-task-btn" class="btn btn-outline" data-i18n="task.edit">编辑</button>
+                        <button id="standalone-execute-task-btn" class="btn btn-primary" data-i18n="task.execute">执行</button>
                     </div>
                     <div id="standalone-edit-footer" class="modal-footer-buttons hidden">
-                        <button id="standalone-cancel-edit" class="btn btn-secondary">取消</button>
-                        <button id="standalone-save-edit" class="btn btn-primary">保存修改</button>
+                        <button id="standalone-cancel-edit" class="btn btn-secondary" data-i18n="task.cancel">取消</button>
+                        <button id="standalone-save-edit" class="btn btn-primary" data-i18n="task.saveChanges">保存修改</button>
                     </div>
                 </div>
             </div>
@@ -853,6 +873,9 @@
     <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/plugins/line-numbers/prism-line-numbers.min.js"></script>
     
     <!-- JavaScript文件 -->
+    <!-- I18n System - Must be loaded first -->
+    <script src="/static/js/i18n.js"></script>
+    
     <script src="/static/js/websocket.js"></script>
     <script src="/static/js/syntax_highlighter.js"></script>
     <script src="/static/js/system_init_modal.js"></script>

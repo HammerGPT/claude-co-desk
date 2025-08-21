@@ -1627,6 +1627,11 @@ async def get_config():
     """获取系统配置API"""
     return JSONResponse(content=Config.get_frontend_config())
 
+@app.get("/api/config/language")
+async def get_language_config():
+    """获取语言配置API"""
+    return JSONResponse(content=Config.get_language_config())
+
 @app.get("/api/environment")
 async def check_environment():
     """环境检测API"""

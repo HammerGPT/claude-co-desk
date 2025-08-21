@@ -77,7 +77,20 @@ class Config:
             'userHome': cls.USER_HOME,
             'claudeCliPath': cls.get_claude_cli_path(),
             'serverPort': cls.PORT,
-            'defaultWorkingDirectory': cls.get_default_working_directory()
+            'defaultWorkingDirectory': cls.get_default_working_directory(),
+            'defaultLanguage': 'en',  # 默认语言为英文
+            'supportedLanguages': ['en', 'zh']  # 支持的语言列表
+        }
+    
+    @classmethod
+    def get_language_config(cls) -> dict:
+        """获取语言配置"""
+        return {
+            'defaultLanguage': 'en',
+            'supportedLanguages': [
+                {'code': 'en', 'name': 'English'},
+                {'code': 'zh', 'name': '中文'}
+            ]
         }
     
     @classmethod
