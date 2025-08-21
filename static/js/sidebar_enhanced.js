@@ -1356,7 +1356,7 @@ class EnhancedSidebar {
         try {
             // 设置加载状态并显示loading界面
             this.mcpLoadingState.isLoading = true;
-            toolsList.innerHTML = '<div class="loading-placeholder">加载工具列表中...</div>';
+            toolsList.innerHTML = `<div class="loading-placeholder">${t('mcp.loadingTools')}</div>`;
             
             // 加载中时隐藏计数显示
             const countWrapper = document.getElementById('mcp-tools-count-wrapper');
@@ -1391,8 +1391,8 @@ class EnhancedSidebar {
                 this.mcpLoadingState.isLoading = false;
                 toolsList.innerHTML = `
                     <div style="text-align: center; padding: 2rem; color: #ef4444;">
-                        <p>⚠️ 连接未建立</p>
-                        <p style="font-size: 0.85rem; margin-top: 0.5rem;">请刷新页面重新连接</p>
+                        <p>⚠️ ${t('error.networkError')}</p>
+                        <p style="font-size: 0.85rem; margin-top: 0.5rem;">${t('common.retryCheck')}</p>
                     </div>
                 `;
                 toolsCount.textContent = '0';
@@ -1401,7 +1401,7 @@ class EnhancedSidebar {
         } catch (error) {
             console.error('加载MCP工具失败:', error);
             this.mcpLoadingState.isLoading = false;
-            toolsList.innerHTML = '<div class="loading-placeholder">加载工具列表失败</div>';
+            toolsList.innerHTML = `<div class="loading-placeholder">${t('mcp.loadToolsFailed')}</div>`;
             toolsCount.textContent = '0';
         }
     }
@@ -1793,8 +1793,8 @@ class EnhancedSidebar {
                 // 查询出错
                 toolsList.innerHTML = `
                     <div style="text-align: center; padding: 2rem; color: #ef4444;">
-                        <p>❌ 获取工具状态失败</p>
-                        <p style="font-size: 0.85rem; margin-top: 0.5rem;">${data.message || '未知错误'}</p>
+                        <p>❌ ${t('mcp.loadToolsFailed')}</p>
+                        <p style="font-size: 0.85rem; margin-top: 0.5rem;">${data.message || t('error.unknown')}</p>
                     </div>
                 `;
             }
@@ -1803,7 +1803,7 @@ class EnhancedSidebar {
             this.mcpLoadingState.isLoading = false;
             toolsList.innerHTML = `
                 <div style="text-align: center; padding: 2rem; color: #ef4444;">
-                    <p>❌ 处理响应失败</p>
+                    <p>❌ ${t('error.loadFailed')}</p>
                     <p style="font-size: 0.85rem; margin-top: 0.5rem;">${error.message}</p>
                 </div>
             `;
@@ -1829,17 +1829,11 @@ class EnhancedSidebar {
             <div class="mcp-tool-item">
                 <div class="mcp-tool-info">
                     <div class="mcp-tool-name">${tool.name || 'Unknown Tool'}</div>
-                    <div class="mcp-tool-desc">${tool.description || '暂无描述'}</div>
+                    <div class="mcp-tool-desc">${tool.description || t('mcp.noDescription')}</div>
                     <div class="mcp-tool-status">
                         <span class="status-indicator ${tool.enabled ? 'status-enabled' : 'status-disabled'}"></span>
-                        ${tool.enabled ? '运行中' : '已禁用'}
+                        ${tool.enabled ? t('mcp.statusRunning') : t('mcp.statusDisabled')}
                     </div>
-                </div>
-                <div class="mcp-tool-actions">
-                    <button class="btn-small ${tool.enabled ? 'btn-secondary' : 'btn-primary'}" 
-                            onclick="sidebarEnhanced.toggleMCPTool('${tool.id}', ${!tool.enabled})">
-                        ${tool.enabled ? '禁用' : '启用'}
-                    </button>
                 </div>
             </div>
         `).join('');
@@ -2006,19 +2000,6 @@ class EnhancedSidebar {
         this.showMCPManagerError(`会话错误: ${data.error}`);
     }
     
-    /**
-     * 切换MCP工具状态
-     */
-    async toggleMCPTool(toolId, enabled) {
-        try {
-            // TODO: 实现MCP工具启用/禁用功能
-            console.log(`切换MCP工具状态: ${toolId}, 启用: ${enabled}`);
-            alert('MCP工具状态切换功能开发中...');
-        } catch (error) {
-            console.error('切换MCP工具状态失败:', error);
-            alert('操作失败: ' + error.message);
-        }
-    }
 
     /**
      * 移动端侧边栏控制
