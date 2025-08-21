@@ -193,6 +193,68 @@ body {
   font-size: 16px;
 }
 
+/* 启动进度条样式 */
+.init-progress-container {
+  margin: 20px 0;
+  width: 100%;
+  max-width: 300px;
+}
+
+.progress-bar {
+  height: 6px;
+  background: hsl(var(--muted));
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: hsl(var(--primary));
+  transition: width 0.3s ease;
+  width: 0%;
+}
+
+.progress-info {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 8px;
+  font-size: 14px;
+  color: hsl(var(--muted-foreground));
+}
+
+/* 启动状态日志样式 */
+.init-status-log {
+  margin-top: 20px;
+  text-align: left;
+  max-width: 400px;
+}
+
+.status-items {
+  background: hsl(var(--muted) / 0.1);
+  border-radius: 8px;
+  padding: 12px;
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+}
+
+.status-item {
+  display: flex;
+  align-items: center;
+  font-size: 13px;
+  color: hsl(var(--muted-foreground));
+}
+
+.status-icon {
+  margin-right: 8px;
+  display: flex;
+  align-items: center;
+}
+
+.status-icon img {
+  display: block;
+}
+
 /* 环境错误界面 */
 .environment-error {
   height: 100vh;

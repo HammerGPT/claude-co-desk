@@ -14,6 +14,13 @@ class App {
         this.sessionActivity = new Map(); // 会话活动时间戳
         this.selectedSession = null; // 当前选中的会话
         
+        // 进度管理系统
+        this.currentProgress = 0;
+        this.progressFill = null;
+        this.progressText = null;
+        this.progressPercent = null;
+        this.statusItems = null;
+        
         this.initElements();
         this.initEventListeners();
         this.initialize();
@@ -29,6 +36,13 @@ class App {
         this.environmentStatus = document.getElementById('environment-status');
         this.retryBtn = document.getElementById('retry-check');
         this.forceContinueBtn = document.getElementById('force-continue');
+        
+        // 进度条元素
+        this.progressFill = document.getElementById('init-progress-fill');
+        this.progressText = document.getElementById('init-progress-text');
+        this.progressPercent = document.getElementById('init-progress-percent');
+        this.statusItems = document.getElementById('init-status-items');
+        
         
         // 标签按钮
         this.chatTab = document.getElementById('chat-tab');
@@ -96,13 +110,24 @@ class App {
      * 应用初始化
      */
     async initialize() {
-        console.log(' 初始化 Claude Co-Desk...');
+        console.log('Initializing Claude Co-Desk...');
         
-        // 检查环境
+        // 阶段1：环境检测 (0-40%)
+        this.updateProgress(5, 'init.detectingEnvironment', 'init.detectingEnvironment');
+        
+        // 添加延迟确保用户能看到loading状态
+        await new Promise(resolve => setTimeout(resolve, 300));
+        
         await this.checkEnvironment();
         
         // 如果环境就绪，继续初始化
         if (this.environmentStatus?.ready) {
+            this.updateProgress(40, 'init.foundClaude');
+            this.updateLastStatusItem('success');
+            
+            // 短暂延迟显示成功状态
+            await new Promise(resolve => setTimeout(resolve, 200));
+            
             await this.initializeApp();
         }
     }
@@ -112,23 +137,32 @@ class App {
      */
     async checkEnvironment() {
         try {
-            console.log('[DEBUG] 检查环境状态...');
+            console.log('Checking environment status...');
+            
+            // 显示检查项目目录的进度
+            this.updateProgress(20, 'init.checkingProjects', 'init.checkingProjects');
+            
+            // 添加延迟确保用户能看到loading状态
+            await new Promise(resolve => setTimeout(resolve, 300));
             
             const response = await fetch('/api/environment');
             const status = await response.json();
             
-            console.log('环境状态:', status);
+            console.log('Environment status:', status);
             this.environmentStatus = status;
             
             if (status.ready) {
-                console.log(' 环境检查通过');
-                await this.initializeApp();
+                console.log('Environment check passed');
+                this.updateLastStatusItem('success');
+                // 不在这里调用initializeApp，因为已经在initialize方法中处理
             } else {
-                console.log('[WARN] 环境配置不完整');
+                console.log('Environment configuration incomplete');
+                this.updateLastStatusItem('error');
                 this.showEnvironmentError(status);
             }
         } catch (error) {
-            console.error(' 环境检查失败:', error);
+            console.error('Environment check failed:', error);
+            this.updateLastStatusItem('error');
             this.showEnvironmentError({
                 claude_cli: false,
                 projects_dir: false,
@@ -187,32 +221,54 @@ class App {
      * 初始化应用
      */
     async initializeApp() {
-        console.log(' 初始化应用组件...');
+        console.log('Initializing application components...');
         
         try {
-            // 连接WebSocket
+            // 阶段2：WebSocket连接 (40-60%)
+            this.updateProgress(50, 'init.connectingWebSocket', 'init.connectingWebSocket');
+            await new Promise(resolve => setTimeout(resolve, 300));
             await window.wsManager.connect();
+            this.updateLastStatusItem('success');
             
-            // 初始化员工管理器（如果存在）
+            await new Promise(resolve => setTimeout(resolve, 200));
+            
+            // 阶段3：组件加载 (60-80%)
+            this.updateProgress(70, 'init.loadingComponents', 'init.loadingComponents');
+            await new Promise(resolve => setTimeout(resolve, 300));
             if (window.employeesManager) {
-                console.log(' 初始化员工团队管理器...');
+                console.log('Initializing employees manager...');
                 // 员工管理器已经在自己的构造函数中初始化了
             }
+            this.updateLastStatusItem('success');
             
-            // 加载项目列表
+            await new Promise(resolve => setTimeout(resolve, 200));
+            
+            // 阶段4：项目加载 (80-100%)
+            this.updateProgress(90, 'init.loadingProjects', 'init.loadingProjects');
+            await new Promise(resolve => setTimeout(resolve, 300));
             await window.enhancedSidebar.loadProjects();
+            this.updateLastStatusItem('success');
             
-            // 显示主应用
-            this.showMainApp();
+            await new Promise(resolve => setTimeout(resolve, 200));
             
-            console.log(' 应用初始化完成');
+            // 完成
+            this.updateProgress(100, 'init.systemReady', 'init.systemReady');
+            await new Promise(resolve => setTimeout(resolve, 200));
+            this.updateLastStatusItem('success');
+            
+            console.log('Application initialization completed');
+            
+            // 短暂延迟显示完成状态
+            setTimeout(() => this.showMainApp(), 500);
+            
         } catch (error) {
-            console.error(' 应用初始化失败:', error);
+            console.error('Application initialization failed:', error);
+            this.updateLastStatusItem('error');
             this.showEnvironmentError({
                 claude_cli: this.environmentStatus?.claude_cli || false,
                 projects_dir: this.environmentStatus?.projects_dir || false,
                 ready: false,
-                error: `初始化失败: ${error.message}`
+                error: `Initialization failed: ${error.message}`
             });
         }
     }
@@ -376,6 +432,106 @@ class App {
             activeSessions: Array.from(this.activeSessions),
             selectedSession: this.selectedSession
         };
+    }
+
+    // ===== 进度管理系统 =====
+
+    /**
+     * 更新初始化进度
+     */
+    updateProgress(percent, textKey, statusKey = null) {
+        this.currentProgress = percent;
+        
+        // 更新进度条
+        if (this.progressFill) {
+            this.progressFill.style.width = percent + '%';
+        }
+        
+        // 更新百分比显示
+        if (this.progressPercent) {
+            this.progressPercent.textContent = percent + '%';
+        }
+        
+        // 更新状态文本
+        if (this.progressText && textKey) {
+            this.progressText.setAttribute('data-i18n', textKey);
+            this.progressText.textContent = window.i18n ? t(textKey) : textKey;
+        }
+        
+        // 添加状态日志项
+        if (statusKey) {
+            this.addStatusItem(statusKey);
+        }
+        
+        console.log(`Progress: ${percent}% - ${textKey}`);
+    }
+
+    /**
+     * 添加状态日志项（只保留最新的一个）
+     */
+    addStatusItem(textKey, status = 'loading') {
+        if (!this.statusItems) return;
+        
+        // 清空现有内容，只保留最新的状态
+        this.statusItems.innerHTML = '';
+        
+        const item = document.createElement('div');
+        item.className = 'status-item';
+        
+        // 状态图标
+        let iconHtml = '';
+        switch (status) {
+            case 'loading':
+                iconHtml = '<img src="/static/assets/icons/interface/detect.png" width="16" height="16" alt="检测中">';
+                break;
+            case 'success':
+                iconHtml = '<img src="/static/assets/icons/status/check.png" width="16" height="16" alt="完成">';
+                break;
+            case 'error':
+                iconHtml = '<img src="/static/assets/icons/status/warning.png" width="16" height="16" alt="错误">';
+                break;
+            default:
+                iconHtml = '<img src="/static/assets/icons/interface/detect.png" width="16" height="16" alt="检测中">';
+        }
+        
+        item.innerHTML = `
+            <span class="status-icon ${status}">${iconHtml}</span>
+            <span data-i18n="${textKey}">${window.i18n ? t(textKey) : textKey}</span>
+        `;
+        
+        this.statusItems.appendChild(item);
+    }
+
+    /**
+     * 更新当前状态项的状态
+     */
+    updateLastStatusItem(status = 'success') {
+        if (!this.statusItems) return;
+        
+        const item = this.statusItems.querySelector('.status-item');
+        if (item) {
+            const iconSpan = item.querySelector('.status-icon');
+            if (iconSpan) {
+                iconSpan.className = `status-icon ${status}`;
+                
+                // 更新图标为PNG
+                let iconHtml = '';
+                switch (status) {
+                    case 'loading':
+                        iconHtml = '<img src="/static/assets/icons/interface/detect.png" width="16" height="16" alt="检测中">';
+                        break;
+                    case 'success':
+                        iconHtml = '<img src="/static/assets/icons/status/check.png" width="16" height="16" alt="完成">';
+                        break;
+                    case 'error':
+                        iconHtml = '<img src="/static/assets/icons/status/warning.png" width="16" height="16" alt="错误">';
+                        break;
+                    default:
+                        iconHtml = '<img src="/static/assets/icons/interface/detect.png" width="16" height="16" alt="检测中">';
+                }
+                iconSpan.innerHTML = iconHtml;
+            }
+        }
     }
 
     // ===== 会话保护系统 - 移植自claudecodeui =====
