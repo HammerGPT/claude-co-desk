@@ -1200,7 +1200,7 @@ class SessionTerminal {
         }
 
         // 更新按钮标题
-        this.themeToggleBtn.title = this.isLightTheme ? '切换到暗色模式' : '切换到明亮模式';
+        this.themeToggleBtn.title = this.isLightTheme ? t('nav.darkMode') : t('nav.lightMode');
         
         console.log('更新主题按钮状态:', {
             isLightTheme: this.isLightTheme,

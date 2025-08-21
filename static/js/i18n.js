@@ -46,6 +46,9 @@ const TEXTS = {
         'session.confirmDelete': 'Are you sure you want to delete this session? This action cannot be undone.',
         'session.deleteSuccess': 'Session deleted successfully',
         'session.deleteFailed': 'Failed to delete session',
+        'session.closeSession': 'Close Session',
+        'session.closeTask': 'Close Task',
+        'session.loadMore': 'Load More Sessions',
         
         // 任务管理
         'task.create': 'Create Task',
@@ -143,6 +146,7 @@ const TEXTS = {
         'project.alreadyExists': 'This folder is already an existing project, please select another folder',
         'project.createFailed': 'Failed to create new project, please refresh and try again',
         'project.noFolders': 'No folders under this directory',
+        'project.newProjectSession': 'New Project Session',
         
         // MCP工具
         'mcp.tools': 'MCP Tools',
@@ -161,6 +165,29 @@ const TEXTS = {
         'mcp.workingDirectory': 'Working Directory',
         'mcp.toolsCountUnit': 'tools',
         
+        // 文件管理
+        'files.taskFiles': 'Task Files',
+        'files.browser': 'File Browser',
+        'files.projectFiles': 'Files',
+        'files.noTaskFiles': 'No files generated for task yet',
+        'files.noProjectFiles': 'No files in this project',
+        'files.loadTaskFilesFailed': 'Failed to load task files',
+        'files.loadProjectFilesFailed': 'Failed to load project files',
+        'files.readFileFailed': 'Unable to read file',
+        'files.networkErrorRead': 'Network error, unable to read file',
+        'files.networkErrorOpen': 'Network error, unable to open file',
+        'files.saveFileFailed': 'Failed to save file',
+        'files.networkErrorSave': 'Network error, unable to save file',
+        'files.openFileFailed': 'Unable to open file',
+        'files.readLargeFileFailed': 'Unable to read large file',
+        'files.networkErrorLargeFile': 'Network error, unable to open large file',
+        'files.getFileListFailed': 'Failed to get file list',
+        'files.networkErrorFileList': 'Network error, unable to get file list',
+        'files.searchFailed': 'Search failed',
+        'files.loadFoldersFailed': 'Failed to load folders',
+        'files.networkErrorFolders': 'Network error, unable to load folders',
+        'files.checkingFile': 'Checking file',
+        
         // 数字员工
         'agents.title': 'Agents',
         'agents.teamManagement': 'Agents Team Management',
@@ -177,7 +204,7 @@ const TEXTS = {
         'agents.terminalUnavailable': 'Terminal connection unavailable, please check if Claude Code is running normally',
         
         // 通用操作
-        'common.confirm': 'Confirm',
+        'common.confirm': 'Connect',
         'common.cancel': 'Cancel',
         'common.save': 'Save',
         'common.delete': 'Delete',
@@ -190,6 +217,7 @@ const TEXTS = {
         'common.info': 'Information',
         'common.retryCheck': 'Retry Check',
         'common.forceContinue': 'Force Continue',
+        'common.retry': 'Retry',
         
         // 错误消息
         'error.networkError': 'Network error',
@@ -287,6 +315,9 @@ const TEXTS = {
         'session.confirmDelete': '确定要删除这个会话吗？此操作无法撤销。',
         'session.deleteSuccess': '会话删除成功',
         'session.deleteFailed': '删除会话失败',
+        'session.closeSession': '关闭会话',
+        'session.closeTask': '关闭任务',
+        'session.loadMore': '加载更多会话',
         
         // 任务管理
         'task.create': '创建任务',
@@ -383,6 +414,7 @@ const TEXTS = {
         'project.alreadyExists': '此文件夹已是现有项目，请选择其他文件夹',
         'project.createFailed': '创建新项目失败，请刷新页面后重试',
         'project.noFolders': '此目录下没有文件夹',
+        'project.newProjectSession': '新项目会话',
         
         // MCP工具
         'mcp.tools': 'MCP工具',
@@ -401,6 +433,29 @@ const TEXTS = {
         'mcp.workingDirectory': '工作目录',
         'mcp.toolsCountUnit': '个',
         
+        // 文件管理
+        'files.taskFiles': '任务文件',
+        'files.browser': '文件浏览器',
+        'files.projectFiles': '文件',
+        'files.noTaskFiles': '任务暂未生成文件',
+        'files.noProjectFiles': '此项目暂无文件',
+        'files.loadTaskFilesFailed': '加载任务文件失败',
+        'files.loadProjectFilesFailed': '加载项目文件失败',
+        'files.readFileFailed': '无法读取文件',
+        'files.networkErrorRead': '网络错误，无法读取文件',
+        'files.networkErrorOpen': '网络错误，无法打开文件',
+        'files.saveFileFailed': '保存文件失败',
+        'files.networkErrorSave': '网络错误，无法保存文件',
+        'files.openFileFailed': '无法打开文件',
+        'files.readLargeFileFailed': '无法读取大文件',
+        'files.networkErrorLargeFile': '网络错误，无法打开大文件',
+        'files.getFileListFailed': '获取文件列表失败',
+        'files.networkErrorFileList': '网络错误，无法获取文件列表',
+        'files.searchFailed': '搜索失败',
+        'files.loadFoldersFailed': '加载文件夹失败',
+        'files.networkErrorFolders': '网络错误，无法加载文件夹',
+        'files.checkingFile': '正在检查文件',
+        
         // 数字员工
         'agents.title': '数字员工团队',
         'agents.teamManagement': '数字员工团队管理',
@@ -417,7 +472,7 @@ const TEXTS = {
         'agents.terminalUnavailable': '终端连接不可用，请检查Claude Code是否正常启动',
         
         // 通用操作
-        'common.confirm': '确认',
+        'common.confirm': '连接',
         'common.cancel': '取消',
         'common.save': '保存',
         'common.delete': '删除',
@@ -430,6 +485,7 @@ const TEXTS = {
         'common.info': '信息',
         'common.retryCheck': '重新检测',
         'common.forceContinue': '强制继续',
+        'common.retry': '重试',
         
         // 错误消息
         'error.networkError': '网络错误',

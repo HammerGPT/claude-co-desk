@@ -163,6 +163,13 @@ class EnhancedSidebar {
                 this.hideMobileSidebar();
             }
         });
+
+        // 监听语言切换事件
+        if (window.i18n) {
+            window.i18n.addObserver(() => {
+                this.renderProjects();
+            });
+        }
     }
 
     /**
@@ -521,8 +528,8 @@ class EnhancedSidebar {
                         onclick="enhancedSidebar.loadMoreSessions('${project.name}')"
                         ${isLoading ? 'disabled' : ''}>
                     ${isLoading ? 
-                        '<div class="spinner"></div> 加载中...' : 
-                        '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6,9 12,15 18,9"></polyline></svg> 加载更多会话'
+                        `<div class="spinner"></div> ${t('common.loading')}` : 
+                        `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6,9 12,15 18,9"></polyline></svg> ${t('session.loadMore')}`
                     }
                 </button>
             `;
@@ -768,7 +775,7 @@ class EnhancedSidebar {
             }
         } catch (error) {
             console.error('删除会话错误:', error);
-            alert('网络错误，删除会话失败');
+            alert(t('error.networkError') + '，删除会话失败');
         }
     }
 
@@ -1095,7 +1102,7 @@ class EnhancedSidebar {
             }
         } catch (error) {
             console.error('创建项目错误:', error);
-            alert('网络错误，无法创建项目');
+            alert(t('error.networkError') + '，无法创建项目');
         }
     }
 
@@ -1681,7 +1688,7 @@ class EnhancedSidebar {
         }
         
         // 更新状态指示器
-        this.updateMCPSessionStatus('搜索失败', 'error');
+        this.updateMCPSessionStatus(t('files.searchFailed'), 'error');
     }
     
     /**
@@ -2033,7 +2040,7 @@ class EnhancedSidebar {
             this.projectsList.innerHTML = `
                 <div class="error-state">
                     <p class="error-message">❌ ${this.escapeHtml(message)}</p>
-                    <button onclick="enhancedSidebar.refreshProjects()" class="btn btn-sm btn-primary">重试</button>
+                    <button onclick="enhancedSidebar.refreshProjects()" class="btn btn-sm btn-primary">${t('common.retry')}</button>
                 </div>
             `;
         }
@@ -2149,7 +2156,7 @@ class EnhancedSidebar {
             <div class="session-tab-content" onclick="enhancedSidebar.switchToSession('${sessionId}')">
                 <span class="session-tab-title">${this.escapeHtml(project.name)}: ${this.escapeHtml(sessionName)}</span>
             </div>
-            <button class="session-tab-close" onclick="enhancedSidebar.closeSession('${sessionId}')" title="关闭会话">
+            <button class="session-tab-close" onclick="enhancedSidebar.closeSession('${sessionId}')" title="${t('session.closeSession')}">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <line x1="18" y1="6" x2="6" y2="18"></line>
                     <line x1="6" y1="6" x2="18" y2="18"></line>
@@ -2205,7 +2212,7 @@ class EnhancedSidebar {
             <div class="session-tab-content" onclick="enhancedSidebar.switchToSession('${taskId}')">
                 <span class="session-tab-title">${this.escapeHtml(taskName)}</span>
             </div>
-            <button class="session-tab-close" onclick="enhancedSidebar.closeSession('${taskId}')" title="关闭任务">
+            <button class="session-tab-close" onclick="enhancedSidebar.closeSession('${taskId}')" title="${t('session.closeTask')}">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <line x1="18" y1="6" x2="6" y2="18"></line>
                     <line x1="6" y1="6" x2="18" y2="18"></line>

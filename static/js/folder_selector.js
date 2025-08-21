@@ -48,7 +48,7 @@ class FolderSelector {
             <div id="folder-selector-overlay" class="folder-selector-overlay">
                 <div id="folder-selector-modal" class="folder-selector-modal">
                     <div class="folder-selector-header">
-                        <h3><img src="/static/assets/icons/interface/folder.png" width="20" height="20" alt=""> 选择项目文件夹</h3>
+                        <h3><img src="/static/assets/icons/interface/folder.png" width="20" height="20" alt=""> ${t('project.selectFolder')}</h3>
                         <button id="folder-close-btn" class="folder-close-btn">
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <line x1="18" y1="6" x2="6" y2="18"></line>
@@ -63,7 +63,7 @@ class FolderSelector {
                                 <circle cx="11" cy="11" r="8"></circle>
                                 <path d="m21 21-4.35-4.35"></path>
                             </svg>
-                            <input type="text" id="folder-search-input" placeholder="搜索文件夹..." class="folder-search-input">
+                            <input type="text" id="folder-search-input" placeholder="${t('project.searchFolders')}" class="folder-search-input">
                             <button id="folder-search-clear" class="folder-search-clear hidden" type="button">
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                     <line x1="18" y1="6" x2="6" y2="18"></line>
@@ -75,18 +75,18 @@ class FolderSelector {
                     
                     <div class="folder-selector-content">
                         <div id="folder-tree" class="folder-tree">
-                            <div class="loading-spinner">加载中...</div>
+                            <div class="loading-spinner">${t('project.loading')}</div>
                         </div>
                     </div>
                     
                     <div class="folder-selector-footer">
                         <div id="current-path-display" class="current-path">
-                            <span class="path-label">当前选择:</span>
-                            <span class="path-value">未选择</span>
+                            <span class="path-label">${t('project.currentSelection')}</span>
+                            <span class="path-value">${t('project.notSelected')}</span>
                         </div>
                         <div class="folder-selector-buttons">
-                            <button id="folder-cancel-btn" class="btn btn-secondary">取消</button>
-                            <button id="folder-confirm-btn" class="btn btn-primary" disabled>确认添加项目</button>
+                            <button id="folder-cancel-btn" class="btn btn-secondary">${t('project.cancel')}</button>
+                            <button id="folder-confirm-btn" class="btn btn-primary" disabled>${t('project.confirmAdd')}</button>
                         </div>
                     </div>
                 </div>
@@ -255,11 +255,11 @@ class FolderSelector {
                 this.renderFolders();
             } else {
                 console.error('加载文件夹失败:', response.statusText);
-                this.showError('加载文件夹失败');
+                this.showError(t('files.loadFoldersFailed'));
             }
         } catch (error) {
             console.error('加载文件夹错误:', error);
-            this.showError('网络错误，无法加载文件夹');
+            this.showError(t('files.networkErrorFolders'));
         } finally {
             this.setLoading(false);
         }
@@ -318,7 +318,7 @@ class FolderSelector {
         if (displayFolders.length === 0) {
             const emptyMessage = this.searchQuery ? 
                 `未找到包含 "${this.searchQuery}" 的文件夹` : 
-                '此目录下没有文件夹';
+                t('project.noFolders');
             html = `
                 <div class="empty-folders">
                     <p>${emptyMessage}</p>
@@ -419,7 +419,7 @@ class FolderSelector {
         
         const pathValue = this.currentPathDisplay.querySelector('.path-value');
         if (pathValue) {
-            pathValue.textContent = path || '未选择';
+            pathValue.textContent = path || t('project.notSelected');
         }
         
         // 启用/禁用确认按钮
@@ -442,15 +442,10 @@ class FolderSelector {
         }
         
         if (this.isExistingProject(this.selectedPath)) {
-            alert('此文件夹已是现有项目，请选择其他文件夹');
+            alert(t('project.alreadyExists'));
             return;
         }
         
-        // 显示确认对话框
-        const confirmed = confirm(`确认在以下路径创建新项目吗？\n\n${this.selectedPath}`);
-        if (!confirmed) {
-            return;
-        }
         
         // 保存选中的路径，因为close()会清空selectedPath
         const selectedPath = this.selectedPath;
@@ -469,7 +464,7 @@ class FolderSelector {
         // 生成唯一的任务ID
         const timestamp = Date.now();
         const taskId = `new-project-${timestamp}`;
-        const taskName = `新项目会话`;
+        const taskName = t('project.newProjectSession');
         
         
         // 使用现有的创建任务页签机制
@@ -482,7 +477,7 @@ class FolderSelector {
             );
         } else {
             console.error('无法找到 enhancedSidebar.createTaskTab 方法');
-            alert('创建新项目失败，请刷新页面后重试');
+            alert(t('project.createFailed'));
         }
     }
 
@@ -557,7 +552,7 @@ class FolderSelector {
         if (!this.folderTree) return;
         
         if (loading) {
-            this.folderTree.innerHTML = '<div class="loading-spinner">加载中...</div>';
+            this.folderTree.innerHTML = `<div class="loading-spinner">${t('common.loading')}</div>`;
         }
     }
 
@@ -570,7 +565,7 @@ class FolderSelector {
         this.folderTree.innerHTML = `
             <div class="error-message">
                 <p>${message}</p>
-                <button onclick="folderSelector.loadFolders()" class="btn btn-sm btn-primary">重试</button>
+                <button onclick="folderSelector.loadFolders()" class="btn btn-sm btn-primary">${t('common.retry')}</button>
             </div>
         `;
     }
