@@ -48,7 +48,24 @@
             <div class="loading-content">
                 <div class="spinner"></div>
                 <h2 data-i18n="app.loading">正在启动 Claude Co-Desk</h2>
-                <p data-i18n="status.initializing">正在检测环境...</p>
+                
+                <!-- 进度条组件 -->
+                <div class="init-progress-container">
+                    <div class="progress-bar">
+                        <div id="init-progress-fill" class="progress-fill"></div>
+                    </div>
+                    <div class="progress-info">
+                        <span id="init-progress-text" data-i18n="status.initializing">初始化中...</span>
+                        <span id="init-progress-percent">0%</span>
+                    </div>
+                </div>
+                
+                <!-- 详细状态日志 -->
+                <div class="init-status-log">
+                    <div id="init-status-items" class="status-items">
+                        <!-- 动态填充状态项 -->
+                    </div>
+                </div>
             </div>
         </div>
         

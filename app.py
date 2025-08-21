@@ -108,7 +108,7 @@ class EnvironmentChecker:
         
         # 重试机制：每个策略最多重试3次
         for strategy_name, strategy_func in detection_strategies:
-            logger.debug(f" 尝试检测策略: {strategy_name}")
+            logger.debug(f"Attempting detection strategy: {strategy_name}")
             
             for attempt in range(3):  # 最多重试3次
                 try:
@@ -187,10 +187,10 @@ class EnvironmentChecker:
         logger.debug("Searching for claude command in PATH environment")
         claude_path = shutil.which('claude')
         if claude_path:
-            logger.debug(f" PATH中找到: {claude_path}")
+            logger.debug(f"Found in PATH: {claude_path}")
             return claude_path
         else:
-            logger.debug(" PATH中未找到claude命令")
+            logger.debug("Claude command not found in PATH")
             return None
     
     @staticmethod
@@ -198,7 +198,7 @@ class EnvironmentChecker:
         """Check CLAUDE_CLI_PATH environment variable"""
         claude_env_path = os.environ.get('CLAUDE_CLI_PATH')
         if claude_env_path:
-            logger.debug(f" 环境变量CLAUDE_CLI_PATH: {claude_env_path}")
+            logger.debug(f"Environment variable CLAUDE_CLI_PATH: {claude_env_path}")
             return claude_env_path
         return None
     
@@ -216,7 +216,7 @@ class EnvironmentChecker:
         for path in common_paths:
             logger.debug(f" 检查常见路径: {path}")
             if path.exists():
-                logger.debug(f" 找到文件: {path}")
+                logger.debug(f"Found file: {path}")
                 return str(path)
         
         return None
@@ -234,7 +234,7 @@ class EnvironmentChecker:
         for path in user_paths:
             logger.debug(f" 检查用户路径: {path}")
             if path.exists():
-                logger.debug(f" 找到文件: {path}")
+                logger.debug(f"Found file: {path}")
                 return str(path)
         
         return None
@@ -251,16 +251,16 @@ class EnvironmentChecker:
         for path in system_paths:
             logger.debug(f" 检查系统路径: {path}")
             if path.exists():
-                logger.debug(f" 找到文件: {path}")
+                logger.debug(f"Found file: {path}")
                 return str(path)
         
         return None
     
     @staticmethod
     def _log_detection_failure():
-        """输出详细的检测失败诊断信息"""
-        logger.error(" 未找到可用的Claude CLI可执行文件")
-        logger.error(" 诊断信息:")
+        """Output detailed detection failure diagnostic information"""
+        logger.error("No available Claude CLI executable found")
+        logger.error("Diagnostic information:")
         
         # PATH environment variable
         path_env = os.environ.get('PATH', '')
@@ -275,20 +275,20 @@ class EnvironmentChecker:
         
         for path in common_paths:
             exists = path.exists()
-            logger.error(f"   {path}: {'存在' if exists else '不存在'}")
+            logger.error(f"   {path}: {'exists' if exists else 'not found'}")
         
-        # 环境变量检查
+        # Environment variables check
         claude_env = os.environ.get('CLAUDE_CLI_PATH')
         if claude_env:
             logger.error(f"   CLAUDE_CLI_PATH: {claude_env}")
         else:
-            logger.error("   CLAUDE_CLI_PATH: 未设置")
+            logger.error("   CLAUDE_CLI_PATH: not set")
         
-        logger.error(" 解决建议:")
-        logger.error("   1. 确认Claude CLI已正确安装: pip install claude-ai")
+        logger.error("Solution suggestions:")
+        logger.error("   1. Confirm Claude CLI is properly installed: pip install claude-ai")
         logger.error("   2. Check if PATH environment contains Claude CLI installation path")
         logger.error("   3. Set CLAUDE_CLI_PATH environment variable to point to Claude CLI executable")
-        logger.error("   4. 重新启动终端或重新加载环境变量")
+        logger.error("   4. Restart terminal or reload environment variables")
     
     @staticmethod
     def check_claude_cli() -> bool:
@@ -484,7 +484,7 @@ class PTYShellHandler:
             # 获取Claude CLI的绝对路径
             claude_executable = EnvironmentChecker.get_claude_executable_path()
             if not claude_executable:
-                error_msg = " 未找到Claude CLI可执行文件，请检查安装"
+                error_msg = " Claude CLI executable not found，请检查安装"
                 logger.error(error_msg)
                 await self.send_output(f"{error_msg}\r\n")
                 return False
@@ -1634,8 +1634,28 @@ async def get_language_config():
 
 @app.get("/api/environment")
 async def check_environment():
-    """环境检测API"""
+    """Enhanced environment detection API with progress info"""
+    logger.info("Starting environment detection process")
+    
+    # Step 1: Claude CLI detection
+    logger.info("Step 1: Detecting Claude CLI executable")
+    claude_available = EnvironmentChecker.check_claude_cli()
+    if claude_available:
+        logger.info("Claude CLI detected successfully")
+    else:
+        logger.warning("Claude CLI not found")
+    
+    # Step 2: Projects directory check
+    logger.info("Step 2: Checking projects directory")
+    projects_exist = EnvironmentChecker.check_projects_directory()
+    if projects_exist:
+        logger.info("Projects directory verified")
+    else:
+        logger.warning("Projects directory not accessible")
+    
     env_status = EnvironmentChecker.check_environment()
+    logger.info(f"Environment check completed. Ready: {env_status['ready']}")
+    
     return JSONResponse(content=env_status)
 
 # 系统项目管理API
@@ -2699,7 +2719,7 @@ async def handle_get_mcp_status(websocket: WebSocket, project_path: str = None):
         # 获取Claude CLI的绝对路径
         claude_executable = EnvironmentChecker.get_claude_executable_path()
         if not claude_executable:
-            raise Exception("未找到Claude CLI可执行文件")
+            raise Exception("Claude CLI executable not found")
         
         # 执行claude mcp list命令获取已安装工具
         result = subprocess.run([claude_executable, 'mcp', 'list'], 
@@ -2768,7 +2788,7 @@ async def get_project_mcp_status(project_path: str):
         # 获取Claude CLI的绝对路径
         claude_executable = EnvironmentChecker.get_claude_executable_path()
         if not claude_executable:
-            raise Exception("未找到Claude CLI可执行文件")
+            raise Exception("Claude CLI executable not found")
         
         # 异步执行claude mcp list命令获取已安装工具
         process = await asyncio.create_subprocess_exec(

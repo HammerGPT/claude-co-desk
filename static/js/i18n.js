@@ -32,7 +32,7 @@ const TEXTS = {
         'session.new': 'New Session',
         'session.newChat': 'New Chat',
         'session.continue': 'Continue',
-        'session.continueLastSession': 'Continue Last Session',
+        'session.continueLastSession': 'Continue',
         'session.noSessions': 'No sessions',
         'session.continueSession': 'Continue Session',
         'session.name': 'Session Name',
@@ -244,6 +244,20 @@ const TEXTS = {
         'status.connected': 'Connected',
         'status.disconnected': 'Disconnected',
         'status.ready': 'Ready',
+        
+        // 启动流程状态
+        'init.detectingEnvironment': 'Detecting environment...',
+        'init.foundClaude': 'Claude CLI detected',
+        'init.checkingProjects': 'Checking projects directory',
+        'init.connectingWebSocket': 'Connecting to WebSocket',
+        'init.loadingComponents': 'Loading system components',
+        'init.loadingProjects': 'Loading projects',
+        'init.systemReady': 'System ready',
+        'init.claudeDetection': 'Claude CLI detection',
+        'init.projectsCheck': 'Projects directory check',
+        'init.websocketConnection': 'WebSocket connection',
+        'init.componentInit': 'Component initialization',
+        'init.projectLoad': 'Project loading',
         
         // 侧边栏
         'sidebar.noTasks': '0 Tasks',
@@ -513,6 +527,20 @@ const TEXTS = {
         'status.connected': '已连接',
         'status.disconnected': '已断开',
         'status.ready': '就绪',
+        
+        // 启动流程状态
+        'init.detectingEnvironment': '正在检测环境...',
+        'init.foundClaude': '已检测到Claude CLI',
+        'init.checkingProjects': '正在检查项目目录',
+        'init.connectingWebSocket': '正在连接WebSocket',
+        'init.loadingComponents': '正在加载系统组件',
+        'init.loadingProjects': '正在加载项目列表',
+        'init.systemReady': '系统就绪',
+        'init.claudeDetection': 'Claude CLI检测',
+        'init.projectsCheck': '项目目录检查',
+        'init.websocketConnection': 'WebSocket连接',
+        'init.componentInit': '组件初始化',
+        'init.projectLoad': '项目加载',
         
         // 侧边栏
         'sidebar.noTasks': '0 个任务',
