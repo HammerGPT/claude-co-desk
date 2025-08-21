@@ -164,6 +164,10 @@ const TEXTS = {
         'mcp.noInstalledTools': 'No installed MCP tools',
         'mcp.workingDirectory': 'Working Directory',
         'mcp.toolsCountUnit': 'tools',
+        'mcp.statusRunning': 'Running',
+        'mcp.statusDisabled': 'Disabled',
+        'mcp.noDescription': 'No description',
+        'mcp.loadToolsFailed': 'Failed to load tool list',
         
         // 文件管理
         'files.taskFiles': 'Task Files',
@@ -447,6 +451,10 @@ const TEXTS = {
         'mcp.noInstalledTools': '暂无已安装的MCP工具',
         'mcp.workingDirectory': '工作目录',
         'mcp.toolsCountUnit': '个',
+        'mcp.statusRunning': '运行中',
+        'mcp.statusDisabled': '已禁用',
+        'mcp.noDescription': '暂无描述',
+        'mcp.loadToolsFailed': '加载工具列表失败',
         
         // 文件管理
         'files.taskFiles': '任务文件',
