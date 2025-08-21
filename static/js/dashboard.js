@@ -517,6 +517,8 @@ class TaskManagerDashboard {
                 <div class="dashboard-actions">
                     ${needsInitialization ? this.renderInitializationAction() : this.renderNormalActions()}
                 </div>
+
+                ${this.renderSocialIcons()}
             </div>
         `;
 
@@ -545,6 +547,42 @@ class TaskManagerDashboard {
         return `
             <div class="dashboard-welcome-info">
                 <p>${t('dashboard.welcomeInfo')}</p>
+            </div>
+        `;
+    }
+
+    /**
+     * 渲染社交图标区域
+     */
+    renderSocialIcons() {
+        return `
+            <div class="flex justify-center items-center gap-6">
+                <!-- GitHub -->
+                <a target="_blank" href="https://github.com/HammerGPT/claude-co-desk" class="social-icon-link">
+                    <img src="/static/assets/icons/social/github-gray.png" alt="GitHub" class="normal-icon">
+                    <img src="/static/assets/icons/social/github-color.png" alt="GitHub" class="hover-icon">
+                </a>
+
+                <!-- X/Twitter -->
+                <a target="_blank" href="https://x.com/GptHammer3309" class="social-icon-link">
+                    <img src="/static/assets/icons/social/twitter-gray.png" alt="Twitter" class="normal-icon">
+                    <img src="/static/assets/icons/social/twitter-color.png" alt="Twitter" class="hover-icon">
+                </a>
+
+                <!-- Douyin -->
+                <a target="_blank" href="https://www.douyin.com/user/MS4wLjABAAAA3b9nQ5Ow1s0mOTERBjmQyVn0-WCvyT_FAK_LdMyVQuY" class="social-icon-link">
+                    <img src="/static/assets/icons/social/douin-gray.png" alt="douyin" class="normal-icon">
+                    <img src="/static/assets/icons/social/douyin-color.png" alt="douyin" class="hover-icon">
+                </a>
+
+                <!-- WeChat container HTML -->
+                <div class="social-icon-link wechat-container">
+                    <img src="/static/assets/icons/social/wechat-gray.png" alt="WeChat" class="normal-icon">
+                    <img src="/static/assets/icons/social/wechat-color.png" alt="WeChat" class="hover-icon">
+                    <div class="wechat-qr">
+                        <img src="/static/assets/icons/social/wechat_qrcode.jpg" alt="WeChat QR Code" class="qr-image">
+                    </div>
+                </div>
             </div>
         `;
     }
