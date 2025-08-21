@@ -164,9 +164,9 @@ class EnhancedSidebar {
             }
         });
 
-        // 监听语言切换事件
+        // 注册语言切换刷新方法
         if (window.i18n) {
-            window.i18n.addObserver(() => {
+            window.i18n.registerComponent('sidebar', () => {
                 this.renderProjects();
             });
         }
@@ -347,7 +347,7 @@ class EnhancedSidebar {
      * 检测项目是否为工作目录
      */
     isWorkingDirectoryProject(project) {
-        if (!project.path) return false;
+        if (!project.path || typeof project.path !== 'string') return false;
         // 检测路径是否为用户家目录格式
         const userHomePath = project.path.match(/^(\/[^\/]+\/[^\/]+)$/)?.[1];
         return userHomePath && project.path === userHomePath;
@@ -1230,7 +1230,7 @@ class EnhancedSidebar {
             
             data.projects.forEach((project, index) => {
                 // 只过滤明显无效的路径
-                if (project.path === '/' || !project.path || project.path.trim() === '') return;
+                if (!project.path || project.path === '/' || (typeof project.path === 'string' && project.path.trim() === '')) return;
                 
                 if (!firstValidProject) firstValidProject = project;
                 
@@ -1605,7 +1605,7 @@ class EnhancedSidebar {
             
             // 生成MCP管理员会话ID
             const sessionId = `mcp-manager-${Date.now()}-${Math.random().toString(36).substr(2, 8)}`;
-            const sessionName = `MCP工具搜索: ${userQuery.length > 20 ? userQuery.substr(0, 20) + '...' : userQuery}`;
+            const sessionName = `MCP工具搜索: ${userQuery && userQuery.length > 20 ? userQuery.substr(0, 20) + '...' : (userQuery || '未知查询')}`;
             
             console.log('🔍 启动MCP工具搜索会话:');
             console.log('  会话ID:', sessionId);

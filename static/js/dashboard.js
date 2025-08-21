@@ -77,6 +77,11 @@ class TaskManagerDashboard {
             };
             this.updateDashboard();
         });
+        
+        // 注册语言切换刷新方法
+        if (window.i18n) {
+            window.i18n.registerComponent('dashboard', () => this.updateDashboard());
+        }
     }
 
     /**
@@ -220,7 +225,7 @@ class TaskManagerDashboard {
             this.taskStats = { total: 0, immediate: 0 };
             this.claudeInfo = {
                 version: '1.0.73 (Claude Code)',
-                path: this.systemConfig?.claudeCliPath || 'Claude CLI未找到'
+                path: this.systemConfig?.claudeCliPath || t('dashboard.claudeNotFound')
             };
             this.agentsCount = 0;
             this.updateDashboard();
@@ -261,7 +266,7 @@ class TaskManagerDashboard {
             this.taskStats = { total: 0, immediate: 0 };
             this.claudeInfo = {
                 version: '1.0.73 (Claude Code)',
-                path: this.systemConfig?.claudeCliPath || 'Claude CLI未找到'
+                path: this.systemConfig?.claudeCliPath || t('dashboard.claudeNotFound')
             };
             this.agentsCount = 0;
         }
@@ -314,7 +319,7 @@ class TaskManagerDashboard {
             // 使用默认值
             this.claudeInfo = {
                 version: '1.0.73 (Claude Code)',
-                path: this.systemConfig?.claudeCliPath || 'Claude CLI未找到'
+                path: this.systemConfig?.claudeCliPath || t('dashboard.claudeNotFound')
             };
             this.agentsCount = 0; // 错误时显示0而不是硬编码的5
         }
@@ -344,7 +349,7 @@ class TaskManagerDashboard {
      */
     getMCPTitle() {
         if (!this.mcpStatus) {
-            return 'MCP工具';
+            return t('dashboard.mcpTools');
         }
         
         // 计算总工具数
@@ -364,7 +369,7 @@ class TaskManagerDashboard {
             });
         }
         
-        return `MCP工具（总数 ${totalCount} 个）`;
+        return `${t('dashboard.mcpTools')} (Total: ${totalCount})`;
     }
 
     /**
@@ -374,7 +379,7 @@ class TaskManagerDashboard {
         // 这个函数只负责渲染实际的工具列表，不处理空状态
         if (!tools || tools.length === 0) {
             return mode === 'compact' ? 
-                '<div class="compact-no-tools">无MCP工具</div>' : 
+                `<div class="compact-no-tools">${t('mcp.noTools')}</div>` : 
                 ''; // 返回空字符串，由调用方决定显示什么
         }
         
@@ -393,10 +398,10 @@ class TaskManagerDashboard {
             <div class="mcp-tool-item">
                 <div class="mcp-tool-info">
                     <div class="mcp-tool-name">${tool.name || 'Unknown Tool'}</div>
-                    <div class="mcp-tool-desc">${tool.description || '暂无描述'}</div>
+                    <div class="mcp-tool-desc">${tool.description || 'No description'}</div>
                     <div class="mcp-tool-status">
                         <span class="status-indicator ${tool.enabled ? 'status-enabled' : 'status-disabled'}"></span>
-                        ${tool.enabled ? '运行中' : '已禁用'}
+                        ${tool.enabled ? 'Running' : 'Disabled'}
                     </div>
                 </div>
             </div>
@@ -411,8 +416,8 @@ class TaskManagerDashboard {
         if (data === undefined) {
             return `
                 <div class="mcp-loading">
-                    <p>正在加载MCP工具状态...</p>
-                    <small>请稍候</small>
+                    <p>${t('dashboard.mcpLoading')}</p>
+                    <small>Please wait...</small>
                 </div>
             `;
         }
@@ -420,8 +425,8 @@ class TaskManagerDashboard {
         if (data === null) {
             return `
                 <div class="mcp-loading">
-                    <p>无法获取MCP工具状态</p>
-                    <small>设置 - MCP工具 可以添加工具</small>
+                    <p>${t('dashboard.mcpLoadFailed')}</p>
+                    <small>${t('dashboard.mcpManageTip')}</small>
                 </div>
             `;
         }
@@ -432,7 +437,7 @@ class TaskManagerDashboard {
         if (data.userHomeStatus && data.userHomeStatus.count > 0) {
             html += `
                 <div class="project-mcp-section">
-                    <h6><img src="/static/assets/icons/interface/folder.png" width="16" height="16" alt=""> 工作目录 (${data.userHomeStatus.count}个)</h6>
+                    <h6><img src="/static/assets/icons/interface/folder.png" width="16" height="16" alt=""> ${t('dashboard.workingDirectory')} (${data.userHomeStatus.count})</h6>
                     <div class="project-path">${this.formatHomePath(data.userHomeStatus.projectPath)}</div>
                     ${this.renderMCPToolsList(data.userHomeStatus.tools || [], 'compact')}
                 </div>
@@ -443,7 +448,7 @@ class TaskManagerDashboard {
         data.projectStatuses.forEach(project => {
             html += `
                 <div class="project-mcp-section">
-                    <h6><img src="/static/assets/icons/interface/folder.png" width="16" height="16" alt=""> ${project.projectName} (${project.mcpStatus.count}个)</h6>
+                    <h6><img src="/static/assets/icons/interface/folder.png" width="16" height="16" alt=""> ${project.projectName} (${project.mcpStatus.count})</h6>
                     <div class="project-path">${this.formatHomePath(project.projectPath)}</div>
                     ${this.renderMCPToolsList(project.mcpStatus.tools || [], 'compact')}
                 </div>
@@ -452,7 +457,7 @@ class TaskManagerDashboard {
         
         html += `
             <div class="mcp-management-tip">
-                <small>设置 - MCP工具 可以添加工具</small>
+                <small>${t('dashboard.mcpManageTip')}</small>
             </div>
         `;
         
@@ -470,33 +475,33 @@ class TaskManagerDashboard {
         this.dashboardContainer.innerHTML = `
             <div class="dashboard-content-wrapper">
                 <div class="dashboard-welcome">
-                    <h2>欢迎使用 Claude Co-Desk 数字工作台</h2>
-                    <p>基于Claude Code的智能协作平台，释放AI对计算机的完全操控潜能</p>
+                    <h2>${t('dashboard.welcome')}</h2>
+                    <p>${t('dashboard.subtitle')}</p>
                 </div>
 
                 <div class="dashboard-grid">
                     <div class="dashboard-card">
-                        <h3>系统状态</h3>
+                        <h3>${t('dashboard.systemStatus')}</h3>
                         <div class="system-status">
                             <div class="status-item">
-                                <span class="status-label">Claude CLI:</span>
+                                <span class="status-label">${t('dashboard.claudeCli')}:</span>
                                 <span class="status-value">${this.claudeInfo ? this.claudeInfo.version : '1.0.73 (Claude Code)'}</span>
                             </div>
                             <div class="status-item">
-                                <span class="status-label">执行路径:</span>
-                                <span class="status-value code">${this.claudeInfo ? this.claudeInfo.path : (this.systemConfig?.claudeCliPath || 'Claude CLI未找到')}</span>
+                                <span class="status-label">${t('dashboard.executionPath')}:</span>
+                                <span class="status-value code">${this.claudeInfo ? this.claudeInfo.path : (this.systemConfig?.claudeCliPath || t('dashboard.claudeNotFound'))}</span>
                             </div>
                             <div class="status-item">
-                                <span class="status-label">智能体数量:</span>
-                                <span class="status-value">${this.agentsCount || 0} 个</span>
+                                <span class="status-label">${t('dashboard.agentsCount')}:</span>
+                                <span class="status-value">${this.agentsCount || 0}</span>
                             </div>
                             <div class="status-item">
-                                <span class="status-label">总任务数:</span>
-                                <span class="status-value">${this.taskStats ? this.taskStats.total : 0} 个</span>
+                                <span class="status-label">${t('dashboard.totalTasks')}:</span>
+                                <span class="status-value">${this.taskStats ? this.taskStats.total : 0}</span>
                             </div>
                             <div class="status-item">
-                                <span class="status-label">即时任务:</span>
-                                <span class="status-value">${this.taskStats ? this.taskStats.immediate : 0} 个</span>
+                                <span class="status-label">${t('dashboard.immediateTasks')}:</span>
+                                <span class="status-value">${this.taskStats ? this.taskStats.immediate : 0}</span>
                             </div>
                         </div>
                     </div>
@@ -526,8 +531,8 @@ class TaskManagerDashboard {
             <div class="dashboard-action-btn init-system-highlight" id="init-system-action">
                 <div class="dashboard-action-icon"></div>
                 <div class="dashboard-action-content">
-                    <h4>初始化数字员工系统</h4>
-                    <p>配置您的专属AI团队，开始智能化工作流程</p>
+                    <h4>${t('dashboard.initializeSystem')}</h4>
+                    <p>${t('dashboard.initializeDesc')}</p>
                 </div>
             </div>
         `;
@@ -539,7 +544,7 @@ class TaskManagerDashboard {
     renderNormalActions() {
         return `
             <div class="dashboard-welcome-info">
-                <p>任务：全系统操作，项目：单文件夹开发</p>
+                <p>${t('dashboard.welcomeInfo')}</p>
             </div>
         `;
     }
@@ -566,7 +571,7 @@ class TaskManagerDashboard {
             window.employeesManager.initializeSystem();
         } else {
             console.error('❌ 员工管理器未加载');
-            alert('系统组件未加载完成，请刷新页面重试');
+            alert(t('dashboard.systemNotReady'));
         }
     }
 
@@ -581,7 +586,7 @@ class TaskManagerDashboard {
             window.employeesManager.showAgentsModal();
         } else {
             console.error('❌ 员工管理器未加载');
-            alert('系统组件未加载完成，请刷新页面重试');
+            alert(t('dashboard.systemNotReady'));
         }
     }
 
@@ -596,7 +601,7 @@ class TaskManagerDashboard {
             window.taskManager.showQuickAddTask();
         } else {
             console.error('❌ 任务管理器未加载');
-            alert('任务管理器未加载完成，请刷新页面重试');
+            alert(t('dashboard.taskManagerNotReady'));
         }
     }
 
