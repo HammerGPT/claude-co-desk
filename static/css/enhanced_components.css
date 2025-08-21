@@ -1442,3 +1442,135 @@
 .hidden {
   display: none !important;
 }
+
+/* Dashboard 社交图标样式 */
+.dashboard-content-wrapper > .flex {
+  position: absolute;
+  bottom: 1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  padding-top: 1rem;
+  border-top: 1px solid hsl(var(--border) / 0.3);
+  width: 100%;
+  max-width: 400px;
+}
+
+/* Flex布局工具类 */
+.flex {
+  display: flex;
+}
+
+.justify-center {
+  justify-content: center;
+}
+
+.items-center {
+  align-items: center;
+}
+
+.gap-6 {
+  gap: 1.5rem;
+}
+
+/* 社交图标样式 */
+.social-icon-link {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+  border-radius: 4px;
+}
+
+.social-icon-link:hover {
+  transform: scale(1.05);
+}
+
+.social-icon-link .normal-icon,
+.social-icon-link .hover-icon {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+  transition: opacity 0.2s ease;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.social-icon-link .normal-icon {
+  opacity: 1;
+}
+
+.social-icon-link .hover-icon {
+  opacity: 0;
+}
+
+.social-icon-link:hover .normal-icon {
+  opacity: 0;
+}
+
+.social-icon-link:hover .hover-icon {
+  opacity: 1;
+}
+
+/* 图标尺寸工具类 */
+.w-6 {
+  width: 24px;
+}
+
+.h-6 {
+  height: 24px;
+}
+
+.block {
+  display: block;
+}
+
+/* 微信二维码样式 */
+.wechat-container {
+  position: relative;
+}
+
+.wechat-qr {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-bottom: 10px;
+  background: white;
+  border: 1px solid hsl(var(--border));
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  padding: 8px;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s ease, visibility 0.3s ease;
+  z-index: 1000;
+}
+
+.wechat-container:hover .wechat-qr {
+  opacity: 1;
+  visibility: visible;
+}
+
+.qr-image {
+  width: 120px;
+  height: 120px;
+  display: block;
+  border-radius: 4px;
+}
+
+/* 二维码箭头指示器 */
+.wechat-qr::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 6px solid transparent;
+  border-top-color: white;
+}
