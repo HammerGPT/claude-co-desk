@@ -506,7 +506,7 @@ class TaskManager {
             // 确保任务对象有完整的属性，适配后端驼峰命名
             const safeTask = {
                 id: task.id || '',
-                name: task.name || '未命名任务',
+                name: task.name || t('task.unnamed'),
                 goal: task.goal || '',
                 enabled: task.enabled !== false,
                 schedule_frequency: task.scheduleFrequency || 'immediate',  // 后端返回驼峰命名
@@ -532,7 +532,7 @@ class TaskManager {
                     </div>
                     <div class="task-item-goal">${this.escapeHtml(safeTask.goal)}</div>
                     <div class="task-item-meta">
-                        <span>${safeTask.schedule_frequency === 'immediate' ? '立即执行' : '定时执行'}</span>
+                        <span>${safeTask.schedule_frequency === 'immediate' ? t('task.immediate') : t('task.scheduled')}</span>
                         ${safeTask.resources.length > 0 ? `<span>${safeTask.resources.length} 个资源</span>` : ''}
                     </div>
                 </div>
@@ -547,7 +547,7 @@ class TaskManager {
         // 检查是否有对应的页签在运行
         if (this.isTaskRunning(task.id)) {
             return {
-                text: '进行中',
+                text: t('task.inProgress'),
                 class: 'running'
             };
         }
@@ -555,14 +555,14 @@ class TaskManager {
         // 定时任务显示"定时"
         if (task.schedule_frequency !== 'immediate') {
             return {
-                text: '定时',
+                text: t('task.scheduled'),
                 class: 'scheduled'
             };
         }
         
         // 立即执行任务且无页签则显示"完成"
         return {
-            text: '完成',
+            text: t('task.completed'),
             class: 'completed'
         };
     }
@@ -584,11 +584,11 @@ class TaskManager {
         const optionsHTML = [];
         
         if (safeTask.skip_permissions) {
-            optionsHTML.push('<span class="status-option auto-mode">全自动模式</span>');
+            optionsHTML.push(`<span class="status-option auto-mode">${t('task.autoMode')}</span>`);
         }
         
         if (safeTask.verbose_logs) {
-            optionsHTML.push('<span class="status-option verbose-logs">任务日志模式</span>');
+            optionsHTML.push(`<span class="status-option verbose-logs">${t('task.verboseLogsMode')}</span>`);
         }
         
         const optionsSection = optionsHTML.length > 0 
@@ -616,7 +616,7 @@ class TaskManager {
     async deleteTask(taskId) {
         const task = this.tasks.find(t => t.id === taskId);
         if (!task) {
-            console.error('要删除的任务不存在');
+            console.error(t('task.deleteNotFound'));
             return;
         }
 
@@ -641,7 +641,7 @@ class TaskManager {
             }
         } catch (error) {
             console.error('❌ 删除任务出错:', error);
-            alert('删除任务时发生网络错误');
+            alert(t('task.networkError'));
         }
     }
 
@@ -655,7 +655,7 @@ class TaskManager {
             <div class="empty-tasks">
                 <div class="empty-icon">📝</div>
                 <p>尚未设置任何任务</p>
-                <p class="text-muted">点击"新增任务"来创建第一个任务</p>
+                <p class="text-muted">${t('task.addFirst')}</p>
             </div>
         `;
     }
@@ -670,8 +670,8 @@ class TaskManager {
         if (this.tasks.length === 0) {
             sidebarTasksList.innerHTML = `
                 <div class="empty-tasks">
-                    <p>暂无任务</p>
-                    <button class="create-first-task-btn" onclick="window.taskManager && window.taskManager.showQuickAddTask()">创建新任务</button>
+                    <p>${t('task.noTasksEmpty')}</p>
+                    <button class="create-first-task-btn" onclick="window.taskManager && window.taskManager.showQuickAddTask()">${t('task.createFirst')}</button>
                 </div>
             `;
         } else {
@@ -681,7 +681,7 @@ class TaskManager {
             sidebarTasksList.innerHTML = displayTasks.map(task => {
                 const safeTask = {
                     id: task.id || '',
-                    name: task.name || '未命名任务',
+                    name: task.name || t('task.unnamed'),
                     goal: task.goal || '',
                     enabled: task.enabled !== false,
                     status: task.status || 'pending',
@@ -773,7 +773,7 @@ class TaskManager {
         // 确保任务对象有完整的属性，适配后端驼峰命名
         const safeTask = {
             name: task.name || '未命名任务',
-            goal: task.goal || '无描述',
+            goal: task.goal || t('task.noDescription'),
             schedule_frequency: task.scheduleFrequency || 'immediate',        // 后端返回驼峰命名
             schedule_time: task.scheduleTime || '09:00',                      // 后端返回驼峰命名
             resources: Array.isArray(task.resources) ? task.resources : [],
@@ -786,13 +786,13 @@ class TaskManager {
         if (this.detailTaskGoal) this.detailTaskGoal.textContent = safeTask.goal;
         if (this.detailExecutionMode) {
             this.detailExecutionMode.textContent = safeTask.schedule_frequency === 'immediate' 
-                ? '立即执行' 
-                : `定时执行 - ${safeTask.schedule_frequency === 'daily' ? '每日' : '每周'} ${safeTask.schedule_time}`;
+                ? t('task.immediate') 
+                : `${t('task.scheduledExecution')} ${safeTask.schedule_frequency === 'daily' ? t('task.scheduleDaily') : t('task.scheduleWeekly')} ${safeTask.schedule_time}`;
         }
         if (this.detailResources) {
             this.detailResources.innerHTML = safeTask.resources.length > 0 
                 ? safeTask.resources.map(resource => `<div class="detail-value code">${this.escapeHtml(resource)}</div>`).join('')
-                : '<span class="text-muted">未设置资源文件</span>';
+                : `<span class="text-muted">${t('task.noResourceFiles')}</span>`;
         }
         if (this.detailStatus) {
             this.detailStatus.innerHTML = this.buildStatusInfo(safeTask);
@@ -937,7 +937,7 @@ class TaskManager {
         if (!this.resourceList) return;
         
         if (this.resources.length === 0) {
-            this.resourceList.innerHTML = '<div class="text-muted">暂无引用文件或文件夹</div>';
+            this.resourceList.innerHTML = `<div class="text-muted">${t('task.noResources')}</div>`;
             return;
         }
         
@@ -1134,11 +1134,11 @@ class TaskManager {
                 
             } else {
                 const error = await response.json();
-                alert('保存任务失败: ' + (error.error || '未知错误'));
+                alert(t('task.saveFailed') + ': ' + (error.error || t('error.unknown')));
             }
         } catch (error) {
             console.error('保存任务失败:', error);
-            alert('保存任务失败: ' + error.message);
+            alert(t('task.saveFailed') + ': ' + error.message);
         }
     }
 
@@ -1150,7 +1150,7 @@ class TaskManager {
         const goal = this.taskGoalInput?.value?.trim();
         
         if (!name || !goal) {
-            alert('请填写任务名称和目标');
+            alert(t('task.fillNameAndGoal'));
             return null;
         }
         
@@ -1179,7 +1179,7 @@ class TaskManager {
         const task = this.tasks.find(t => t.id === this.selectedTaskId);
         if (!task) {
             console.error('❌ 任务不存在:', this.selectedTaskId);
-            alert('任务不存在，请刷新页面重试');
+            alert(t('task.taskNotFound'));
             return;
         }
         
@@ -1202,7 +1202,7 @@ class TaskManager {
         // 检查WebSocket连接
         if (!window.websocketManager || !window.websocketManager.isConnected) {
             console.error('❌ WebSocket连接未建立');
-            alert('系统连接异常，请刷新页面重试');
+            alert(t('task.systemConnectionError'));
             return;
         }
         
@@ -1238,7 +1238,7 @@ class TaskManager {
             
         } catch (error) {
             console.error('❌ 任务执行失败:', error);
-            alert(`任务执行失败: ${error.message}`);
+            alert(t('task.executionFailedWithError') + error.message);
         }
     }
     
@@ -1277,7 +1277,7 @@ class TaskManager {
         notification.innerHTML = `
             <div class="notification-content">
                 <span class="notification-icon"></span>
-                <span class="notification-text">正在执行任务: ${this.escapeHtml(taskName)}</span>
+                <span class="notification-text">${t('task.executing')}${this.escapeHtml(taskName)}</span>
             </div>
         `;
         
@@ -1415,7 +1415,7 @@ class TaskManager {
         // 填充详情数据
         const safeTask = {
             name: task.name || '未命名任务',
-            goal: task.goal || '无描述',
+            goal: task.goal || t('task.noDescription'),
             schedule_frequency: task.scheduleFrequency || 'immediate',
             schedule_time: task.scheduleTime || '09:00',
             resources: Array.isArray(task.resources) ? task.resources : [],
@@ -1435,13 +1435,13 @@ class TaskManager {
         if (goalEl) goalEl.textContent = safeTask.goal;
         if (modeEl) {
             modeEl.textContent = safeTask.schedule_frequency === 'immediate' 
-                ? '立即执行' 
-                : `定时执行 - ${safeTask.schedule_frequency === 'daily' ? '每日' : '每周'} ${safeTask.schedule_time}`;
+                ? t('task.immediate') 
+                : `${t('task.scheduledExecution')} ${safeTask.schedule_frequency === 'daily' ? t('task.scheduleDaily') : t('task.scheduleWeekly')} ${safeTask.schedule_time}`;
         }
         if (resourcesEl) {
             resourcesEl.innerHTML = safeTask.resources.length > 0 
                 ? safeTask.resources.map(resource => `<div class="detail-value code">${this.escapeHtml(resource)}</div>`).join('')
-                : '<span class="text-muted">未设置资源文件</span>';
+                : `<span class="text-muted">${t('task.noResourceFiles')}</span>`;
         }
         if (statusEl) {
             statusEl.innerHTML = this.buildStatusInfo(safeTask);
@@ -1460,12 +1460,12 @@ class TaskManager {
             });
             
             if (safeTask.session_id) {
-                executeBtn.textContent = '继续任务';
-                executeBtn.title = '恢复之前的Claude CLI会话继续此任务';
+                executeBtn.textContent = t('task.continueTask');
+                executeBtn.title = t('task.continueTaskTitle');
                 console.log('✅ 按钮设置为"继续任务"，sessionId:', safeTask.session_id);
             } else {
-                executeBtn.textContent = '重新执行';
-                executeBtn.title = '重新开始执行此任务';
+                executeBtn.textContent = t('task.reExecute');
+                executeBtn.title = t('task.reExecuteTitle');
                 console.log('❌ 按钮设置为"重新执行"，无sessionId');
             }
         }
@@ -1542,7 +1542,7 @@ class TaskManager {
         if (!resourceList) return;
         
         if (!this.standaloneResources || this.standaloneResources.length === 0) {
-            resourceList.innerHTML = '<div class="text-muted">暂无引用文件或文件夹</div>';
+            resourceList.innerHTML = `<div class="text-muted">${t('task.noResources')}</div>`;
             return;
         }
         
@@ -1564,7 +1564,7 @@ class TaskManager {
         if (!resourceList) return;
         
         if (!this.standaloneEditResources || this.standaloneEditResources.length === 0) {
-            resourceList.innerHTML = '<div class="text-muted">暂无引用文件或文件夹</div>';
+            resourceList.innerHTML = `<div class="text-muted">${t('task.noResources')}</div>`;
             return;
         }
         
@@ -1683,15 +1683,15 @@ class TaskManager {
                 this.loadTasks();
                 
                 // 显示成功提示
-                this.showExecutionFeedback(`任务"${savedTask.name}"创建成功`);
+                this.showExecutionFeedback(`${t('task.createSuccess')}: "${savedTask.name}"`);
                 
             } else {
                 const error = await response.json();
-                alert('保存任务失败: ' + (error.error || '未知错误'));
+                alert(t('task.saveFailed') + ': ' + (error.error || t('error.unknown')));
             }
         } catch (error) {
             console.error('保存任务失败:', error);
-            alert('保存任务失败: ' + error.message);
+            alert(t('task.saveFailed') + ': ' + error.message);
         }
     }
 
@@ -1722,15 +1722,15 @@ class TaskManager {
                 this.showStandaloneTaskDetail(savedTask);
                 
                 // 显示成功提示
-                this.showExecutionFeedback(`任务"${savedTask.name}"修改成功`);
+                this.showExecutionFeedback(`${t('task.updateSuccess')}: "${savedTask.name}"`);
                 
             } else {
                 const error = await response.json();
-                alert('保存任务失败: ' + (error.error || '未知错误'));
+                alert(t('task.saveFailed') + ': ' + (error.error || t('error.unknown')));
             }
         } catch (error) {
             console.error('保存任务失败:', error);
-            alert('保存任务失败: ' + error.message);
+            alert(t('task.saveFailed') + ': ' + error.message);
         }
     }
 
@@ -1745,7 +1745,7 @@ class TaskManager {
         const goal = goalInput?.value?.trim();
         
         if (!name || !goal) {
-            alert('请填写任务名称和目标');
+            alert(t('task.fillNameAndGoal'));
             return null;
         }
         
@@ -1783,7 +1783,7 @@ class TaskManager {
         const goal = goalInput?.value?.trim();
         
         if (!name || !goal) {
-            alert('请填写任务名称和目标');
+            alert(t('task.fillNameAndGoal'));
             return null;
         }
         
@@ -1817,7 +1817,7 @@ class TaskManager {
         const task = this.tasks.find(t => t.id === this.selectedTaskId);
         if (!task) {
             console.error('任务不存在:', this.selectedTaskId);
-            alert('任务不存在，请刷新页面重试');
+            alert(t('task.taskNotFound'));
             return;
         }
         
@@ -1833,7 +1833,7 @@ class TaskManager {
         
         // 检查WebSocket连接
         if (!window.websocketManager || !window.websocketManager.isConnected) {
-            alert('系统连接异常，请刷新页面重试');
+            alert(t('task.systemConnectionError'));
             return;
         }
         
@@ -1869,7 +1869,7 @@ class TaskManager {
                     verboseLogs: task.verbose_logs,
                     resources: task.resources
                 };
-                this.showExecutionFeedback(`重新执行任务: ${task.name}`);
+                this.showExecutionFeedback(t('task.reExecutingTask') + task.name);
             }
             
             console.log('📡 发送任务执行请求:', sessionData);
@@ -1895,7 +1895,7 @@ class TaskManager {
             
         } catch (error) {
             console.error('❌ 任务执行失败:', error);
-            alert(`任务执行失败: ${error.message}`);
+            alert(t('task.executionFailedWithError') + error.message);
         }
     }
 

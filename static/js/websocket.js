@@ -275,7 +275,7 @@ class WebSocketManager {
             <div class="notification-content error">
                 <span class="notification-icon">${icon}</span>
                 <div class="notification-details">
-                    <div class="notification-title">任务执行失败</div>
+                    <div class="notification-title">${t('task.executionFailed')}</div>
                     <div class="notification-message">${this._escapeHtml(error)}</div>
                     <div class="notification-taskid">任务ID: ${taskId}</div>
                 </div>

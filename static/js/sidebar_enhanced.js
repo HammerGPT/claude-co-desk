@@ -67,7 +67,7 @@ class EnhancedSidebar {
                     <circle cx="11" cy="11" r="8"></circle>
                     <path d="m21 21-4.35-4.35"></path>
                 </svg>
-                <input type="text" id="project-search" placeholder="搜索项目..." class="search-input">
+                <input type="text" id="project-search" placeholder="${t('project.search')}" class="search-input">
                 <button class="search-clear hidden" type="button">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <line x1="18" y1="6" x2="6" y2="18"></line>
@@ -188,7 +188,7 @@ class EnhancedSidebar {
                 console.log('🔧 侧边栏系统配置已加载:', this.systemConfig);
             }
         } catch (error) {
-            console.error('侧边栏加载系统配置失败:', error);
+            console.error('Sidebar failed to load system config:', error);
         }
     }
 
@@ -223,11 +223,11 @@ class EnhancedSidebar {
                 // 项目加载完成，不自动选择项目
             } else {
                 console.error('加载项目失败:', response.statusText);
-                this.showError('加载项目失败');
+                this.showError(t('project.loadFailed'));
             }
         } catch (error) {
             console.error('加载项目错误:', error);
-            this.showError('网络错误，无法加载项目');
+            this.showError(t('project.networkError'));
         } finally {
             this.setLoading(false);
         }
@@ -414,14 +414,14 @@ class EnhancedSidebar {
                         }
                     </div>
                     <div class="project-info">
-                        <div class="project-name">${this.isWorkingDirectoryProject(project) ? '工作目录' : this.escapeHtml(project.displayName || project.name)}</div>
+                        <div class="project-name">${this.isWorkingDirectoryProject(project) ? t('project.workingDirectory') : this.escapeHtml(project.displayName || project.name)}</div>
                         <div class="project-meta">
-                            ${hasMore && sessionCount >= 5 ? `${sessionCount}+` : sessionCount} 个会话
+                            ${hasMore && sessionCount >= 5 ? `${sessionCount}+` : sessionCount} ${t('project.sessionsCount')}
                         </div>
                     </div>
                 </div>
                 <div class="project-actions">
-                    <button class="expand-btn" title="${isExpanded ? '折叠' : '展开'}">
+                    <button class="expand-btn" title="${isExpanded ? t('project.collapse') : t('project.expand')}">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <polyline points="${isExpanded ? '18,15 12,9 6,15' : '9,18 15,12 9,6'}"></polyline>
                         </svg>
@@ -448,14 +448,14 @@ class EnhancedSidebar {
             return `
                 <div class="sessions-list">
                     <div class="no-sessions">
-                        <p>暂无会话</p>
+                        <p>${t('session.noSessions')}</p>
                     </div>
                     <button class="new-session-btn" onclick="enhancedSidebar.showNewSessionModal('${project.name}')">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <line x1="12" y1="5" x2="12" y2="19"></line>
                             <line x1="5" y1="12" x2="19" y2="12"></line>
                         </svg>
-                        新建会话
+                        ${t('session.newChat')}
                     </button>
                 </div>
             `;
@@ -487,7 +487,7 @@ class EnhancedSidebar {
                         </svg>
                     </div>
                     <div class="session-content">
-                        <div class="session-summary">${this.escapeHtml(session.summary || '新会话')}</div>
+                        <div class="session-summary">${this.escapeHtml(session.summary || t('session.new'))}</div>
                         <div class="session-meta">
                             <span class="session-time">${timeAgo}</span>
                             ${session.messageCount > 0 ? 
@@ -503,7 +503,7 @@ class EnhancedSidebar {
                     <div class="session-actions">
                         <button class="delete-session-btn" 
                                 onclick="event.stopPropagation(); enhancedSidebar.deleteSession('${project.name}', '${session.id}')"
-                                title="删除会话">
+                                title="${t('session.delete')}">
                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <polyline points="3,6 5,6 21,6"></polyline>
                                 <path d="m19,6v14a2,2 0 0,1 -2,2H7a2,2 0 0,1 -2,-2V6m3,0V4a2,2 0 0,1 2,-2h4a2,2 0 0,1 2,2v2"></path>
@@ -546,7 +546,7 @@ class EnhancedSidebar {
                         <line x1="12" y1="5" x2="12" y2="19"></line>
                         <line x1="5" y1="12" x2="19" y2="12"></line>
                     </svg>
-                    新建会话
+                    ${t('session.newChat')}
                 </button>
                 <button class="continue-session-btn ${allSessions.length === 0 ? 'disabled' : ''}" 
                         onclick="enhancedSidebar.continueLastSession('${project.name}')"
@@ -556,7 +556,7 @@ class EnhancedSidebar {
                         <path d="M21 12c0 5-3 9-9 9s-9-4-9-9 3-9 9-9c2.5 0 4.8 1 6.5 2.8"></path>
                         <path d="M21 4v4h-4"></path>
                     </svg>
-                    继续上个会话
+                    ${t('session.continueLastSession')}
                 </button>
             </div>
         `;
@@ -641,10 +641,10 @@ class EnhancedSidebar {
             this.connectProjectName.textContent = project.displayName || project.name;
         }
         if (this.connectProjectPath) {
-            this.connectProjectPath.textContent = project.path || project.fullPath || '未知路径';
+            this.connectProjectPath.textContent = project.path || project.fullPath || t('project.unknownPath');
         }
         if (this.sessionNameInput) {
-            this.sessionNameInput.value = session.summary || '现有会话';
+            this.sessionNameInput.value = session.summary || t('session.existing');
             // 焦点到输入框并选中文本
             setTimeout(() => {
                 this.sessionNameInput.focus();
@@ -671,10 +671,10 @@ class EnhancedSidebar {
             this.connectProjectName.textContent = project.displayName || project.name;
         }
         if (this.connectProjectPath) {
-            this.connectProjectPath.textContent = project.path || project.fullPath || '未知路径';
+            this.connectProjectPath.textContent = project.path || project.fullPath || t('project.unknownPath');
         }
         if (this.sessionNameInput) {
-            this.sessionNameInput.value = '新建会话';
+            this.sessionNameInput.value = t('session.new');
             // 焦点到输入框并选中文本
             setTimeout(() => {
                 this.sessionNameInput.focus();
@@ -704,7 +704,7 @@ class EnhancedSidebar {
     confirmProjectConnection() {
         if (!this.connectingProject) return;
         
-        const sessionName = this.sessionNameInput?.value?.trim() || '新建会话';
+        const sessionName = this.sessionNameInput?.value?.trim() || t('session.new');
         
         if (this.connectingSession) {
             // 连接到现有会话
@@ -743,7 +743,7 @@ class EnhancedSidebar {
      * 删除会话
      */
     async deleteSession(projectName, sessionId) {
-        if (!confirm('确定要删除这个会话吗？此操作无法撤销。')) {
+        if (!confirm(t('session.confirmDelete'))) {
             return;
         }
 
@@ -761,10 +761,10 @@ class EnhancedSidebar {
                 // 重新加载项目会话
                 await this.loadProjectSessions(projectName);
                 
-                console.log('会话删除成功');
+                console.log(t('session.deleteSuccess'));
             } else {
                 const error = await response.json();
-                alert(error.error || '删除会话失败');
+                alert(error.error || t('session.deleteFailed'));
             }
         } catch (error) {
             console.error('删除会话错误:', error);
@@ -854,7 +854,7 @@ class EnhancedSidebar {
         
         // 创建新的终端会话用于继续操作
         const sessionId = this.generateSessionId();
-        const sessionName = '继续会话 - ' + (project.displayName || project.name);
+        const sessionName = t('session.continueSession') + ' - ' + (project.displayName || project.name);
         const tabElement = this.createSessionTab(sessionId, project, sessionName);
         
         // 保存会话数据，标记为继续会话类型
@@ -1150,11 +1150,34 @@ class EnhancedSidebar {
             });
         }
         
+        // 初始化语言选择器
+        this.initializeLanguageSelector();
+        
         // MCP工具管理功能
         this.initializeMCPToolsFeatures();
         
         // 设置MCP WebSocket消息监听器
         this.setupMCPMessageListeners();
+    }
+    
+    /**
+     * 初始化语言选择器
+     */
+    initializeLanguageSelector() {
+        const languageSelector = document.getElementById('language-selector');
+        if (!languageSelector) return;
+        
+        // 设置当前语言
+        languageSelector.value = window.i18n.getCurrentLanguage();
+        
+        // 监听语言切换事件
+        languageSelector.addEventListener('change', (e) => {
+            const newLanguage = e.target.value;
+            window.i18n.setLanguage(newLanguage);
+            
+            // 显示切换成功提示（可选）
+            console.log('Language switched to:', newLanguage);
+        });
     }
     
     /**
@@ -1227,7 +1250,7 @@ class EnhancedSidebar {
                 
                 // 为工作目录添加标注
                 const isWorkingDir = userHomePath && project.path === userHomePath;
-                const workingDirLabel = isWorkingDir ? ' (工作目录)' : '';
+                const workingDirLabel = isWorkingDir ? ` (${t('mcp.workingDirectory')})` : '';
                 
                 option.textContent = `${displayName} (${displayPath})${workingDirLabel}`;
                 projectSelect.appendChild(option);
@@ -1790,7 +1813,7 @@ class EnhancedSidebar {
     getMCPToolsPlaceholderHTML() {
         return `
             <div style="text-align: center; padding: 2rem; color: var(--muted-foreground);">
-                <p>暂无已安装的MCP工具</p>
+                <p>${t('mcp.noInstalledTools')}</p>
             </div>
         `;
     }
