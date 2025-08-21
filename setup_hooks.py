@@ -23,16 +23,16 @@ class HookManager:
         
     def setup_claude_hooks(self) -> bool:
         """
-        配置Claude hooks监听初始化完成事件（已废弃，使用临时hook）
+        Configure Claude hooks to listen for initialization completion events (deprecated, use temporary hook)
         """
-        logger.warning("setup_claude_hooks已废弃，请使用setup_temporary_hook")
+        logger.warning("setup_claude_hooks is deprecated, please use setup_temporary_hook")
         return False
     
     def setup_temporary_hook(self, session_identifier: str = None) -> bool:
         """
         设置临时的hook配置，只在特定会话中生效
         """
-        logger.info("开始配置临时Claude Code hooks...")
+        logger.info("Starting to configure temporary Claude Code hooks...")
         
         try:
             # 1. 确保部署脚本存在且可执行
@@ -50,9 +50,9 @@ class HookManager:
             success = self._save_settings(settings)
             
             if success:
-                logger.info(" 临时Claude Code hooks配置成功")
-                logger.info(f"监听脚本: {self.deploy_script_path}")
-                logger.info(f"会话标识: {session_identifier or 'any'}")
+                logger.info(" Temporary Claude Code hooks configuration successful")
+                logger.info(f"Monitoring script: {self.deploy_script_path}")
+                logger.info(f"Session identifier: {session_identifier or 'any'}")
                 return True
             else:
                 logger.error(" 临时Claude Code hooks配置失败")
@@ -72,12 +72,12 @@ class HookManager:
             try:
                 with open(self.settings_path, 'r', encoding='utf-8') as f:
                     settings = json.load(f)
-                logger.info(f"读取现有配置文件: {self.settings_path}")
+                logger.info(f"Reading existing configuration file: {self.settings_path}")
             except Exception as e:
                 logger.warning(f"读取现有配置失败，将创建新配置: {e}")
                 settings = {}
         else:
-            logger.info("配置文件不存在，将创建新配置")
+            logger.info("Configuration file does not exist, will create new configuration")
         
         return settings
     
@@ -95,7 +95,7 @@ class HookManager:
         if "hooks" not in settings:
             settings["hooks"] = {}
         
-        # 构建增强的hook命令 - 传递会话标识和更多上下文
+        # 构建增强的hook命令 - 传递Session identifier和更多上下文
         session_arg = f' "{session_identifier}"' if session_identifier else ' ""'
         hook_command = f'python "{self.deploy_script_path}" "$CLAUDE_TRANSCRIPT_PATH" "$CLAUDE_CWD"{session_arg}'
         
@@ -119,7 +119,7 @@ class HookManager:
             settings["hooks"]["PostToolUse"] = []
         
         settings["hooks"]["PostToolUse"].append(post_tool_hook)
-        logger.info("已添加临时数字员工部署hook到PostToolUse事件（Write工具）")
+        logger.info("Added temporary agent deployment hook to PostToolUse event（Write工具）")
     
     def _cleanup_temporary_hooks(self, settings: Dict[str, Any]) -> None:
         """
@@ -154,7 +154,7 @@ class HookManager:
             with open(self.settings_path, 'w', encoding='utf-8') as f:
                 json.dump(settings, f, indent=2, ensure_ascii=False)
             
-            logger.info(f"配置已保存到: {self.settings_path}")
+            logger.info(f"Configuration saved to: {self.settings_path}")
             return True
             
         except Exception as e:
@@ -165,11 +165,11 @@ class HookManager:
         """
         移除数字员工部署hooks（用于清理）
         """
-        logger.info("开始移除数字员工部署hooks...")
+        logger.info("Starting to remove agent deployment hooks...")
         
         try:
             if not self.settings_path.exists():
-                logger.info("配置文件不存在，无需移除")
+                logger.info("Configuration file does not exist, no need to remove")
                 return True
             
             # 读取现有配置
@@ -205,9 +205,9 @@ class HookManager:
             if removed_count > 0:
                 # 保存更新后的配置
                 self._save_settings(settings)
-                logger.info(f" 总共移除了 {removed_count} 个数字员工部署hooks")
+                logger.info(f" Total removed.*agent deployment hooks")
             else:
-                logger.info("未找到需要移除的hooks")
+                logger.info("No hooks found that need to be removed")
             
             return True
             
@@ -268,10 +268,10 @@ def main():
     
     # 检查当前状态
     status = hook_manager.check_hook_status()
-    logger.info(f"当前hooks状态: {status}")
+    logger.info(f"Current hooks status: {status}")
     
     if status["configured"]:
-        logger.info("Hooks已配置，如需重新配置请先运行移除命令")
+        logger.info("Hooks already configured, run remove command first if reconfiguration needed")
         return 0
     
     # 配置hooks
