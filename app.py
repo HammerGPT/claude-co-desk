@@ -40,19 +40,19 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # 启动时执行
-    logger.info(" 应用启动中...")
+    logger.info("Application starting...")
     
     # 启动任务调度器
-    logger.info(" 启动任务调度器...")
+    logger.info("Starting task scheduler...")
     task_scheduler.start()
     
     yield  # 应用运行期间
     
     # 关闭时执行
-    logger.info(" 应用关闭中...")
+    logger.info("Application shutting down...")
     
     # 停止任务调度器
-    logger.info(" 停止任务调度器...")
+    logger.info("Stopping task scheduler...")
     task_scheduler.stop()
 
 app = FastAPI(
@@ -99,7 +99,7 @@ class EnvironmentChecker:
         
         # 检测策略列表，按优先级排序
         detection_strategies = [
-            ("PATH环境变量", EnvironmentChecker._check_path_env),
+            ("PATH environment", EnvironmentChecker._check_path_env),
             ("环境变量CLAUDE_CLI_PATH", EnvironmentChecker._check_claude_env_var), 
             ("常见安装路径", EnvironmentChecker._check_common_paths),
             ("用户本地路径", EnvironmentChecker._check_user_local_paths),
@@ -117,7 +117,7 @@ class EnvironmentChecker:
                         # 严格验证找到的路径
                         if EnvironmentChecker._verify_claude_executable(claude_path):
                             EnvironmentChecker._cached_claude_path = claude_path
-                            logger.info(f" 通过{strategy_name}找到Claude CLI: {claude_path} (尝试 {attempt + 1}/3)")
+                            logger.info(f"Found Claude CLI via {strategy_name}: {claude_path} (attempt {attempt + 1}/3)")
                             return claude_path
                         else:
                             logger.warning(f" {strategy_name}找到的路径验证失败: {claude_path}")
@@ -183,8 +183,8 @@ class EnvironmentChecker:
     
     @staticmethod 
     def _check_path_env() -> Optional[str]:
-        """检查PATH环境变量中的claude命令"""
-        logger.debug(" 在PATH环境变量中搜索claude命令")
+        """Check claude command in PATH environment"""
+        logger.debug("Searching for claude command in PATH environment")
         claude_path = shutil.which('claude')
         if claude_path:
             logger.debug(f" PATH中找到: {claude_path}")
@@ -195,7 +195,7 @@ class EnvironmentChecker:
     
     @staticmethod
     def _check_claude_env_var() -> Optional[str]:
-        """检查CLAUDE_CLI_PATH环境变量"""
+        """Check CLAUDE_CLI_PATH environment variable"""
         claude_env_path = os.environ.get('CLAUDE_CLI_PATH')
         if claude_env_path:
             logger.debug(f" 环境变量CLAUDE_CLI_PATH: {claude_env_path}")
@@ -262,9 +262,9 @@ class EnvironmentChecker:
         logger.error(" 未找到可用的Claude CLI可执行文件")
         logger.error(" 诊断信息:")
         
-        # PATH环境变量
+        # PATH environment variable
         path_env = os.environ.get('PATH', '')
-        logger.error(f"   PATH环境变量: {path_env[:200]}{'...' if len(path_env) > 200 else ''}")
+        logger.error(f"   PATH environment: {path_env[:200]}{'...' if len(path_env) > 200 else ''}")
         
         # 检查常见路径的存在性
         common_paths = [
@@ -286,8 +286,8 @@ class EnvironmentChecker:
         
         logger.error(" 解决建议:")
         logger.error("   1. 确认Claude CLI已正确安装: pip install claude-ai")
-        logger.error("   2. 检查PATH环境变量是否包含Claude CLI安装路径")
-        logger.error("   3. 设置CLAUDE_CLI_PATH环境变量指向Claude CLI可执行文件")
+        logger.error("   2. Check if PATH environment contains Claude CLI installation path")
+        logger.error("   3. Set CLAUDE_CLI_PATH environment variable to point to Claude CLI executable")
         logger.error("   4. 重新启动终端或重新加载环境变量")
     
     @staticmethod
@@ -385,7 +385,7 @@ class ConnectionManager:
         elif connection_type == 'shell':
             self.shell_connections.append(websocket)
         
-        logger.info(f"WebSocket连接已建立: {connection_type}")
+        logger.info(f"WebSocket connection established: {connection_type}")
     
     def disconnect(self, websocket: WebSocket):
         if websocket in self.active_connections:
@@ -395,7 +395,7 @@ class ConnectionManager:
         if websocket in self.shell_connections:
             self.shell_connections.remove(websocket)
         
-        logger.info("WebSocket连接已断开")
+        logger.info("WebSocket connection closed")
     
     async def send_personal_message(self, message: dict, websocket: WebSocket):
         await websocket.send_text(json.dumps(message))
@@ -425,7 +425,7 @@ class ConnectionManager:
         for connection in disconnected_connections:
             self.disconnect(connection)
             
-        logger.info(f" 已广播消息到 {len(connections) - len(disconnected_connections)}/{len(connections)} 个连接")
+        logger.info(f"Broadcasted message to {len(connections) - len(disconnected_connections)}/{len(connections)} connections")
 
 # PTY Shell处理器 - 移植自claudecodeui的node-pty逻辑
 class PTYShellHandler:
@@ -466,13 +466,13 @@ class PTYShellHandler:
         self.task_id = task_id
         self.project_path = project_path
         if task_id:
-            logger.info(f" 设置任务ID用于session_id捕获: {task_id}")
+            logger.info(f"Set task ID for session_id capture: {task_id}")
             # 启动文件监控来捕获session_id
             self._start_file_monitor()
         
         # 如果已经有进程在运行，先清理
         if self.is_running():
-            logger.info(" 检测到已有PTY进程，正在清理...")
+            logger.info("Detected existing PTY process, cleaning up...")
             self.cleanup()
             # 等待清理完成
             await asyncio.sleep(0.5)
@@ -489,7 +489,7 @@ class PTYShellHandler:
                 await self.send_output(f"{error_msg}\r\n")
                 return False
             
-            logger.info(f" 使用Claude CLI路径: {claude_executable}")
+            logger.info(f"Using Claude CLI path: {claude_executable}")
             
             # 构建Claude命令 - 使用绝对路径，支持初始命令参数
             if initial_command:
@@ -519,19 +519,19 @@ class PTYShellHandler:
                         enhanced_command = f'"{claude_executable}" "{command_content}"'
                 
                 shell_command = f'cd "{project_path}" && {enhanced_command}'
-                logger.info(f" 使用增强初始命令: {enhanced_command}")
+                logger.info(f"Using enhanced initial command: {enhanced_command}")
             elif has_session and session_id:
                 # 优化恢复会话策略：
                 # 1. 首先尝试使用传入的session_id
                 # 2. 如果失败，自动启动新会话
                 # 注：session_id现在优先是文件名(主会话ID)，更可能成功
                 shell_command = f'cd "{project_path}" && ("{claude_executable}" --resume {session_id} || "{claude_executable}")'
-                logger.info(f" 恢复会话命令（增强fallback）: \"{claude_executable}\" --resume {session_id} || \"{claude_executable}\"")
-                logger.info(f" 会话ID类型: {'主会话' if len(session_id.split('-')) == 5 else '子会话'}")
+                logger.info(f"Resume session command (enhanced fallback): \"{claude_executable}\" --resume {session_id} || \"{claude_executable}\"")
+                logger.info(f"Session ID type: {'main session' if len(session_id.split('-')) == 5 else 'sub session'}")
             else:
                 # 直接启动新会话
                 shell_command = f'cd "{project_path}" && "{claude_executable}"'
-                logger.info(f"🆕 启动新Claude会话: \"{claude_executable}\"")
+                logger.info(f"Starting new Claude session: \"{claude_executable}\"")
             
             # 注意：不再需要添加JSON参数，session_id通过文件监控获取
             
@@ -552,9 +552,9 @@ class PTYShellHandler:
             # 确保NO_COLOR不存在，避免与FORCE_COLOR冲突
             env.pop('NO_COLOR', None)
             
-            logger.info(f" 启动PTY Shell: {shell_command}")
-            logger.info(f" 工作目录: {project_path}")
-            logger.info(f" 终端环境: TERM={env['TERM']}, COLORTERM={env['COLORTERM']}")
+            logger.info(f"Starting PTY Shell: {shell_command}")
+            logger.info(f"Working directory: {project_path}")
+            logger.info(f"Terminal environment: TERM={env['TERM']}, COLORTERM={env['COLORTERM']}")
             
             # 创建PTY主从文件描述符对
             self.master_fd, slave_fd = pty.openpty()
@@ -564,7 +564,7 @@ class PTYShellHandler:
                 import struct, fcntl
                 winsize = struct.pack('HHHH', rows, cols, 0, 0)
                 fcntl.ioctl(slave_fd, termios.TIOCSWINSZ, winsize)
-                logger.info(f" PTY初始尺寸已设置: {cols}x{rows}")
+                logger.info(f"PTY initial size set: {cols}x{rows}")
             except Exception as e:
                 logger.warning(f" 设置PTY初始尺寸失败: {e}")
             
@@ -599,14 +599,14 @@ class PTYShellHandler:
                 attrs[6][termios.VTIME] = 0   # 无超时
                 
                 termios.tcsetattr(slave_fd, termios.TCSANOW, attrs)
-                logger.info(" PTY配置为类node-pty模式，启用完整终端功能")
+                logger.info("PTY configured in node-pty-like mode, full terminal features enabled")
             except Exception as e:
                 logger.warning(f" 设置PTY属性失败: {e}")
             
             # 启动子进程，使用用户默认shell执行命令
             # 获取用户的默认shell
             user_shell = env.get('SHELL', '/bin/bash')
-            logger.info(f" 使用shell: {user_shell}")
+            logger.info(f"Using shell: {user_shell}")
             
             self.process = subprocess.Popen(
                 [user_shell, '-c', shell_command],
@@ -621,7 +621,7 @@ class PTYShellHandler:
             # 关闭slave端，只保留master端
             os.close(slave_fd)
             
-            logger.info(f" PTY Shell进程已启动: PID {self.process.pid}")
+            logger.info(f"PTY Shell process started: PID {self.process.pid}")
             
             # 不发送启动消息，让Claude CLI的原生输出成为唯一信息源
             
@@ -631,7 +631,7 @@ class PTYShellHandler:
             self.read_thread.start()
             
             # 添加进程监控
-            logger.info(f" 子进程状态: PID={self.process.pid}, poll={self.process.poll()}")
+            logger.info(f"Child process status: PID={self.process.pid}, poll={self.process.poll()}")
             
             return True
             
@@ -642,7 +642,7 @@ class PTYShellHandler:
     
     def _read_pty_output(self):
         """读取PTY输出的线程函数 - 优化重复输出处理"""
-        logger.info(" PTY读取线程启动")
+        logger.info("PTY read thread started")
         
         try:
             read_count = 0
@@ -703,10 +703,10 @@ class PTYShellHandler:
                             
                     except OSError as e:
                         if e.errno == 5:  # Input/output error，PTY已关闭
-                            logger.info(" PTY已关闭 (I/O错误)")
+                            logger.info("PTY closed (I/O error)")
                             break
                         elif e.errno == 9:  # Bad file descriptor
-                            logger.info(" PTY文件描述符无效")
+                            logger.info("PTY file descriptor invalid")
                             break
                         else:
                             logger.error(f" 读取PTY输出错误 (errno={e.errno}): {e}")
@@ -728,7 +728,7 @@ class PTYShellHandler:
             import traceback
             logger.error(f"异常详情: {traceback.format_exc()}")
         finally:
-            logger.info(f" PTY读取线程结束 (共读取{read_count}次)")
+            logger.info(f"PTY read thread ended (total reads: {read_count})")
     
     async def send_input(self, data: str):
         """发送输入到PTY - 增强调试"""
@@ -1008,7 +1008,7 @@ class PTYShellHandler:
             for pattern in url_patterns:
                 matches = re.findall(pattern, data, re.IGNORECASE)
                 for url in matches:
-                    logger.info(f" 检测到URL: {url}")
+                    logger.info(f"Detected URL: {url}")
                     await self.websocket.send_text(json.dumps({
                         'type': 'url_open',
                         'url': url
@@ -1038,7 +1038,7 @@ class PTYShellHandler:
                 import struct, fcntl, termios
                 
                 # 记录调整信息
-                logger.info(f" PTY终端调整大小: {cols}x{rows}")
+                logger.info(f"PTY terminal resized: {cols}x{rows}")
                 
                 # 发送TIOCSWINSZ信号调整终端窗口大小
                 # 格式: rows, cols, xpixel, ypixel
@@ -1054,7 +1054,7 @@ class PTYShellHandler:
     
     def cleanup(self):
         """清理PTY资源"""
-        logger.info(" 清理PTY Shell资源...")
+        logger.info("Cleaning PTY Shell resources...")
         
         self.running = False
         
@@ -1085,7 +1085,7 @@ class PTYShellHandler:
                 pass
             self.master_fd = None
         
-        logger.info(" PTY Shell资源清理完成")
+        logger.info("PTY Shell resource cleanup completed")
     
     
     def _start_file_monitor(self):
@@ -1100,14 +1100,14 @@ class PTYShellHandler:
             daemon=True
         )
         self.file_monitor_thread.start()
-        logger.info(f" 启动文件监控用于捕获session_id (任务: {self.task_id})")
+        logger.info(f"Starting file monitoring for session_id capture (task: {self.task_id})")
     
     def _stop_file_monitor(self):
         """停止文件监控"""
         self.file_monitor_running = False
         if self.file_monitor_thread and self.file_monitor_thread.is_alive():
             self.file_monitor_thread.join(timeout=2.0)
-        logger.info(" 文件监控已停止")
+        logger.info("File monitoring stopped")
     
     def _file_monitor_worker(self):
         """文件监控工作线程"""
@@ -1127,7 +1127,7 @@ class PTYShellHandler:
                 # 默认监控所有项目目录
                 session_dir = claude_dir
             
-            logger.info(f" 监控目录: {session_dir}")
+            logger.info(f"Monitoring directory: {session_dir}")
             
             # 记录监控开始时间
             start_time = time.time()
@@ -1141,7 +1141,7 @@ class PTYShellHandler:
                         try:
                             success = task_scheduler.update_task_session_id(self.task_id, session_id)
                             if success:
-                                logger.info(f"🆔 文件监控成功捕获session_id: {session_id} (任务: {self.task_id})")
+                                logger.info(f"File monitoring successfully captured session_id: {session_id} (task: {self.task_id})")
                                 self.session_id_captured = True
                                 
                                 # 通知前端任务数据已更新，需要刷新任务列表
@@ -1163,7 +1163,7 @@ class PTYShellHandler:
                                                 self.loop
                                             )
                                             future.result(timeout=5)
-                                            logger.info(f" 已通知前端刷新任务数据: {self.task_id}")
+                                            logger.info(f"Notified frontend to refresh task data: {self.task_id}")
                                         else:
                                             logger.warning(" WebSocket管理器不可用，无法通知前端")
                                     else:
@@ -1209,7 +1209,7 @@ class PTYShellHandler:
                         # 格式: 891a2f24-0dcb-41a3-ba70-8dff44e3eb42.jsonl
                         filename = file_path.stem
                         if re.match(r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', filename):
-                            logger.info(f" 从文件名获取session_id: {filename} (文件: {file_path.name})")
+                            logger.info(f"Getting session_id from filename: {filename} (file: {file_path.name})")
                             return filename
                 except:
                     continue
@@ -1762,7 +1762,7 @@ async def handle_agents_deployed(request: Request):
     try:
         # 解析请求数据
         data = await request.json()
-        logger.info(f"收到数字员工部署完成通知: {data}")
+        logger.info(f"Received agent deployment completion notification: {data}")
         
         # 准备广播消息
         broadcast_message = {
@@ -1778,7 +1778,7 @@ async def handle_agents_deployed(request: Request):
         broadcast_success = True
         try:
             await manager.broadcast(broadcast_message)
-            logger.info(f"已广播数字员工部署完成消息到所有连接")
+            logger.info(f"Broadcasted agent deployment completion message to all connections")
         except Exception as broadcast_error:
             logger.error(f"广播消息失败: {broadcast_error}")
             broadcast_success = False
@@ -2043,7 +2043,7 @@ async def read_file(file_path: str, project_path: str):
         if not str(file_path_resolved).startswith(str(project_path)):
             return JSONResponse(
                 status_code=403,
-                content={"error": "访问被拒绝：文件不在项目目录内"}
+                content={"error": "Access denied: file not within project directory"}
             )
         
         if not file_path_resolved.exists():
@@ -2127,7 +2127,7 @@ async def open_file_with_system(request: Request):
         if not str(file_path).startswith(str(project_path)):
             return JSONResponse(
                 status_code=403,
-                content={"error": "访问被拒绝：文件不在项目目录内"}
+                content={"error": "Access denied: file not within project directory"}
             )
         
         if not file_path.exists():
@@ -2149,7 +2149,7 @@ async def open_file_with_system(request: Request):
             else:  # Linux和其他Unix系统
                 subprocess.run(["xdg-open", str(file_path)], check=True)
             
-            logger.info(f"成功用系统应用打开文件: {file_path}")
+            logger.info(f"Successfully opened file with system application: {file_path}")
             return JSONResponse(content={
                 "success": True,
                 "message": f"已用系统默认应用打开文件",
@@ -2192,7 +2192,7 @@ async def write_file(request: Request):
         if not str(file_path).startswith(str(project_path)):
             return JSONResponse(
                 status_code=403,
-                content={"error": "访问被拒绝：文件不在项目目录内"}
+                content={"error": "Access denied: file not within project directory"}
             )
         
         # 确保目录存在
@@ -2226,7 +2226,7 @@ async def setup_temporary_hook(request: Request):
         success = hook_manager.setup_temporary_hook(session_identifier)
         
         if success:
-            logger.info(f" 临时hook设置成功，会话ID: {session_identifier}")
+            logger.info(f"Temporary hook setup successful, session ID: {session_identifier}")
             return JSONResponse(content={
                 "success": True,
                 "message": "临时hook配置成功",
@@ -2257,7 +2257,7 @@ async def remove_temporary_hook(request: Request):
         success = hook_manager.remove_temporary_hooks()
         
         if success:
-            logger.info(" 临时hooks移除成功")
+            logger.info("Temporary hooks removed successfully")
             return JSONResponse(content={
                 "success": True,
                 "message": "临时hooks已移除"
@@ -2338,12 +2338,12 @@ async def get_tasks():
         tasks = task_scheduler.get_scheduled_tasks()
         
         # 添加调试日志：检查返回的任务数据
-        logger.info(f" API返回任务数量: {len(tasks)}")
+        logger.info(f"API returned task count: {len(tasks)}")
         for task in tasks:
             if task.get('sessionId'):
-                logger.info(f" 任务 {task['name']} 包含sessionId: {task['sessionId']}")
+                logger.info(f"Task {task['name']} contains sessionId: {task['sessionId']}")
             else:
-                logger.info(f" 任务 {task['name']} 无sessionId")
+                logger.info(f"Task {task['name']} has no sessionId")
         
         return JSONResponse(content={"tasks": tasks})
     except Exception as e:
@@ -2411,8 +2411,8 @@ async def create_task(request: Request):
                     enhanced_goal = f"{task_data['goal']} {work_dir_instruction}"
                     
                     # 调试日志：确认task_data的内容
-                    logger.info(f" 立即执行任务调试: verboseLogs={task_data.get('verboseLogs', 'KEY_NOT_FOUND')}, skipPermissions={task_data.get('skipPermissions', 'KEY_NOT_FOUND')}")
-                    logger.info(f" task_data所有键: {list(task_data.keys())}")
+                    logger.info(f"Immediate task execution debug: verboseLogs={task_data.get('verboseLogs', 'KEY_NOT_FOUND')}, skipPermissions={task_data.get('skipPermissions', 'KEY_NOT_FOUND')}")
+                    logger.info(f"task_data all keys: {list(task_data.keys())}")
                     
                     task_command_parts = [enhanced_goal]  # 增强的任务目标
                     
@@ -2423,7 +2423,7 @@ async def create_task(request: Request):
                     # 添加verbose日志模式
                     if task_data.get('verboseLogs', False):
                         task_command_parts.append('--verbose')
-                        logger.info(f" 批量执行已添加--verbose参数到命令")
+                        logger.info(f"Batch execution added --verbose parameter to command")
                     
                     # 添加资源文件引用
                     if task_data.get('resources'):
@@ -2445,7 +2445,7 @@ async def create_task(request: Request):
                     
                     # 通过WebSocket广播给所有连接的客户端
                     await manager.broadcast(session_data)
-                    logger.info(f" 立即执行任务 {task_data['name']} 页签创建请求已发送")
+                    logger.info(f"Immediate execution task {task_data['name']} tab creation request sent")
                 else:
                     logger.warning(f" 未找到刚创建的任务: {task_data['id']}")
                     
@@ -2684,7 +2684,7 @@ def parse_mcp_tools_output(output: str) -> tuple[list, int]:
             tools_list.append(tool_info)
     
     tools_count = len(tools_list)
-    logger.info(f"解析MCP工具列表: {tools_count}个工具")
+    logger.info(f"Parsed MCP tool list: {tools_count} tools")
     
     return tools_list, tools_count
 
@@ -2694,7 +2694,7 @@ async def handle_get_mcp_status(websocket: WebSocket, project_path: str = None):
     try:
         # 确定工作目录：如果提供了项目路径则使用项目路径，否则使用用户家目录
         working_dir = project_path if project_path and os.path.exists(project_path) else os.path.expanduser('~')
-        logger.info(f"收到MCP状态查询请求，工作目录: {working_dir}")
+        logger.info(f"Received MCP status query request, working directory: {working_dir}")
         
         # 获取Claude CLI的绝对路径
         claude_executable = EnvironmentChecker.get_claude_executable_path()
@@ -2730,7 +2730,7 @@ async def handle_get_mcp_status(websocket: WebSocket, project_path: str = None):
             'isProjectSpecific': bool(project_path and os.path.exists(project_path))
         }, websocket)
         
-        logger.info(f"MCP状态查询完成: {tools_count}个工具")
+        logger.info(f"MCP status query completed: {tools_count} tools")
         
     except subprocess.TimeoutExpired:
         working_dir = project_path if project_path and os.path.exists(project_path) else os.path.expanduser('~')
@@ -2763,7 +2763,7 @@ async def get_project_mcp_status(project_path: str):
     """获取指定项目的MCP状态"""
     try:
         working_dir = project_path if os.path.exists(project_path) else os.path.expanduser('~')
-        logger.info(f"查询项目MCP状态: {working_dir}")
+        logger.info(f"Querying project MCP status: {working_dir}")
         
         # 获取Claude CLI的绝对路径
         claude_executable = EnvironmentChecker.get_claude_executable_path()
@@ -2840,9 +2840,9 @@ async def chat_websocket_endpoint(websocket: WebSocket):
                 command = message.get('command', '')
                 options = message.get('options', {})
                 
-                logger.info(f"用户消息: {command or '[Continue/Resume]'}")
-                logger.info(f"项目: {options.get('projectPath', 'Unknown')}")
-                logger.info(f"会话: {'Resume' if options.get('sessionId') else 'New'}")
+                logger.info(f"User message: {command or '[Continue/Resume]'}")
+                logger.info(f"Project: {options.get('projectPath', 'Unknown')}")
+                logger.info(f"Session: {'Resume' if options.get('sessionId') else 'New'}")
                 
                 try:
                     await claude_cli.spawn_claude(command, options, websocket)
@@ -2854,7 +2854,7 @@ async def chat_websocket_endpoint(websocket: WebSocket):
                     }, websocket)
             elif message.get('type') == 'abort-session':
                 session_id = message.get('sessionId')
-                logger.info(f"中止会话请求: {session_id}")
+                logger.info(f"Abort session request: {session_id}")
                 success = claude_cli.abort_claude_session(session_id)
                 await manager.send_personal_message({
                     'type': 'session-aborted',
@@ -2871,11 +2871,11 @@ async def chat_websocket_endpoint(websocket: WebSocket):
                 resources = message.get('resources', [])
                 
                 # 调试日志：确认接收到的参数
-                logger.info(f" 任务执行参数调试: skipPermissions={skip_permissions}, verboseLogs={verbose_logs}")
+                logger.info(f"Task execution parameter debug: skipPermissions={skip_permissions}, verboseLogs={verbose_logs}")
                 
-                logger.info(f"任务执行请求: {task_name} (ID: {task_id})")
+                logger.info(f"Task execution request: {task_name} (ID: {task_id})")
                 if resources:
-                    logger.info(f"任务资源文件: {', '.join(resources)}")
+                    logger.info(f"Task resource files: {', '.join(resources)}")
                 
                 # 获取任务工作目录信息
                 task_work_dir = ""
@@ -2906,7 +2906,7 @@ async def chat_websocket_endpoint(websocket: WebSocket):
                 # 添加verbose日志模式
                 if verbose_logs:
                     task_command_parts.append('--verbose')
-                    logger.info(f" 已添加--verbose参数到命令")
+                    logger.info(f"Added --verbose parameter to command")
                 
                 # 添加资源目录
                 if resources:
@@ -2915,8 +2915,8 @@ async def chat_websocket_endpoint(websocket: WebSocket):
                 
                 # 拼接完整命令
                 full_task_command = ' '.join(task_command_parts)
-                logger.info(f" 构建任务命令: {full_task_command}")
-                logger.info(f" task_command_parts内容: {task_command_parts}")
+                logger.info(f"Built task command: {full_task_command}")
+                logger.info(f"task_command_parts content: {task_command_parts}")
                 
                 # 通知前端创建任务页签，同时传递完整的初始命令
                 await manager.broadcast({
@@ -2933,7 +2933,7 @@ async def chat_websocket_endpoint(websocket: WebSocket):
                     if not command or not command.strip():
                         raise ValueError("任务命令不能为空")
                     
-                    logger.info(f" 任务已通过create-task-tab消息发送到前端执行")
+                    logger.info(f"Task sent to frontend for execution via create-task-tab message")
                     
                 except ValueError as e:
                     logger.error(f"任务参数错误: {e}")
@@ -2966,8 +2966,8 @@ async def chat_websocket_endpoint(websocket: WebSocket):
                 session_id = message.get('sessionId')
                 work_directory = message.get('workDirectory', os.path.expanduser('~'))
                 
-                logger.info(f" 恢复任务会话: {task_name} (ID: {task_id}, Session: {session_id})")
-                logger.info(f" 恢复会话工作目录: {work_directory}")
+                logger.info(f"Restore task session: {task_name} (ID: {task_id}, Session: {session_id})")
+                logger.info(f"Restore session working directory: {work_directory}")
                 
                 if not session_id:
                     logger.error(f"任务 {task_id} 缺少session_id，无法恢复会话")
@@ -2989,7 +2989,7 @@ async def chat_websocket_endpoint(websocket: WebSocket):
                         'scheduledExecution': False
                     })
                     
-                    logger.info(f" 任务会话恢复请求已发送到前端: session_id={session_id}")
+                    logger.info(f"Task session restore request sent to frontend: session_id={session_id}")
             elif message.get('type') == 'get-mcp-status':
                 # 处理获取MCP工具状态请求
                 project_path = message.get('projectPath')
@@ -3002,15 +3002,15 @@ async def chat_websocket_endpoint(websocket: WebSocket):
                 skip_permissions = message.get('skipPermissions', True)
                 project_path = message.get('projectPath', os.path.expanduser('~'))
                 
-                logger.info(f"MCP管理员会话创建请求: {session_name} (ID: {session_id})")
-                logger.info(f"目标项目路径: {project_path}")
+                logger.info(f"MCP admin session creation request: {session_name} (ID: {session_id})")
+                logger.info(f"Target project path: {project_path}")
                 
                 # 使用@agent语法构建命令，强化指令确保智能体持续工作直到完成
                 if project_path:
                     agent_command = f"@agent-mcp-manager 该任务为MCP添加的独立任务，需要全程使用mcp-manager智能体进行MCP添加工作。MCP添加的目录路径是:{project_path}。请完整执行MCP工具的推荐、确认和安装流程，直到用户要求的MCP工具成功安装并通过claude mcp list验证为止。用户需求：{command}"
                 else:
                     agent_command = f"@agent-mcp-manager 该任务为MCP添加的独立任务，需要全程使用mcp-manager智能体进行MCP添加工作。请完整执行MCP工具的推荐、确认和安装流程，直到用户要求的MCP工具成功安装并通过claude mcp list验证为止。用户需求：{command}"
-                logger.info(f"构建@agent命令: {agent_command}")
+                logger.info(f"Built @agent command: {agent_command}")
                 
                 task_command_parts = ['claude', f'"{agent_command}"']
                 
@@ -3025,7 +3025,7 @@ async def chat_websocket_endpoint(websocket: WebSocket):
                 
                 # 拼接完整命令
                 full_command = ' '.join(task_command_parts)
-                logger.info(f" 构建MCP管理员命令: {full_command}")
+                logger.info(f"Built MCP admin command: {full_command}")
                 
                 # 发送创建页签消息，使用与正常任务相同的机制
                 await manager.broadcast({
@@ -3039,13 +3039,13 @@ async def chat_websocket_endpoint(websocket: WebSocket):
                     'sessionId': None        # 添加会话ID字段
                 })
                 
-                logger.info(f" MCP管理员会话创建请求已发送到前端: {session_id}")
+                logger.info(f"MCP admin session creation request sent to frontend: {session_id}")
             elif message.get('type') == 'ping':
                 await manager.send_personal_message({
                     'type': 'pong'
                 }, websocket)
             else:
-                logger.info(f"收到未知消息类型: {message.get('type')}")
+                logger.info(f"Received unknown message type: {message.get('type')}")
     
     except WebSocketDisconnect:
         manager.disconnect(websocket)
@@ -3083,11 +3083,11 @@ async def shell_websocket_endpoint(websocket: WebSocket):
                 cols = message.get('cols', 80)
                 rows = message.get('rows', 24)
                 
-                logger.info(f" PTY Shell初始化请求")
-                logger.info(f" 项目路径: {project_path}")
-                logger.info(f" 会话信息: {'恢复会话 ' + str(session_id) if has_session else '新会话'}")
-                logger.info(f" 初始命令: {initial_command or 'claude'}")
-                logger.info(f" 终端大小: {cols}x{rows}")
+                logger.info(f"PTY Shell initialization request")
+                logger.info(f"Project path: {project_path}")
+                logger.info(f"Session info: {'restore session ' + str(session_id) if has_session else 'new session'}")
+                logger.info(f"Initial command: {initial_command or 'claude'}")
+                logger.info(f"Terminal size: {cols}x{rows}")
                 
                 # 检查项目路径是否存在
                 if not Path(project_path).exists():
@@ -3101,7 +3101,7 @@ async def shell_websocket_endpoint(websocket: WebSocket):
                 
                 # 如果PTY已经在运行，先清理
                 if hasattr(pty_handler, 'process') and pty_handler.process:
-                    logger.info(" 检测到已有PTY进程，先清理")
+                    logger.info("Detected existing PTY process, cleaning first")
                     pty_handler.cleanup()
                 
                 # 启动PTY Shell，传递初始命令参数和task_id
@@ -3117,7 +3117,7 @@ async def shell_websocket_endpoint(websocket: WebSocket):
                 # 处理终端大小调整
                 cols = message.get('cols', 80)
                 rows = message.get('rows', 24)
-                logger.info(f" 终端调整大小: {cols}x{rows}")
+                logger.info(f"Terminal resized: {cols}x{rows}")
                 await pty_handler.resize_terminal(cols, rows)
                 
     except WebSocketDisconnect:
@@ -3150,44 +3150,44 @@ async def shell_websocket_endpoint(websocket: WebSocket):
 # PTY处理器已包含所有必要的输入输出处理功能
 
 if __name__ == "__main__":
-    print(" 启动 Claude Co-Desk...")
-    print(f" 项目目录: {Path.cwd()}")
+    print("Starting Claude Co-Desk...")
+    print(f"Project directory: {Path.cwd()}")
     
     # 检查环境
     env_status = EnvironmentChecker.check_environment()
-    print(f" 环境检测结果:")
+    print(f"Environment check results:")
     print(f"   Claude CLI: {'' if env_status['claude_cli'] else ''}")
-    print(f"   项目目录: {'' if env_status['projects_dir'] else ''}")
-    print(f"   状态: {' 就绪' if env_status['ready'] else '  需要配置'}")
+    print(f"   Projects directory: {'' if env_status['projects_dir'] else ''}")
+    print(f"   Status: {'Ready' if env_status['ready'] else 'Needs configuration'}")
     
     # 配置Claude hooks for数字员工自动部署
-    print(f" 配置Claude hooks...")
+    print(f"Configuring Claude hooks...")
     try:
         from setup_hooks import HookManager
         hook_manager = HookManager()
         
         # 检查hooks状态
         status = hook_manager.check_hook_status()
-        print(f"   Hooks状态: {' 已配置' if status['configured'] else ' 需要配置'}")
+        print(f"   Hooks status: {'Configured' if status['configured'] else 'Needs configuration'}")
         
         # 如果未配置则自动配置
         if not status["configured"]:
-            print(f"   正在自动设置Claude hooks...")
+            print(f"   Auto-configuring Claude hooks...")
             if hook_manager.setup_claude_hooks():
-                print(f"    Claude hooks配置成功")
+                print(f"    Claude hooks configuration successful")
             else:
-                print(f"    Claude hooks配置失败")
+                print(f"    Claude hooks configuration failed")
         else:
-            print(f"    数字员工自动部署已就绪")
+            print(f"    Digital agent auto-deployment ready")
             
     except Exception as e:
-        print(f"    配置Claude hooks时出错: {e}")
-        print(f"    数字员工自动部署功能可能不可用")
+        print(f"    Error configuring Claude hooks: {e}")
+        print(f"    Digital agent auto-deployment may not be available")
     
-    print(f" 启动Claude Co-Desk服务...")
+    print(f"Starting Claude Co-Desk service...")
     
     # 任务调度器现在通过lifespan事件自动管理
-    print(f" 任务调度器将通过应用生命周期自动启动...")
+    print(f"Task scheduler will start automatically through application lifecycle...")
     
     try:
         server_config = Config.get_server_config()
@@ -3204,4 +3204,4 @@ if __name__ == "__main__":
         )
     finally:
         # 任务调度器现在通过lifespan事件自动管理
-        print(f" 任务调度器将通过应用生命周期自动停止...")
+        print(f"Task scheduler will stop automatically through application lifecycle...")

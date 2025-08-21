@@ -16,37 +16,37 @@ import requests
 
 def test_hook_configuration():
     """测试hook配置功能"""
-    print(" 测试1: Hook配置功能")
+    print(" Test 1: Hook configuration functionality")
     
     hook_manager = HookManager()
     
-    # 检查初始状态
+    # 检查Initial status
     status = hook_manager.check_hook_status()
-    print(f"   初始状态: {status}")
+    print(f"   Initial status: {status}")
     
     # 清理可能存在的旧配置
     if status["configured"]:
-        print("   清理旧配置...")
+        print("   Cleaning old configuration...")
         hook_manager.remove_hooks()
     
     # 配置新的hooks
-    print("   配置hooks...")
+    print("   Configuring hooks...")
     success = hook_manager.setup_claude_hooks()
     if success:
-        print("    Hook配置成功")
+        print("    Hook configuration successful")
     else:
-        print("    Hook配置失败")
+        print("    Hook configuration failed")
         return False
     
     # 验证配置结果
     status = hook_manager.check_hook_status()
-    print(f"   配置后状态: {status}")
+    print(f"   Status after configuration: {status}")
     
     return status["configured"]
 
 def test_agent_deployment():
     """测试数字员工部署功能"""
-    print(" 测试2: 数字员工部署功能")
+    print(" Test 2: Agent deployment functionality")
     
     deployer = AgentDeployer()
     
@@ -112,7 +112,7 @@ def test_agent_deployment():
 
 def test_api_endpoint():
     """测试API端点"""
-    print(" 测试3: API端点功能")
+    print(" Test 3: API endpoint functionality")
     
     try:
         # 测试数据
@@ -161,7 +161,7 @@ def test_api_endpoint():
 
 def test_source_files():
     """测试源文件完整性"""
-    print("测试4: 源文件完整性")
+    print("Test 4: Source file integrity")
     
     deployer = AgentDeployer()
     
@@ -197,7 +197,7 @@ def test_source_files():
 
 def run_full_test():
     """运行完整测试"""
-    print("开始数字员工自动部署系统完整测试")
+    print("Starting complete test of digital agent auto-deployment system")
     print("=" * 60)
     
     test_results = []
@@ -225,10 +225,10 @@ def run_full_test():
         if result:
             passed_count += 1
     
-    print(f"\n总体结果: {passed_count}/{len(test_results)} 项测试通过")
+    print(f"\nOverall result: {passed_count}/{len(test_results)} tests passed")
     
     if passed_count == len(test_results):
-        print(" 所有测试通过！数字员工自动部署系统已就绪！")
+        print(" All tests passed! Digital agent auto-deployment system ready!")
         return True
     else:
         print(f" 有 {len(test_results) - passed_count} 项测试失败，请检查配置")

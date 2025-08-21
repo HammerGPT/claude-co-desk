@@ -17,20 +17,20 @@ class TasksStorage:
     def __init__(self, storage_file: str = "tasks.json"):
         self.storage_file = Path(storage_file)
         self.ensure_storage_file()
-        logger.info(f"任务存储初始化: {self.storage_file}")
+        logger.info(f"Task storage initialization: {self.storage_file}")
     
     def ensure_storage_file(self):
         """确保存储文件存在"""
         if not self.storage_file.exists():
             self.save_tasks([])
-            logger.info(f"创建新的任务存储文件: {self.storage_file}")
+            logger.info(f"Creating new task storage file: {self.storage_file}")
     
     def save_tasks(self, tasks: List[Dict[str, Any]]) -> bool:
         """保存任务数据到JSON文件"""
         try:
             with open(self.storage_file, 'w', encoding='utf-8') as f:
                 json.dump(tasks, f, ensure_ascii=False, indent=2)
-            logger.info(f"保存 {len(tasks)} 个任务到存储文件")
+            logger.info(f"Saving.*tasks to storage file")
             return True
         except Exception as e:
             logger.error(f"保存任务失败: {e}")
@@ -40,7 +40,7 @@ class TasksStorage:
         """从JSON文件加载任务数据"""
         try:
             if not self.storage_file.exists():
-                logger.info("存储文件不存在，返回空任务列表")
+                logger.info("Storage file does not exist, returning empty task list")
                 return []
             
             with open(self.storage_file, 'r', encoding='utf-8') as f:
@@ -51,7 +51,7 @@ class TasksStorage:
                 logger.warning("存储文件格式错误，返回空列表")
                 return []
                 
-            logger.info(f"从存储文件加载 {len(tasks)} 个任务")
+            logger.info(f"Loading.*tasks from storage file")
             return tasks
             
         except json.JSONDecodeError as e:
@@ -70,7 +70,7 @@ class TasksStorage:
             backup_file = self.storage_file.with_suffix('.backup.json')
             import shutil
             shutil.copy2(self.storage_file, backup_file)
-            logger.info(f" 任务数据已备份到: {backup_file}")
+            logger.info(f" Task data backed up to: {backup_file}")
             return True
         except Exception as e:
             logger.error(f"备份任务失败: {e}")

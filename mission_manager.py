@@ -24,13 +24,13 @@ class MissionManager:
         """
         self.base_mission_dir = Path(base_mission_dir).resolve()
         self._ensure_base_directory()
-        logger.info(f"MissionManager初始化: {self.base_mission_dir}")
+        logger.info(f"MissionManager initialization: {self.base_mission_dir}")
     
     def _ensure_base_directory(self):
         """确保mission基础目录存在"""
         try:
             self.base_mission_dir.mkdir(parents=True, exist_ok=True)
-            logger.info(f" Mission基础目录已创建: {self.base_mission_dir}")
+            logger.info(f" Mission base directory created: {self.base_mission_dir}")
         except Exception as e:
             logger.error(f" 创建mission基础目录失败: {e}")
             raise
@@ -41,7 +41,7 @@ class MissionManager:
     
     def create_task_directory(self, task_id: str, task_name: str = "") -> str:
         """
-        为任务创建工作目录
+        Creating work directory for task
         
         Args:
             task_id: 任务ID
@@ -76,7 +76,7 @@ class MissionManager:
             with open(info_file, 'w', encoding='utf-8') as f:
                 json.dump(task_info, f, ensure_ascii=False, indent=2)
             
-            logger.info(f" 为任务 '{task_name}' ({task_id}) 创建工作目录: {task_dir}")
+            logger.info(f" Creating work directory for task: {task_dir}")
             return str(task_dir)
             
         except Exception as e:
@@ -151,7 +151,7 @@ class MissionManager:
             # 按名称排序
             files.sort(key=lambda x: (x["is_directory"], x["name"].lower()))
             
-            logger.info(f"任务目录 {work_directory} 包含 {len(files)} 个文件/目录")
+            logger.info(f"Task directory.*contains.*files/目录")
             return files
             
         except Exception as e:
@@ -208,12 +208,12 @@ class MissionManager:
                             import shutil
                             shutil.rmtree(item)
                             cleaned_count += 1
-                            logger.info(f" 清理空目录: {item}")
+                            logger.info(f" Cleaning empty directory: {item}")
                         except Exception as e:
                             logger.warning(f" 清理目录失败: {item} - {e}")
                             
             if cleaned_count > 0:
-                logger.info(f" 清理完成，删除了 {cleaned_count} 个空目录")
+                logger.info(f" Cleanup completed, deleted.*empty directories")
                 
         except Exception as e:
             logger.error(f" 清理目录失败: {e}")

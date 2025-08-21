@@ -49,20 +49,20 @@ class TaskScheduler:
         self.mission_manager = MissionManager()  # 初始化任务目录管理器
         self.main_loop = None  # 保存主事件循环引用
         
-        logger.info(" TaskScheduler 初始化完成")
+        logger.info("TaskScheduler initialization completed")
     
     def start(self):
         """启动任务调度器"""
         if self.running:
-            logger.warning("任务调度器已在运行中")
+            logger.warning("Task scheduler already running")
             return
         
         # 保存主事件循环引用，用于跨线程异步调用
         try:
             self.main_loop = asyncio.get_running_loop()
-            logger.info("已保存主事件循环引用")
+            logger.info("Main event loop reference saved")
         except RuntimeError:
-            logger.warning(" 无法获取当前事件循环，WebSocket通信可能受影响")
+            logger.warning("Unable to get current event loop, WebSocket communication may be affected")
             self.main_loop = None
         
         # 先从存储文件加载任务
@@ -71,7 +71,7 @@ class TaskScheduler:
         self.running = True
         self.scheduler_thread = threading.Thread(target=self._run_scheduler, daemon=True)
         self.scheduler_thread.start()
-        logger.info(" 任务调度器已启动")
+        logger.info("Task scheduler started")
     
     def stop(self):
         """停止任务调度器"""
@@ -79,11 +79,11 @@ class TaskScheduler:
         schedule.clear()
         if self.scheduler_thread:
             self.scheduler_thread.join(timeout=5)
-        logger.info(" 任务调度器已停止")
+        logger.info("Task scheduler stopped")
     
     def _run_scheduler(self):
         """运行调度器循环"""
-        logger.info("任务调度器循环启动")
+        logger.info("Task scheduler loop started")
         while self.running:
             try:
                 # 添加调试信息：显示当前时间和待执行任务
@@ -91,13 +91,13 @@ class TaskScheduler:
                 pending_jobs = len([job for job in schedule.jobs if job.should_run])
                 
                 if pending_jobs > 0:
-                    logger.info(f"⏰ 当前时间: {current_time}, 发现 {pending_jobs} 个待执行任务")
+                    logger.info(f"Current time: {current_time}, found {pending_jobs} pending tasks")
                 
                 # 执行待处理的任务
                 schedule.run_pending()
                 time_module.sleep(60)  # 每分钟检查一次
             except Exception as e:
-                logger.error(f"任务调度器运行错误: {e}")
+                logger.error(f"Task scheduler runtime error: {e}")
                 time_module.sleep(60)
     
     def add_scheduled_task(self, task_data: Dict[str, Any]) -> bool:
@@ -134,9 +134,9 @@ class TaskScheduler:
             if task.enabled and task_data.get('executionMode') == 'scheduled':
                 self.scheduled_tasks[task.id] = task
                 self._schedule_task(task)
-                logger.info(f"添加定时任务: {task.name} - {task.schedule_frequency} {task.schedule_time}")
+                logger.info(f"Adding scheduled task: {task.name} - {task.schedule_frequency} {task.schedule_time}")
             else:
-                logger.info(f"保存立即执行任务: {task.name}")
+                logger.info(f"Saving immediate execution task: {task.name}")
             
             # 自动保存到存储文件
             self._save_tasks_to_storage()
@@ -144,7 +144,7 @@ class TaskScheduler:
             return True
             
         except Exception as e:
-            logger.error(f"添加定时任务失败: {e}")
+            logger.error(f"Failed to add scheduled task: {e}")
             return False
     
     def remove_scheduled_task(self, task_id: str) -> bool:
@@ -160,7 +160,7 @@ class TaskScheduler:
                     self._unschedule_task(task)
                     del self.scheduled_tasks[task_id]
                     
-                logger.info(f"移除任务: {task.name}")
+                logger.info(f"Removing task: {task.name}")
                 
                 # 自动保存到存储文件
                 self._save_tasks_to_storage()
@@ -168,7 +168,7 @@ class TaskScheduler:
                 return True
             return False
         except Exception as e:
-            logger.error(f"移除任务失败: {e}")
+            logger.error(f"Failed to remove task: {e}")
             return False
     
     def update_scheduled_task(self, task_data: Dict[str, Any]) -> bool:
@@ -180,7 +180,7 @@ class TaskScheduler:
             original_task = None
             if task_id in self.all_tasks:
                 original_task = self.all_tasks[task_id]
-                logger.info(f" 更新现有任务: {original_task.name}")
+                logger.info(f"Updating existing task: {original_task.name}")
             
             # 确保任务数据完整性，保留原有的创建时间等信息
             if original_task:
@@ -198,12 +198,12 @@ class TaskScheduler:
             # 重新添加任务
             success = self.add_scheduled_task(task_data)
             if success:
-                logger.info(f" 任务更新成功: {task_data.get('name', 'Unknown')}")
+                logger.info(f"Task update successful: {task_data.get('name', 'Unknown')}")
                 # 注意：add_scheduled_task 已经会自动保存，这里不需要重复保存
             return success
             
         except Exception as e:
-            logger.error(f"更新定时任务失败: {e}")
+            logger.error(f"Failed to update scheduled task: {e}")
             return False
     
     def toggle_task(self, task_id: str, enabled: bool) -> bool:
@@ -215,10 +215,10 @@ class TaskScheduler:
                 
                 if enabled:
                     self._schedule_task(task)
-                    logger.info(f" 启用定时任务: {task.name}")
+                    logger.info(f"Enabling scheduled task: {task.name}")
                 else:
                     self._unschedule_task(task)
-                    logger.info(f" 禁用定时任务: {task.name}")
+                    logger.info(f"Disabling scheduled task: {task.name}")
                 
                 # 自动保存到存储文件
                 self._save_tasks_to_storage()
@@ -226,7 +226,7 @@ class TaskScheduler:
                 return True
             return False
         except Exception as e:
-            logger.error(f"切换任务状态失败: {e}")
+            logger.error(f"Failed to toggle task status: {e}")
             return False
     
     def _schedule_task(self, task: ScheduledTask):
@@ -238,28 +238,28 @@ class TaskScheduler:
             
             # 创建任务执行函数 - 修复异步调用问题
             def execute_task():
-                logger.info(f" schedule库正在触发任务执行: {task.name}")
+                logger.info(f"Schedule library triggering task execution: {task.name}")
                 self._execute_task_sync(task)
             
             # 根据频率设置调度
             if task.schedule_frequency == 'daily':
                 schedule.every().day.at(task.schedule_time).do(execute_task).tag(task.id)
-                logger.info(f"任务 {task.name} 已设置为每日 {task.schedule_time} 执行")
+                logger.info(f"Task {task.name} set to execute daily at {task.schedule_time}")
             elif task.schedule_frequency == 'weekly':
                 # 默认设置为每周一执行，可以后续扩展为指定星期几
                 schedule.every().monday.at(task.schedule_time).do(execute_task).tag(task.id)
-                logger.info(f"任务 {task.name} 已设置为每周一 {task.schedule_time} 执行")
+                logger.info(f"Task {task.name} set to execute every Monday at {task.schedule_time}")
                 
         except Exception as e:
-            logger.error(f"设置任务调度失败: {e}")
+            logger.error(f"Failed to set task schedule: {e}")
     
     def _unschedule_task(self, task: ScheduledTask):
         """从schedule库移除任务"""
         try:
             schedule.clear(task.id)
-            logger.info(f" 任务 {task.name} 已从调度中移除")
+            logger.info(f"Task {task.name} removed from schedule")
         except Exception as e:
-            logger.error(f"移除任务调度失败: {e}")
+            logger.error(f"Failed to remove task schedule: {e}")
     
     def get_scheduled_tasks(self) -> List[Dict[str, Any]]:
         """获取所有任务（包括立即执行和定时任务），过滤已删除任务"""
@@ -302,14 +302,14 @@ class TaskScheduler:
                 # 保存更改
                 self._save_tasks_to_storage()
                 
-                logger.info(f" 任务已标记为删除: {task.name}")
+                logger.info(f"Task marked for deletion: {task.name}")
                 return True
                 
-            logger.warning(f" 要删除的任务不存在: {task_id}")
+            logger.warning(f"Task to delete does not exist: {task_id}")
             return False
             
         except Exception as e:
-            logger.error(f" 删除任务失败: {task_id} - {e}")
+            logger.error(f"Failed to delete task: {task_id} - {e}")
             return False
     
     def get_next_run_times(self) -> Dict[str, str]:
@@ -370,9 +370,9 @@ class TaskScheduler:
                     
                     # 添加调试日志
                     if task.session_id:
-                        logger.info(f" 从存储加载任务 {task.name}，包含session_id: {task.session_id}")
+                        logger.info(f"Loading task from storage {task.name}, contains session_id: {task.session_id}")
                     else:
-                        logger.debug(f" 从存储加载任务 {task.name}，无session_id")
+                        logger.debug(f"Loading task from storage {task.name}, no session_id")
                     
                     # 添加到all_tasks
                     self.all_tasks[task.id] = task
@@ -385,12 +385,12 @@ class TaskScheduler:
                         scheduled_count += 1
                         
                 except Exception as e:
-                    logger.error(f"加载任务失败: {task_data.get('name', 'Unknown')} - {e}")
+                    logger.error(f"Failed to load task: {task_data.get('name', 'Unknown')} - {e}")
                     
-            logger.info(f"从存储文件恢复 {loaded_count} 个任务，其中 {scheduled_count} 个定时任务")
+            logger.info(f"Restored {loaded_count} tasks from storage file, {scheduled_count} scheduled tasks")
             
         except Exception as e:
-            logger.error(f"加载任务数据失败: {e}")
+            logger.error(f"Failed to load task data: {e}")
     
     def _save_tasks_to_storage(self):
         """保存任务数据到存储文件"""
@@ -421,17 +421,17 @@ class TaskScheduler:
                 
             success = self.storage.save_tasks(tasks_data)
             if success:
-                logger.debug(f"任务数据已保存到存储文件")
+                logger.debug(f"Task data saved to storage file")
             else:
-                logger.error(" 保存任务数据失败")
+                logger.error("Failed to save task data")
                 
         except Exception as e:
-            logger.error(f"保存任务数据失败: {e}")
+            logger.error(f"Failed to save task data: {e}")
     
     def _execute_task_sync(self, task: ScheduledTask):
         """同步方式执行定时任务 - 修复异步调用问题"""
         try:
-            logger.info(f" 开始执行定时任务: {task.name}")
+            logger.info(f"Starting scheduled task execution: {task.name}")
             
             # 更新最后执行时间
             task.last_run = datetime.now().isoformat()
@@ -461,7 +461,7 @@ class TaskScheduler:
                 # 添加verbose日志模式
                 if task.verbose_logs:
                     base_command_parts.append('--verbose')
-                    logger.info(f" 定时任务已添加--verbose参数到命令")
+                    logger.info(f"Scheduled task added --verbose parameter to command")
                 
                 # 添加资源文件引用
                 if task.resources:
@@ -486,7 +486,7 @@ class TaskScheduler:
                     # 没有参数，直接用双引号包围整个命令
                     full_task_command = f'"{full_command_content}"'
                 
-                logger.info(f" 定时任务构建命令: {full_task_command}")
+                logger.info(f"Scheduled task built command: {full_task_command}")
                 
                 # 使用与手动任务完全相同的消息格式
                 session_data = {
@@ -508,29 +508,29 @@ class TaskScheduler:
                         )
                         # 等待完成（设置超时避免阻塞）
                         future.result(timeout=10)
-                        logger.info(f" 定时任务 {task.name} WebSocket消息已发送，页签应该创建")
+                        logger.info(f"Scheduled task {task.name} WebSocket message sent, tab should be created")
                         
                     else:
                         # 如果没有可用的主事件循环
-                        logger.error(f" 主事件循环不可用，无法发送WebSocket消息: {task.name}")
-                        logger.info(f" 定时任务 {task.name} 应该执行命令: {command}")
+                        logger.error(f"Main event loop unavailable, unable to send WebSocket message: {task.name}")
+                        logger.info(f"Scheduled task {task.name} should execute command: {command}")
                         
                         # 作为备用方案，尝试直接记录到日志供调试
-                        logger.error(f"定时任务执行失败 - 需要手动创建页签执行: {command}")
+                        logger.error(f"Scheduled task execution failed - manual tab creation required for execution: {command}")
                         
                 except Exception as e:
-                    logger.error(f" WebSocket消息发送异常: {e}")
-                    logger.info(f" 定时任务 {task.name} 应该执行命令: {command}")
+                    logger.error(f"WebSocket message sending exception: {e}")
+                    logger.info(f"Scheduled task {task.name} should execute command: {command}")
                     
                     # 记录详细的错误信息供调试
                     import traceback
-                    logger.error(f"详细错误信息: {traceback.format_exc()}")
+                    logger.error(f"Detailed error information: {traceback.format_exc()}")
             else:
-                logger.warning("WebSocket管理器未初始化，无法发送任务执行请求")
-                logger.info(f" 定时任务 {task.name} 应该执行命令: {command}")
+                logger.warning("WebSocket manager not initialized, unable to send task execution request")
+                logger.info(f"Scheduled task {task.name} should execute command: {command}")
             
         except Exception as e:
-            logger.error(f"执行定时任务失败: {task.name} - {e}")
+            logger.error(f"Failed to execute scheduled task: {task.name} - {e}")
     
     def update_task_session_id(self, task_id: str, session_id: str) -> bool:
         """更新任务的session_id，用于会话恢复"""
@@ -539,15 +539,15 @@ class TaskScheduler:
             if task_id in self.all_tasks:
                 task = self.all_tasks[task_id]
                 task.session_id = session_id
-                logger.info(f"更新任务 {task.name} 的session_id: {session_id}")
+                logger.info(f"Updating task {task.name} session_id: {session_id}")
                 
                 # 保存到存储文件
                 self._save_tasks_to_storage()
                 return True
             else:
-                logger.warning(f" 未找到任务 {task_id}，无法更新session_id")
+                logger.warning(f"Task {task_id} not found, unable to update session_id")
                 return False
                 
         except Exception as e:
-            logger.error(f" 更新任务session_id失败: {task_id} - {e}")
+            logger.error(f"Failed to update task session_id: {task_id} - {e}")
             return False

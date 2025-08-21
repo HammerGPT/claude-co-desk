@@ -52,25 +52,25 @@ class AgentDeployer:
         """
         简化判断逻辑：检查用户主目录CLAUDE.md是否存在
         """
-        logger.info(f"检查是否需要部署数字员工，session: {session_identifier}")
+        logger.info(f"Checking if agent deployment is needed，session: {session_identifier}")
         
         try:
             # 1. 检查是否已经部署过（防重复）
             if self.deployed_marker.exists():
-                logger.info("检测到已部署标记文件，跳过重复部署")
+                logger.info("Detected deployment marker file, skipping duplicate deployment")
                 return False
             
             # 2. 检查用户主目录的CLAUDE.md文件是否存在
             home_claude_md = Path.home() / "CLAUDE.md"
             
             if not home_claude_md.exists():
-                logger.info("用户主目录CLAUDE.md文件不存在，初始化尚未完成")
+                logger.info("User home directory CLAUDE.md file does not exist, initialization not yet complete")
                 return False
             
             # 3. 检查文件是否不为空（确保已写入内容）
             try:
                 if home_claude_md.stat().st_size == 0:
-                    logger.info("用户主目录CLAUDE.md文件为空，初始化尚未完成")
+                    logger.info("User home directory CLAUDE.md file is empty, initialization not yet complete")
                     return False
             except OSError as e:
                 logger.warning(f"无法检查CLAUDE.md文件大小: {e}")
@@ -78,10 +78,10 @@ class AgentDeployer:
             
             # 4. 检查会话标识是否为初始化会话
             if session_identifier and not session_identifier.startswith('init-'):
-                logger.info(f"非初始化会话，跳过部署: {session_identifier}")
+                logger.info(f"Non-initialization session, skipping deployment: {session_identifier}")
                 return False
             
-            logger.info(" 检测到主目录CLAUDE.md文件已生成，准备部署数字员工")
+            logger.info(" Detected home directory CLAUDE.md file generated, preparing agent deployment")
             return True
             
         except Exception as e:
@@ -92,7 +92,7 @@ class AgentDeployer:
         """
         执行数字员工文件部署
         """
-        logger.info("开始部署数字员工...")
+        logger.info("Starting agent deployment...")
         
         try:
             # 1. 检查源文件目录
@@ -102,7 +102,7 @@ class AgentDeployer:
             
             # 2. 创建目标目录
             self.target_dir.mkdir(parents=True, exist_ok=True)
-            logger.info(f"确保目标目录存在: {self.target_dir}")
+            logger.info(f"Ensuring target directory exists: {self.target_dir}")
             
             # 3. 检查所有预期的agent文件是否存在
             missing_files = []
@@ -130,10 +130,10 @@ class AgentDeployer:
                     # 验证复制成功
                     if target_file.exists():
                         deployed_files.append(agent_file)
-                        logger.info(f" 成功部署: {agent_file}")
+                        logger.info(f" Successfully deployed: {agent_file}")
                     else:
                         failed_files.append(agent_file)
-                        logger.error(f" 部署失败: {agent_file}")
+                        logger.error(f" Deployment failed: {agent_file}")
                         
                 except Exception as e:
                     failed_files.append(agent_file)
@@ -141,7 +141,7 @@ class AgentDeployer:
             
             # 5. 检查部署结果
             if failed_files:
-                logger.error(f"部分文件部署失败: {failed_files}")
+                logger.error(f"部分文件Deployment failed: {failed_files}")
                 return False
             
             # 6. 创建部署标记文件
@@ -156,7 +156,7 @@ class AgentDeployer:
             with open(self.deployed_marker, 'w', encoding='utf-8') as f:
                 json.dump(deployment_info, f, indent=2, ensure_ascii=False)
             
-            logger.info(f" 数字员工部署完成！共部署 {len(deployed_files)} 个员工")
+            logger.info(f" Agent deployment completed! Total deployed {len(deployed_files)}  agents")
             return True
             
         except Exception as e:
@@ -167,7 +167,7 @@ class AgentDeployer:
         """
         通知Claude Co-Desk部署完成
         """
-        logger.info("通知Claude Co-Desk数字员工部署完成...")
+        logger.info("Notifying Claude Co-Desk of agent deployment completion...")
         
         try:
             # 准备通知数据
@@ -188,7 +188,7 @@ class AgentDeployer:
             )
             
             if response.status_code == 200:
-                logger.info(" 成功通知Claude Co-Desk部署完成")
+                logger.info(" Successfully notified Claude Co-Desk of deployment completion")
                 return True
             else:
                 logger.warning(f"Claude Co-Desk通知响应异常: {response.status_code}")
@@ -206,7 +206,7 @@ class AgentDeployer:
         """
         清理临时hooks配置
         """
-        logger.info("开始清理临时hooks配置...")
+        logger.info("Starting to clean up temporary hooks configuration...")
         
         try:
             # 发送清理请求到Claude Co-Desk API
@@ -225,7 +225,7 @@ class AgentDeployer:
             )
             
             if response.status_code == 200:
-                logger.info(" 成功清理临时hooks配置")
+                logger.info(" Successfully cleaned up temporary hooks configuration")
                 return True
             else:
                 logger.warning(f"hooks清理响应异常: {response.status_code}")
@@ -236,7 +236,7 @@ class AgentDeployer:
             
             # 备用方案：直接使用HookManager清理
             try:
-                logger.info("尝试使用备用方案清理hooks...")
+                logger.info("Trying alternative method to clean hooks...")
                 # 直接导入setup_hooks模块
                 import sys
                 import os
@@ -250,7 +250,7 @@ class AgentDeployer:
                 
                 success = hook_manager.remove_temporary_hooks()
                 if success:
-                    logger.info(" 备用方案成功清理hooks")
+                    logger.info(" Alternative method successfully cleaned hooks")
                     return True
                 else:
                     logger.error(" 备用方案清理hooks失败")
@@ -268,7 +268,7 @@ class AgentDeployer:
         """
         主执行流程
         """
-        logger.info("==================== 数字员工自动部署开始 ====================")
+        logger.info("==================== Digital agent auto-deployment started ====================")
         logger.info(f"Transcript路径: {transcript_path}")
         logger.info(f"项目路径: {project_path}")
         logger.info(f"会话标识: {session_identifier}")
@@ -281,7 +281,7 @@ class AgentDeployer:
             
             # 2. 执行部署
             if not self.deploy_agents():
-                logger.error("部署失败")
+                logger.error("Deployment failed")
                 return False
             
             # 3. 通知Claude Co-Desk
@@ -290,7 +290,7 @@ class AgentDeployer:
             # 4. 清理临时hooks配置
             self.cleanup_hooks()
             
-            logger.info("==================== 数字员工自动部署完成 ====================")
+            logger.info("==================== Digital agent auto-deployment completed ====================")
             return True
             
         except Exception as e:

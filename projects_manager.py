@@ -147,7 +147,7 @@ class JsonlSessionParser:
                                         # 跳过格式错误的行
                                         continue
                         except Exception as e:
-                            logger.warning(f"读取JSONL文件 {jsonl_file} 时出错: {e}")
+                            logger.warning(f"Error reading JSONL file {jsonl_file}: {e}")
                             continue
                     
                     # 确定最佳cwd
@@ -176,7 +176,7 @@ class JsonlSessionParser:
             return extracted_path
             
         except Exception as e:
-            logger.error(f"提取项目目录 {project_name} 时出错: {e}")
+            logger.error(f"Error extracting project directory {project_name}: {e}")
             # 回退到解码项目名称
             extracted_path = project_name.replace('-', '/')
             project_directory_cache.set(project_name, extracted_path)
@@ -281,10 +281,10 @@ class JsonlSessionParser:
                                         pass
                                 
                     except json.JSONDecodeError as e:
-                        logger.warning(f"解析JSONL行 {line_count} 时出错: {e}")
+                        logger.warning(f"Error parsing JSONL line {line_count}: {e}")
                         continue
         except Exception as e:
-            logger.error(f"读取JSONL文件 {file_path} 时出错: {e}")
+            logger.error(f"Error reading JSONL file {file_path}: {e}")
         
         # 组合结果：主会话优先，然后是子会话
         all_sessions = [main_session_data]
@@ -297,7 +297,7 @@ class JsonlSessionParser:
         )
         all_sessions.extend(sorted_sub_sessions)
         
-        logger.info(f"文件 {file_path.name}: 主会话1个, 子会话{len(sub_sessions)}个")
+        logger.info(f"File {file_path.name}: 1 main session, {len(sub_sessions)} sub-sessions")
         return all_sessions
 
 
@@ -351,7 +351,7 @@ class ProjectManager:
                             'total': session_result.get('total', 0)
                         }
                     except Exception as e:
-                        logger.warning(f"无法加载项目 {entry.name} 的会话: {e}")
+                        logger.warning(f"Unable to load sessions for project {entry.name}: {e}")
                     
                     projects.append(project)
             
@@ -382,7 +382,7 @@ class ProjectManager:
             return projects
             
         except Exception as e:
-            logger.error(f"获取项目时出错: {e}")
+            logger.error(f"Error getting projects: {e}")
             return projects
     
     @staticmethod
@@ -443,7 +443,7 @@ class ProjectManager:
             }
             
         except Exception as e:
-            logger.error(f"获取项目 {project_name} 会话时出错: {e}")
+            logger.error(f"Error getting sessions for project {project_name}: {e}")
             return {'sessions': [], 'hasMore': False, 'total': 0}
     
     @staticmethod
@@ -474,7 +474,7 @@ class ProjectManager:
                             except json.JSONDecodeError:
                                 continue
                 except Exception as e:
-                    logger.warning(f"读取JSONL文件 {jsonl_file} 时出错: {e}")
+                    logger.warning(f"Error reading JSONL file {jsonl_file}: {e}")
                     continue
             
             # 按时间戳排序消息
@@ -484,7 +484,7 @@ class ProjectManager:
             return serialize_datetime_objects(messages)
             
         except Exception as e:
-            logger.error(f"获取会话 {session_id} 消息时出错: {e}")
+            logger.error(f"Error getting messages for session {session_id}: {e}")
             return serialize_datetime_objects(messages)
     
     @staticmethod
@@ -510,7 +510,7 @@ class ProjectManager:
             return True
             
         except Exception as e:
-            logger.error(f"重命名项目 {project_name} 时出错: {e}")
+            logger.error(f"Error renaming project {project_name}: {e}")
             return False
     
     @staticmethod
@@ -520,7 +520,7 @@ class ProjectManager:
         
         try:
             if not project_dir.exists():
-                raise FileNotFoundError(f"项目目录不存在: {project_dir}")
+                raise FileNotFoundError(f"Project directory does not exist: {project_dir}")
             
             jsonl_files = list(project_dir.glob('*.jsonl'))
             
@@ -564,7 +564,7 @@ class ProjectManager:
             raise FileNotFoundError(f"在任何文件中都找不到会话 {session_id}")
             
         except Exception as e:
-            logger.error(f"删除会话 {session_id} 时出错: {e}")
+            logger.error(f"Error deleting session {session_id}: {e}")
             return False
     
     @staticmethod
@@ -574,7 +574,7 @@ class ProjectManager:
             sessions_result = await ProjectManager.get_sessions(project_name, limit=1, offset=0)
             return sessions_result['total'] == 0
         except Exception as e:
-            logger.error(f"检查项目 {project_name} 是否为空时出错: {e}")
+            logger.error(f"Error checking if project {project_name} is empty: {e}")
             return False
     
     @staticmethod
@@ -602,7 +602,7 @@ class ProjectManager:
             return True
             
         except Exception as e:
-            logger.error(f"删除项目 {project_name} 时出错: {e}")
+            logger.error(f"Error deleting project {project_name}: {e}")
             return False
     
     @staticmethod
@@ -652,7 +652,7 @@ class ProjectManager:
             }
             
         except Exception as e:
-            logger.error(f"手动添加项目 {project_path} 时出错: {e}")
+            logger.error(f"Error manually adding project {project_path}: {e}")
             raise
 
 def clear_project_directory_cache():
@@ -723,13 +723,13 @@ class SystemProjectManager:
             status = SystemProjectManager.check_system_project_status()
             
             if not status['needs_initialization']:
-                logger.info("系统项目已经初始化完成")
+                logger.info("System project already initialized")
                 return {'success': True, 'message': '系统项目已经初始化'}
             
-            logger.info(f"开始初始化系统项目: {status['root_directory']}")
+            logger.info(f"Starting system project initialization: {status['root_directory']}")
             
             # 使用Claude Code在用户主目录下初始化项目
-            logger.info(" 使用Claude Code初始化用户主目录...")
+            logger.info("Using Claude Code to initialize user home directory...")
             
             # 创建Claude CLI实例
             claude_cli = ClaudeCLIIntegration()
@@ -737,7 +737,7 @@ class SystemProjectManager:
             # 创建异步mock websocket
             class MockWebSocket:
                 async def send_text(self, msg):
-                    logger.info(f"初始化输出: {msg}")
+                    logger.info(f"Initialization output: {msg}")
             
             mock_websocket = MockWebSocket()
             
@@ -755,31 +755,31 @@ class SystemProjectManager:
             # 等待Claude初始化完成(增加超时时间到60秒)
             if await SystemProjectManager._verify_claude_initialization(timeout=60):
                 # 部署默认智能体
-                logger.info(" 开始部署默认智能体...")
+                logger.info("Starting default agent deployment...")
                 deploy_result = await SystemProjectManager.deploy_default_agents()
                 
                 if deploy_result['success']:
-                    logger.info(" 系统项目初始化完成")
+                    logger.info("System project initialization completed")
                     return {
                         'success': True, 
                         'message': '系统项目初始化完成',
                         'agents_deployed': deploy_result['deployed_count']
                     }
                 else:
-                    logger.error(" 智能体部署失败")
+                    logger.error("Agent deployment failed")
                     return {
                         'success': False,
                         'message': f'智能体部署失败: {deploy_result.get("message", "未知错误")}'
                     }
             else:
-                logger.error(" Claude项目初始化失败")
+                logger.error("Claude project initialization failed")
                 return {
                     'success': False,
                     'message': 'Claude项目初始化超时，请确保Claude CLI正常工作'
                 }
                 
         except Exception as e:
-            logger.error(f"系统项目初始化出错: {e}")
+            logger.error(f"System project initialization error: {e}")
             return {
                 'success': False, 
                 'message': f'初始化出错: {str(e)}'
@@ -794,11 +794,11 @@ class SystemProjectManager:
         # 等待CLAUDE.md文件生成
         for attempt in range(timeout):
             if claude_md_path.exists():
-                logger.info(f"CLAUDE.md文件已生成: {claude_md_path}")
+                logger.info(f"CLAUDE.md file generated: {claude_md_path}")
                 return True
             await asyncio.sleep(1)
         
-        logger.error(f"等待{timeout}秒后CLAUDE.md文件仍未生成")
+        logger.error(f"CLAUDE.md file still not generated after waiting {timeout} seconds")
         return False
     
     @staticmethod
@@ -835,13 +835,13 @@ class SystemProjectManager:
                         # 复制智能体配置文件
                         shutil.copy2(source_path, target_path)
                         deployed_count += 1
-                        logger.info(f"已部署智能体: {agent_file}")
+                        logger.info(f"Agent deployed: {agent_file}")
                     else:
-                        logger.warning(f"源文件不存在: {source_path}")
+                        logger.warning(f"Source file does not exist: {source_path}")
                         failed_agents.append(f"{agent_file} (源文件不存在)")
                         
                 except Exception as e:
-                    logger.error(f"部署智能体 {agent_file} 时出错: {e}")
+                    logger.error(f"Error deploying agent {agent_file}: {e}")
                     failed_agents.append(f"{agent_file} ({str(e)})")
             
             if deployed_count > 0:
@@ -862,7 +862,7 @@ class SystemProjectManager:
                 }
                 
         except Exception as e:
-            logger.error(f"部署默认智能体时出错: {e}")
+            logger.error(f"Error deploying default agents: {e}")
             return {
                 'success': False,
                 'message': f'部署出错: {str(e)}'
@@ -908,7 +908,7 @@ class SystemProjectManager:
                                             elif key == 'tools':
                                                 agent_info['tools'] = value
                         except Exception as e:
-                            logger.warning(f"读取智能体配置 {agent['name']} 时出错: {e}")
+                            logger.warning(f"Error reading agent config {agent['name']}: {e}")
                     
                     agents_status.append(agent_info)
             
@@ -920,7 +920,7 @@ class SystemProjectManager:
             }
             
         except Exception as e:
-            logger.error(f"获取系统智能体状态时出错: {e}")
+            logger.error(f"Error getting system agent status: {e}")
             return {
                 'system_project_ready': False,
                 'agents_deployed': False,

@@ -50,7 +50,7 @@ class ClaudeCLIIntegration:
             }))
             return
         
-        logger.info(f" 使用Claude CLI路径: {claude_executable}")
+        logger.info(f"Using Claude CLI path: {claude_executable}")
         
         # 构建Claude CLI命令参数 - 使用claude命令而非绝对路径
         args = ['claude']
@@ -79,10 +79,10 @@ class ClaudeCLIIntegration:
         # 添加权限设置
         if permission_mode == 'dangerously-allow-all':
             args.append('--dangerously-skip-permissions')
-            logger.info("使用危险跳过权限模式")
+            logger.info("Using dangerous skip permissions mode")
         elif permission_mode and permission_mode != 'default':
             args.extend(['--permission-mode', permission_mode])
-            logger.info(f"使用权限模式: {permission_mode}")
+            logger.info(f"Using permission mode: {permission_mode}")
         
         # 添加资源目录
         if resources:
@@ -91,19 +91,19 @@ class ClaudeCLIIntegration:
                 resource_path = os.path.abspath(os.path.join(working_dir, resource))
                 if os.path.isdir(resource_path):
                     args.extend(['--add-dir', resource_path])
-                    logger.info(f"添加资源目录: {resource_path}")
+                    logger.info(f"Adding resource directory: {resource_path}")
                 elif os.path.isfile(resource_path):
                     # 对于单个文件，我们让@语法在命令中处理
-                    logger.info(f"资源文件将通过@语法引用: {resource}")
+                    logger.info(f"Resource file will be referenced via @ syntax: {resource}")
                 else:
-                    logger.warning(f"资源文件不存在: {resource_path}")
+                    logger.warning(f"Resource file does not exist: {resource_path}")
         
         # 添加工具设置
         self._add_tools_settings(args, tools_settings, permission_mode)
         
-        logger.info(f"启动Claude CLI: {' '.join(args)}")
-        logger.info(f"工作目录: {working_dir}")
-        logger.info(f"会话信息 - 输入session_id: {session_id}, 恢复: {resume}")
+        logger.info(f"Starting Claude CLI: {' '.join(args)}")
+        logger.info(f"Working directory: {working_dir}")
+        logger.info(f"Session info - input session_id: {session_id}, resume: {resume}")
         
         try:
             # 配置终端环境变量，支持完整ANSI颜色
@@ -120,7 +120,7 @@ class ClaudeCLIIntegration:
             
             # 构建完整的shell命令字符串（使用与PTY Shell相同的方式）
             shell_command = f'cd "{working_dir}" && {" ".join(args)}'
-            logger.info(f" Shell命令: {shell_command}")
+            logger.info(f"Shell command: {shell_command}")
             
             # 启动Claude进程 - 使用bash -c方式（与PTY Shell保持一致）
             process = await asyncio.create_subprocess_exec(
@@ -139,19 +139,19 @@ class ClaudeCLIIntegration:
             async def handle_stdout():
                 nonlocal captured_session_id, session_created_sent
                 
-                logger.info(" 开始监听Claude CLI stdout...")
+                logger.info("Starting to monitor Claude CLI stdout...")
                 try:
                     while True:
                         # 使用更小的缓冲区并添加超时
                         try:
                             line = await asyncio.wait_for(process.stdout.readline(), timeout=30.0)
                             if not line:
-                                logger.info(" Claude CLI stdout结束")
+                                logger.info("Claude CLI stdout ended")
                                 break
                         except asyncio.TimeoutError:
-                            logger.warning("⏰ Claude CLI stdout读取超时，检查进程状态...")
+                            logger.warning("Claude CLI stdout read timeout, checking process status...")
                             if process.returncode is not None:
-                                logger.info(f" Claude CLI进程已结束，返回码: {process.returncode}")
+                                logger.info(f"Claude CLI process ended, return code: {process.returncode}")
                                 break
                             continue
                         
@@ -164,12 +164,12 @@ class ClaudeCLIIntegration:
                             
                             try:
                                 response = json.loads(raw_output)
-                                logger.info(f" 解析JSON成功: type={response.get('type')}, session_id={response.get('session_id')}")
+                                logger.info(f"JSON parsing successful: type={response.get('type')}, session_id={response.get('session_id')}")
                                 
                                 # 捕获session ID
                                 if response.get('session_id') and not captured_session_id:
                                     captured_session_id = response['session_id']
-                                    logger.info(f"🆔 捕获到session ID: {captured_session_id}")
+                                    logger.info(f"Captured session ID: {captured_session_id}")
                                     
                                     # 更新进程键
                                     if process_key != captured_session_id:
@@ -183,9 +183,9 @@ class ClaudeCLIIntegration:
                                             from app import task_scheduler  # 延迟导入避免循环依赖
                                             success = task_scheduler.update_task_session_id(task_id, captured_session_id)
                                             if success:
-                                                logger.info(f" 任务 {task_id} 的session_id已保存")
+                                                logger.info(f"Task {task_id} session_id saved")
                                             else:
-                                                logger.warning(f" 保存任务 {task_id} 的session_id失败")
+                                                logger.warning(f"Failed to save task {task_id} session_id")
                                         except Exception as e:
                                             logger.error(f" 保存任务session_id时出错: {e}")
                                     
@@ -196,23 +196,23 @@ class ClaudeCLIIntegration:
                                             'type': 'session-created',
                                             'sessionId': captured_session_id
                                         }))
-                                        logger.info(" 发送session-created事件")
+                                        logger.info("Sending session-created event")
                                 
                                 # 发送解析的响应到WebSocket
                                 await websocket.send_text(json.dumps({
                                     'type': 'claude-response',
                                     'data': response
                                 }))
-                                logger.info(" 发送claude-response到前端")
+                                logger.info("Sending claude-response to frontend")
                                 
                             except json.JSONDecodeError as je:
-                                logger.info(f" 非JSON响应: {raw_output[:100]}{'...' if len(raw_output) > 100 else ''}")
+                                logger.info(f"Non-JSON response: {raw_output[:100]}{'...' if len(raw_output) > 100 else ''}")
                                 # 发送原始文本
                                 await websocket.send_text(json.dumps({
                                     'type': 'claude-output',
                                     'data': raw_output
                                 }))
-                                logger.info(" 发送claude-output到前端")
+                                logger.info("Sending claude-output to frontend")
                         
                         except Exception as e:
                             logger.error(f" 处理单行stdout时出错: {e}")
@@ -220,17 +220,17 @@ class ClaudeCLIIntegration:
                 except Exception as e:
                     logger.error(f" handle_stdout异常: {e}")
                 finally:
-                    logger.info(" handle_stdout结束")
+                    logger.info("handle_stdout ended")
             
             # 处理stderr
             async def handle_stderr():
-                logger.info(" 开始监听Claude CLI stderr...")
+                logger.info("Starting to monitor Claude CLI stderr...")
                 try:
                     while True:
                         try:
                             line = await asyncio.wait_for(process.stderr.readline(), timeout=10.0)
                             if not line:
-                                logger.info(" Claude CLI stderr结束")
+                                logger.info("Claude CLI stderr ended")
                                 break
                         except asyncio.TimeoutError:
                             if process.returncode is not None:
@@ -251,7 +251,7 @@ class ClaudeCLIIntegration:
                 except Exception as e:
                     logger.error(f" handle_stderr异常: {e}")
                 finally:
-                    logger.info(" handle_stderr结束")
+                    logger.info("handle_stderr ended")
             
             # 启动异步处理任务
             stdout_task = asyncio.create_task(handle_stdout())
@@ -275,7 +275,7 @@ class ClaudeCLIIntegration:
             # 等待输出处理完成
             await asyncio.gather(stdout_task, stderr_task, return_exceptions=True)
             
-            logger.info(f"Claude CLI进程退出，代码: {return_code}")
+            logger.info(f"Claude CLI process exited, code: {return_code}")
             
         except Exception as error:
             logger.error(f"Claude CLI进程错误: {error}")
@@ -295,13 +295,13 @@ class ClaudeCLIIntegration:
     async def _add_mcp_config_if_available(self, args: List[str]) -> None:
         """检查并添加MCP配置"""
         try:
-            logger.info("开始检查MCP配置...")
+            logger.info("Starting MCP configuration check...")
             
             # 检查~/.claude.json中的MCP配置
             claude_config_path = Path.home() / '.claude.json'
             
-            logger.info(f"检查MCP配置文件: {claude_config_path}")
-            logger.info(f"Claude配置文件存在: {claude_config_path.exists()}")
+            logger.info(f"Checking MCP config file: {claude_config_path}")
+            logger.info(f"Claude config file exists: {claude_config_path.exists()}")
             
             has_mcp_servers = False
             
@@ -312,7 +312,7 @@ class ClaudeCLIIntegration:
                     
                     # 检查全局MCP服务器
                     if claude_config.get('mcpServers') and len(claude_config['mcpServers']) > 0:
-                        logger.info(f"找到 {len(claude_config['mcpServers'])} 个全局MCP服务器")
+                        logger.info(f"Found {len(claude_config['mcpServers'])} global MCP servers")
                         has_mcp_servers = True
                     
                     # 检查项目特定的MCP服务器
@@ -320,7 +320,7 @@ class ClaudeCLIIntegration:
                         current_project_path = os.getcwd()
                         project_config = claude_config['claudeProjects'].get(current_project_path)
                         if project_config and project_config.get('mcpServers') and len(project_config['mcpServers']) > 0:
-                            logger.info(f"找到 {len(project_config['mcpServers'])} 个项目MCP服务器")
+                            logger.info(f"Found {len(project_config['mcpServers'])} project MCP servers")
                             has_mcp_servers = True
                 
                 except json.JSONDecodeError as e:
@@ -328,7 +328,7 @@ class ClaudeCLIIntegration:
                 except Exception as e:
                     logger.error(f"读取Claude配置文件时出错: {e}")
             
-            logger.info(f"MCP服务器检查结果: {has_mcp_servers}")
+            logger.info(f"MCP server check result: {has_mcp_servers}")
             
             if has_mcp_servers:
                 config_path = None
@@ -352,21 +352,21 @@ class ClaudeCLIIntegration:
                         pass
                 
                 if config_path:
-                    logger.info(f"添加MCP配置: {config_path}")
+                    logger.info(f"Adding MCP config: {config_path}")
                     args.extend(['--mcp-config', config_path])
                 else:
-                    logger.warning("检测到MCP服务器但未找到有效配置文件")
+                    logger.warning("Detected MCP servers but no valid config file found")
         
         except Exception as error:
             logger.error(f"MCP配置检查失败: {error}")
-            logger.info("继续执行，不使用MCP支持")
+            logger.info("Continue execution without MCP support")
     
     def _add_tools_settings(self, args: List[str], settings: Dict[str, Any], permission_mode: str) -> None:
         """添加工具设置参数"""
         # 如果跳过权限且不在计划模式
         if settings.get('skipPermissions') and permission_mode != 'plan':
             args.append('--dangerously-skip-permissions')
-            logger.warning("使用 --dangerously-skip-permissions（跳过其他工具设置）")
+            logger.warning("Using --dangerously-skip-permissions (skipping other tool settings)")
         else:
             # 收集允许的工具
             allowed_tools = list(settings.get('allowedTools', []))
@@ -377,30 +377,30 @@ class ClaudeCLIIntegration:
                 for tool in plan_mode_tools:
                     if tool not in allowed_tools:
                         allowed_tools.append(tool)
-                logger.info(f"计划模式: 添加默认允许工具: {plan_mode_tools}")
+                logger.info(f"Planning mode: adding default allowed tools: {plan_mode_tools}")
             
             # 添加允许的工具
             if allowed_tools:
                 for tool in allowed_tools:
                     args.extend(['--allowedTools', tool])
-                    logger.info(f"允许工具: {tool}")
+                    logger.info(f"Allowing tool: {tool}")
             
             # 添加禁用的工具
             disallowed_tools = settings.get('disallowedTools', [])
             if disallowed_tools:
                 for tool in disallowed_tools:
                     args.extend(['--disallowedTools', tool])
-                    logger.info(f"禁用工具: {tool}")
+                    logger.info(f"Disabling tool: {tool}")
             
             # 记录跳过权限被计划模式禁用的情况
             if settings.get('skipPermissions') and permission_mode == 'plan':
-                logger.info("计划模式禁用了跳过权限设置")
+                logger.info("Planning mode disabled skip permissions setting")
     
     def abort_claude_session(self, session_id: str) -> bool:
         """中止Claude会话"""
         process = self.active_processes.get(session_id)
         if process:
-            logger.info(f"中止Claude会话: {session_id}")
+            logger.info(f"Aborting Claude session: {session_id}")
             try:
                 process.terminate()
                 del self.active_processes[session_id]
@@ -420,7 +420,7 @@ class ClaudeCLIIntegration:
         project_name = options.get('projectName')
         cwd = options.get('cwd', project_path or os.getcwd())
         
-        logger.info(f"启动继续会话 - 项目: {project_name}, 路径: {project_path}, 工作目录: {cwd}")
+        logger.info(f"Starting continue session - project: {project_name}, path: {project_path}, working directory: {cwd}")
         
         # 获取Claude CLI的绝对路径，防止"Command not found"随机性问题
         from app import EnvironmentChecker  # 延迟导入避免循环依赖
@@ -434,7 +434,7 @@ class ClaudeCLIIntegration:
             }))
             return
         
-        logger.info(f" 继续会话使用Claude CLI路径: {claude_executable}")
+        logger.info(f"Continue session using Claude CLI path: {claude_executable}")
         
         # 构建Claude CLI命令参数 - 使用claude命令，claude -c 是交互式命令，不需要其他参数
         args = ['claude']
@@ -448,12 +448,12 @@ class ClaudeCLIIntegration:
         # 最后添加 -c 参数继续上个会话
         args.append('-c')
         
-        logger.info(f" 启动Claude继续会话")
-        logger.info(f" 完整命令: {' '.join(args)}")
-        logger.info(f" 命令数组: {args}")
-        logger.info(f"工作目录: {working_dir}")
-        logger.info(f"🆔 会话信息 - sessionId: {session_id}, 项目: {project_name}")
-        logger.info(f"  关键: 使用 claude -c 继续上个会话（而非新建会话）")
+        logger.info(f"Starting Claude continue session")
+        logger.info(f"Complete command: {' '.join(args)}")
+        logger.info(f"Command array: {args}")
+        logger.info(f"Working directory: {working_dir}")
+        logger.info(f"Session info - sessionId: {session_id}, project: {project_name}")
+        logger.info(f"Key: using claude -c to continue previous session (not create new session)")
         
         try:
             # 配置终端环境变量，支持完整ANSI颜色
@@ -484,18 +484,18 @@ class ClaudeCLIIntegration:
             
             # 处理stdout（流式JSON响应）
             async def handle_stdout():
-                logger.info(" 开始监听Claude继续会话 stdout...")
+                logger.info("Starting to monitor Claude continue session stdout...")
                 try:
                     while True:
                         try:
                             line = await asyncio.wait_for(process.stdout.readline(), timeout=30.0)
                             if not line:
-                                logger.info(" Claude继续会话 stdout结束")
+                                logger.info("Claude continue session stdout ended")
                                 break
                         except asyncio.TimeoutError:
-                            logger.warning("⏰ Claude继续会话 stdout读取超时，检查进程状态...")
+                            logger.warning("Claude continue session stdout read timeout, checking process status...")
                             if process.returncode is not None:
-                                logger.info(f" Claude继续会话进程已结束，返回码: {process.returncode}")
+                                logger.info(f"Claude continue session process ended, return code: {process.returncode}")
                                 break
                             continue
                         
@@ -504,11 +504,11 @@ class ClaudeCLIIntegration:
                             if not raw_output:
                                 continue
                             
-                            logger.info(f" Claude继续会话 stdout: {raw_output[:200]}{'...' if len(raw_output) > 200 else ''}")
+                            logger.info(f"Claude continue session stdout: {raw_output[:200]}{'...' if len(raw_output) > 200 else ''}")
                             
                             try:
                                 response = json.loads(raw_output)
-                                logger.info(f" 解析JSON成功: type={response.get('type')}")
+                                logger.info(f"JSON parsing successful: type={response.get('type')}")
                                 
                                 # 发送解析后的响应到WebSocket
                                 await websocket.send_text(json.dumps({
@@ -516,7 +516,7 @@ class ClaudeCLIIntegration:
                                     'data': response
                                 }))
                             except json.JSONDecodeError:
-                                logger.info(f" 非JSON响应: {raw_output}")
+                                logger.info(f"Non-JSON response: {raw_output}")
                                 # 发送原始文本
                                 await websocket.send_text(json.dumps({
                                     'type': 'claude-output',
@@ -528,17 +528,17 @@ class ClaudeCLIIntegration:
                 except Exception as e:
                     logger.error(f" handle_stdout异常: {e}")
                 finally:
-                    logger.info(" handle_stdout结束")
+                    logger.info("handle_stdout ended")
             
             # 处理stderr
             async def handle_stderr():
-                logger.info(" 开始监听Claude继续会话 stderr...")
+                logger.info("Starting to monitor Claude continue session stderr...")
                 try:
                     while True:
                         try:
                             line = await asyncio.wait_for(process.stderr.readline(), timeout=30.0)
                             if not line:
-                                logger.info(" Claude继续会话 stderr结束")
+                                logger.info("Claude continue session stderr ended")
                                 break
                         except asyncio.TimeoutError:
                             if process.returncode is not None:
@@ -560,7 +560,7 @@ class ClaudeCLIIntegration:
                 except Exception as e:
                     logger.error(f" handle_stderr异常: {e}")
                 finally:
-                    logger.info(" handle_stderr结束")
+                    logger.info("handle_stderr ended")
             
             # 启动异步处理任务
             stdout_task = asyncio.create_task(handle_stdout())
@@ -583,7 +583,7 @@ class ClaudeCLIIntegration:
             # 等待输出处理完成
             await asyncio.gather(stdout_task, stderr_task, return_exceptions=True)
             
-            logger.info(f"Claude继续会话进程退出，代码: {return_code}")
+            logger.info(f"Claude continue session process exited, code: {return_code}")
             
         except Exception as error:
             logger.error(f"Claude继续会话进程错误: {error}")
