@@ -80,6 +80,16 @@ class App {
             console.log(' [APP] 页面隐藏，清理应用资源');
             this.cleanup();
         });
+        
+        // 注册语言切换刷新方法
+        if (window.i18n) {
+            window.i18n.registerComponent('app', () => {
+                // 如果当前显示环境错误，重新渲染
+                if (this.environmentStatusData && this.environmentError && !this.environmentError.classList.contains('hidden')) {
+                    this.renderEnvironmentStatus(this.environmentStatusData);
+                }
+            });
+        }
     }
 
     /**
@@ -133,30 +143,37 @@ class App {
      */
     showEnvironmentError(status) {
         this.hideLoading();
-        
+        this.environmentStatusData = status; // 保存状态用于语言切换
+        this.renderEnvironmentStatus(status);
+    }
+    
+    /**
+     * 渲染环境状态（支持语言切换）
+     */
+    renderEnvironmentStatus(status) {
         if (this.environmentStatus) {
             this.environmentStatus.innerHTML = `
                 <div class="status-item">
-                    <span>Claude CLI</span>
+                    <span>${t('dashboard.claudeCli')}</span>
                     <span class="status-indicator ${status.claude_cli ? 'success' : 'error'}">
-                        ${status.claude_cli ? ' 已安装' : ' 未安装'}
+                        ${status.claude_cli ? '✓ ' + t('status.ready') : '✗ ' + t('dashboard.claudeNotFound')}
                     </span>
                 </div>
                 <div class="status-item">
-                    <span>项目目录</span>
+                    <span>${t('project.workingDirectory')}</span>
                     <span class="status-indicator ${status.projects_dir ? 'success' : 'error'}">
-                        ${status.projects_dir ? ' 已存在' : ' 不存在'}
+                        ${status.projects_dir ? '✓ ' + t('status.ready') : '✗ ' + t('error.loadFailed')}
                     </span>
                 </div>
                 ${status.projects_path ? 
                     `<div class="status-item">
-                        <span>路径</span>
+                        <span>${t('dashboard.executionPath')}</span>
                         <span style="font-family: monospace; font-size: 12px;">${status.projects_path}</span>
                     </div>` : ''
                 }
                 ${status.error ? 
                     `<div class="status-item">
-                        <span>错误</span>
+                        <span>${t('common.error')}</span>
                         <span class="status-indicator error">${status.error}</span>
                     </div>` : ''
                 }

@@ -350,6 +350,7 @@ const TEXTS = {
         'task.deleteNotFound': '要删除的任务不存在',
         'task.networkError': '删除任务时发生网络错误',
         'task.noTasks': '暂无任务',
+        'task.noTasksEmpty': '暂无任务',
         'task.createFirst': '创建新任务',
         'task.autoMode': '全自动模式',
         'task.autoModeDescription': '启用后将自动跳过权限确认，提升执行效率',
@@ -549,6 +550,7 @@ class I18n {
     constructor() {
         this.currentLanguage = this.getStoredLanguage() || 'en'; // 默认英文
         this.observers = new Set(); // 观察者模式，用于语言切换通知
+        this.components = new Map(); // 全局组件注册表，用于统一管理动态内容刷新
     }
     
     /**
@@ -610,6 +612,31 @@ class I18n {
     }
     
     /**
+     * 注册组件的刷新方法
+     * @param {string} name - 组件名称
+     * @param {Function} refreshMethod - 组件刷新方法
+     */
+    registerComponent(name, refreshMethod) {
+        if (typeof refreshMethod !== 'function') {
+            console.warn('Component refresh method must be a function:', name);
+            return;
+        }
+        this.components.set(name, refreshMethod);
+        console.log(`组件 ${name} 已注册语言切换刷新方法`);
+    }
+    
+    /**
+     * 取消注册组件
+     * @param {string} name - 组件名称
+     */
+    unregisterComponent(name) {
+        if (this.components.has(name)) {
+            this.components.delete(name);
+            console.log(`组件 ${name} 已取消注册`);
+        }
+    }
+    
+    /**
      * 移除语言切换观察者
      */
     removeObserver(callback) {
@@ -620,6 +647,20 @@ class I18n {
      * 通知观察者语言已更改
      */
     notifyObservers(lang) {
+        // 首先更新静态页面文本
+        this.updatePageTexts();
+        
+        // 然后刷新所有注册的动态组件
+        this.components.forEach((refreshMethod, name) => {
+            try {
+                refreshMethod();
+                console.log(`组件 ${name} 语言切换刷新完成`);
+            } catch (error) {
+                console.error(`组件 ${name} 语言切换刷新失败:`, error);
+            }
+        });
+        
+        // 最后通知观察者（保持向后兼容）
         this.observers.forEach(callback => {
             try {
                 callback(lang);
@@ -627,9 +668,6 @@ class I18n {
                 console.error('Error in language change observer:', error);
             }
         });
-        
-        // 自动更新页面中的i18n元素
-        this.updatePageTexts();
     }
     
     /**

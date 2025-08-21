@@ -232,6 +232,22 @@ class TaskManager {
         
         // 独立任务详情弹窗事件监听
         this.initStandaloneDetailModalListeners();
+        
+        // 注册语言切换刷新方法
+        if (window.i18n) {
+            window.i18n.registerComponent('taskManager', () => {
+                this.renderTasksList();
+                this.renderSidebarTasksList(); // 同时刷新侧边栏任务列表
+                // 如果当前显示详情视图，重新渲染详情
+                if (this.currentView === 'detail' && this.selectedTaskId) {
+                    this.showTaskDetail(this.selectedTaskId);
+                }
+                // 重新触发任务更新事件，确保Dashboard统计数据正确
+                document.dispatchEvent(new CustomEvent('tasksUpdated', {
+                    detail: { tasks: this.tasks }
+                }));
+            });
+        }
     }
 
     /**
@@ -530,10 +546,9 @@ class TaskManager {
                             </button>
                         </div>
                     </div>
-                    <div class="task-item-goal">${this.escapeHtml(safeTask.goal)}</div>
+                    ${safeTask.goal && safeTask.goal !== safeTask.name ? `<div class="task-item-goal">${this.escapeHtml(safeTask.goal)}</div>` : ''}
                     <div class="task-item-meta">
-                        <span>${safeTask.schedule_frequency === 'immediate' ? t('task.immediate') : t('task.scheduled')}</span>
-                        ${safeTask.resources.length > 0 ? `<span>${safeTask.resources.length} 个资源</span>` : ''}
+                        ${safeTask.resources.length > 0 ? `<span>${safeTask.resources.length} ${t('task.resourceFiles')}</span>` : `<span>${t('task.noResourceFiles')}</span>`}
                     </div>
                 </div>
             `;
@@ -685,28 +700,30 @@ class TaskManager {
                     goal: task.goal || '',
                     enabled: task.enabled !== false,
                     status: task.status || 'pending',
-                    schedule_frequency: task.scheduleFrequency || 'immediate'
+                    schedule_frequency: task.scheduleFrequency || 'immediate',
+                    resources: Array.isArray(task.resources) ? task.resources : []
                 };
 
                 const taskStatus = this.getTaskStatus(safeTask);
 
                 return `
-                    <div class="task-item" 
-                         data-task-id="${safeTask.id}" 
-                         onclick="window.taskManager && window.taskManager.showTaskDetails('${safeTask.id}')">
+                    <div class="task-item" data-task-id="${safeTask.id}" onclick="window.taskManager && window.taskManager.showTaskDetails('${safeTask.id}')">
                         <div class="task-item-header">
-                            <div class="task-name">${this.escapeHtml(safeTask.name)}</div>
-                            <div class="task-header-actions">
-                                <div class="task-status">
-                                    <span class="status-dot ${taskStatus.class}"></span>
+                            <div class="task-item-name">${this.escapeHtml(safeTask.name)}</div>
+                            <div class="task-item-actions">
+                                <span class="task-item-status ${taskStatus.class}">
                                     ${taskStatus.text}
-                                </div>
+                                </span>
                                 <button class="delete-task-btn" onclick="event.stopPropagation(); taskManager.deleteTask('${safeTask.id}')" title="删除任务">
-                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                        <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6h14ZM10 11v6M14 11v6"/>
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6h14ZM10 11v6M14 11v6"></path>
                                     </svg>
                                 </button>
                             </div>
+                        </div>
+                        ${safeTask.goal && safeTask.goal !== safeTask.name ? `<div class="task-item-goal">${this.escapeHtml(safeTask.goal)}</div>` : ''}
+                        <div class="task-item-meta">
+                            ${safeTask.resources.length > 0 ? `<span>${safeTask.resources.length} ${t('task.resourceFiles')}</span>` : `<span>${t('task.noResourceFiles')}</span>`}
                         </div>
                     </div>
                 `;

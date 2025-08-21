@@ -63,7 +63,7 @@ class FilesDrawer {
 
         // 监听语言切换事件
         if (window.i18n) {
-            window.i18n.addObserver(() => {
+            window.i18n.registerComponent('filesDrawer', () => {
                 this.updateDrawerTitle();
             });
         }

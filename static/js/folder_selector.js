@@ -138,6 +138,16 @@ class FolderSelector {
         this.searchClearBtn?.addEventListener('click', () => {
             this.clearSearch();
         });
+        
+        // 注册语言切换刷新方法
+        if (window.i18n) {
+            window.i18n.registerComponent('folderSelector', () => {
+                // 重新渲染文件夹树（如果已加载）
+                if (this.folders.length > 0) {
+                    this.renderFolders();
+                }
+            });
+        }
     }
 
     /**

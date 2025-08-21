@@ -46,11 +46,18 @@ class EmployeesManager {
         // 监听全局系统项目状态更新
         document.addEventListener('systemProjectStatusUpdated', (event) => {
             this.systemProjectStatus = event.detail;
-            this.renderEmployees();
+            this.renderAgentsContent();
         });
         
         // 监听数字员工部署完成事件
         this.setupWebSocketListener();
+        
+        // 注册语言切换刷新方法
+        if (window.i18n) {
+            window.i18n.registerComponent('employeesManager', () => {
+                this.renderAgentsContent();
+            });
+        }
     }
 
     /**
@@ -95,7 +102,7 @@ class EmployeesManager {
         modal.innerHTML = `
             <div class="modal-content large-modal">
                 <div class="modal-header">
-                    <h3>数字员工团队管理</h3>
+                    <h3>${t('agents.teamManagement')}</h3>
                     <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">×</button>
                 </div>
                 ${this.renderAgentsContent()}
@@ -355,20 +362,20 @@ class EmployeesManager {
             // 检查系统项目状态
             if (!this.systemProjectStatus) {
                 console.error('系统项目状态未加载');
-                alert('系统状态未加载，请稍后重试');
+                alert(t('agents.systemNotLoaded'));
                 return;
             }
             
             // 检查 enhancedSidebar 是否可用
             if (!window.enhancedSidebar) {
                 console.error('enhancedSidebar 未初始化');
-                alert('页签系统未加载，请刷新页面重试');
+                alert(t('agents.tabSystemNotLoaded'));
                 return;
             }
             
             // 构造系统项目对象
             const systemProject = {
-                name: '系统根目录',
+                name: t('agents.systemRoot'),
                 displayName: ' 系统根目录',
                 path: this.systemProjectStatus.root_directory,
                 fullPath: this.systemProjectStatus.root_directory
@@ -377,7 +384,7 @@ class EmployeesManager {
             console.log(' 准备创建系统初始化会话:', systemProject);
             
             // 创建专用的初始化会话页签（使用已生成的sessionId）
-            const sessionName = '系统初始化';
+            const sessionName = t('agents.systemInitialization');
             
             // 构建完整的初始化命令 - 直接使用Claude CLI组合命令  
             const guidanceText = `你现在要初始化用户电脑的根目录/主目录 (~/)，包含用户的全部数字生活内容，可能会包含：
@@ -449,7 +456,7 @@ class EmployeesManager {
             
         } catch (error) {
             console.error('创建初始化会话失败:', error);
-            alert('创建初始化会话失败: ' + error.message);
+            alert(t('agents.initializationFailed') + error.message);
             
             // 如果初始化失败，清理hook设置
             try {
@@ -558,7 +565,7 @@ class EmployeesManager {
         // 获取当前活跃的会话终端
         const sessionTerminal = window.sessionTerminal;
         if (!sessionTerminal || !sessionTerminal.activeSessionId) {
-            alert('未找到活跃的终端会话，请确保初始化页签已打开');
+            alert(t('agents.noActiveTerminal'));
             return;
         }
 
@@ -566,7 +573,7 @@ class EmployeesManager {
         const connection = sessionTerminal.connections.get(sessionId);
         
         if (!connection || connection.readyState !== WebSocket.OPEN) {
-            alert('终端连接不可用，请检查Claude Code是否正常启动');
+            alert(t('agents.terminalUnavailable'));
             return;
         }
 
