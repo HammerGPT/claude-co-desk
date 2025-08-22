@@ -473,14 +473,23 @@ class SidebarDrawers {
      */
     updateTasksCount(tasksData) {
         const tasksCountEl = document.getElementById('tasks-count');
-        if (tasksCountEl && tasksData) {
-            const count = Array.isArray(tasksData.tasks) ? tasksData.tasks.length : 0;
-            const activeCount = Array.isArray(tasksData.tasks) ? 
-                tasksData.tasks.filter(task => task.status === 'active').length : 0;
+        if (tasksCountEl) {
+            // 调试信息：记录接收到的数据
+            console.log('[SIDEBAR] updateTasksCount called with:', tasksData);
             
-            tasksCountEl.textContent = count > 0 ? 
-                `${count} ${t('sidebar.tasksCount')}${activeCount > 0 ? ` (${activeCount} 活跃)` : ''}` : 
-                t('sidebar.noTasks');
+            if (tasksData) {
+                const count = Array.isArray(tasksData.tasks) ? tasksData.tasks.length : 0;
+                const activeCount = Array.isArray(tasksData.tasks) ? 
+                    tasksData.tasks.filter(task => task.status === 'active').length : 0;
+                
+                tasksCountEl.textContent = count > 0 ? 
+                    `${count} ${t('sidebar.tasksCount')}${activeCount > 0 ? ` (${activeCount} 活跃)` : ''}` : 
+                    t('sidebar.noTasks');
+                
+                console.log(`[SIDEBAR] Tasks count updated: ${count} tasks`);
+            } else {
+                console.log('[SIDEBAR] tasksData is null/undefined, not updating count');
+            }
         }
         
         console.log('[SIDEBAR] 任务数据更新，重新计算抽屉高度');

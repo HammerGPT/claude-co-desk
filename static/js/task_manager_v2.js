@@ -498,12 +498,22 @@ class TaskManager {
                 this.tasks = [];
                 this.renderEmptyTasksList();
                 this.renderSidebarTasksList();
+                
+                // 通知抽屉管理器更新任务数量（即使是空列表）
+                document.dispatchEvent(new CustomEvent('tasksUpdated', {
+                    detail: { tasks: this.tasks }
+                }));
             }
         } catch (error) {
             console.error('加载任务失败:', error);
             this.tasks = [];
             this.renderEmptyTasksList();
             this.renderSidebarTasksList();
+            
+            // 通知抽屉管理器更新任务数量（即使是空列表）
+            document.dispatchEvent(new CustomEvent('tasksUpdated', {
+                detail: { tasks: this.tasks }
+            }));
         }
     }
 
