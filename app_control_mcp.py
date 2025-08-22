@@ -8,6 +8,7 @@ Provides tools for Claude Code to discover and launch applications
 import asyncio
 import json
 import logging
+import shlex
 import subprocess
 import sys
 from typing import Any, Dict, List, Optional
@@ -251,7 +252,7 @@ class ApplicationControlMCP:
             if app_info.platform == "darwin":
                 # macOS
                 result = subprocess.run(
-                    command.split(),
+                    shlex.split(command),
                     capture_output=True,
                     text=True,
                     timeout=10
@@ -268,7 +269,7 @@ class ApplicationControlMCP:
             else:
                 # Linux
                 result = subprocess.run(
-                    command.split(),
+                    shlex.split(command),
                     capture_output=True,
                     text=True,
                     timeout=10
