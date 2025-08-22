@@ -651,28 +651,33 @@
 
 /* Tag Editor Modal */
 .modal-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0, 0, 0, 0.5);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 10000;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    background: rgba(0, 0, 0, 0.5) !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    z-index: 99999 !important;
+    pointer-events: auto !important;
 }
 
 .modal-content.tag-editor {
-    background: var(--bg-primary, #ffffff);
-    border-radius: var(--border-radius-lg, 12px);
-    box-shadow: var(--shadow-modal, 0 20px 25px -5px rgba(0, 0, 0, 0.1));
-    width: 90%;
-    max-width: 500px;
-    max-height: 80vh;
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
+    background: var(--bg-primary, #ffffff) !important;
+    border-radius: var(--border-radius-lg, 12px) !important;
+    box-shadow: var(--shadow-modal, 0 20px 25px -5px rgba(0, 0, 0, 0.1)) !important;
+    width: 90% !important;
+    max-width: 500px !important;
+    max-height: 80vh !important;
+    overflow: hidden !important;
+    display: flex !important;
+    flex-direction: column !important;
+    position: relative !important;
+    z-index: 100000 !important;
 }
 
 .modal-header {
@@ -1083,4 +1088,38 @@
     height: 100%;
     display: flex;
     flex-direction: column;
+}
+
+/* Editable app card styles */
+.editable-app-card {
+    cursor: pointer;
+    transition: all 0.2s ease;
+    position: relative;
+}
+
+.editable-app-card:hover {
+    background: var(--bg-hover, #f3f4f6);
+    border-color: var(--color-primary-alpha, rgba(59, 130, 246, 0.3));
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.editable-app-card::after {
+    content: "Click to edit tags";
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    background: rgba(59, 130, 246, 0.9);
+    color: white;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    pointer-events: none;
+    z-index: 1;
+}
+
+.editable-app-card:hover::after {
+    opacity: 1;
 }

@@ -739,15 +739,22 @@ class ApplicationsSettings {
         // Bind launch buttons
         appsList.querySelectorAll('.launch-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
-                const appName = e.target.getAttribute('data-app');
+                e.stopPropagation(); // Prevent triggering card click
+                const appName = e.target.closest('.launch-btn').getAttribute('data-app');
                 this.launchApplication(appName);
             });
         });
         
-        // Bind edit tags buttons
-        appsList.querySelectorAll('.edit-tags-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const appName = e.target.getAttribute('data-app');
+        // Bind edit tags to app card click
+        appsList.querySelectorAll('.editable-app-card').forEach(card => {
+            card.addEventListener('click', (e) => {
+                // Don't trigger if clicking on launch button or its children
+                if (e.target.closest('.launch-btn')) {
+                    return;
+                }
+                const appName = card.getAttribute('data-app');
+                console.log('App card clicked (old method):', appName);
+                console.log('Applications data (old method):', this.applications);
                 this.editApplicationTags(appName);
             });
         });
@@ -769,22 +776,19 @@ class ApplicationsSettings {
             : '<span class="app-no-tags">No tags</span>';
         
         return `
-            <div class="app-card-settings ${typeClass}">
+            <div class="app-card-settings ${typeClass} editable-app-card" data-app="${name}" title="Click to edit tags">
                 <div class="app-icon">
                     ${app.type === 'gui' ? '🖥️' : '⚙️'}
                 </div>
                 <div class="app-info">
                     <div class="app-name" title="${name}">${name}</div>
                     <div class="app-type">${typeText}</div>
-                    <div class="app-tags" title="Click to edit tags">
+                    <div class="app-tags">
                         ${tagsHtml}
                     </div>
                 </div>
                 <div class="app-actions">
-                    <button class="btn btn-sm btn-secondary edit-tags-btn" data-app="${name}" data-i18n-title="Edit Tags">
-                        <span>Tags</span>
-                    </button>
-                    <button class="btn btn-sm btn-primary launch-btn" data-app="${name}" data-i18n-title="apps.launch">
+                    <button class="btn btn-sm btn-primary launch-btn" data-app="${name}" data-i18n-title="apps.launch" onclick="event.stopPropagation()">
                         <span data-i18n="apps.launch">Launch</span>
                     </button>
                 </div>
@@ -931,8 +935,10 @@ class ApplicationsSettings {
     }
     
     async editApplicationTags(appName) {
+        
         const app = this.applications[appName];
         if (!app) {
+            console.error('Application not found:', appName);
             this.showMessage('Application not found', 'error');
             return;
         }
@@ -961,12 +967,12 @@ class ApplicationsSettings {
         modal.innerHTML = `
             <div class="modal-content tag-editor">
                 <div class="modal-header">
-                    <h3>Edit Tags for ${appName}</h3>
+                    <h3><span data-i18n="apps.editTagsFor">Edit Tags for</span> ${appName}</h3>
                     <button class="modal-close">&times;</button>
                 </div>
                 <div class="modal-body">
                     <div class="current-tags">
-                        <label>Current Tags:</label>
+                        <label data-i18n="apps.currentTags">Current Tags:</label>
                         <div class="tags-container" id="current-tags-container">
                             ${currentTags.map(tag => `
                                 <span class="tag-chip" data-tag="${tag}">
@@ -974,20 +980,20 @@ class ApplicationsSettings {
                                     <button class="tag-remove">&times;</button>
                                 </span>
                             `).join('')}
-                            ${currentTags.length === 0 ? '<span class="no-tags">No tags</span>' : ''}
+                            ${currentTags.length === 0 ? '<span class="no-tags" data-i18n="apps.noTags">No tags</span>' : ''}
                         </div>
                     </div>
                     
                     <div class="tag-input-section">
-                        <label>Add Tag:</label>
+                        <label data-i18n="apps.addTag">Add Tag:</label>
                         <div class="tag-input-container">
-                            <input type="text" id="tag-input" placeholder="Enter tag name..." />
-                            <button id="add-tag-btn" class="btn btn-sm btn-secondary">Add</button>
+                            <input type="text" id="tag-input" data-i18n-placeholder="apps.enterTagName" placeholder="Enter tag name..." />
+                            <button id="add-tag-btn" class="btn btn-sm btn-secondary" data-i18n="apps.add">Add</button>
                         </div>
                     </div>
                     
                     <div class="common-tags">
-                        <label>Common Tags:</label>
+                        <label data-i18n="apps.commonTags">Common Tags:</label>
                         <div class="common-tags-container">
                             ${commonTags.map(tag => `
                                 <button class="tag-suggestion ${currentTags.includes(tag) ? 'active' : ''}" 
@@ -997,20 +1003,66 @@ class ApplicationsSettings {
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button id="save-tags-btn" class="btn btn-primary">Save Tags</button>
-                    <button id="cancel-tags-btn" class="btn btn-secondary">Cancel</button>
+                    <button id="save-tags-btn" class="btn btn-primary" data-i18n="apps.saveTags">Save Tags</button>
+                    <button id="cancel-tags-btn" class="btn btn-secondary" data-i18n="common.cancel">Cancel</button>
                 </div>
             </div>
         `;
         
         document.body.appendChild(modal);
         
+        // Add some styling to make sure it's visible
+        modal.style.cssText = `
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            right: 0 !important;
+            bottom: 0 !important;
+            width: 100vw !important;
+            height: 100vh !important;
+            background: rgba(0, 0, 0, 0.5) !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            z-index: 999999 !important;
+            pointer-events: auto !important;
+            opacity: 1 !important;
+            visibility: visible !important;
+        `;
+        
+        // Style the modal content
+        const modalContent = modal.querySelector('.modal-content');
+        if (modalContent) {
+            modalContent.style.cssText = `
+                background: white !important;
+                border-radius: 12px !important;
+                box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1) !important;
+                width: 90% !important;
+                max-width: 500px !important;
+                max-height: 80vh !important;
+                overflow: auto !important;
+                display: flex !important;
+                flex-direction: column !important;
+                position: relative !important;
+                z-index: 1000000 !important;
+                opacity: 1 !important;
+                visibility: visible !important;
+            `;
+        }
+        
         // Bind events
         this.bindTagEditorEvents(modal, appName, currentTags);
         
+        // Update i18n texts for modal
+        if (window.i18n) {
+            window.i18n.updatePageTexts();
+        }
+        
         // Focus on input
         const tagInput = modal.querySelector('#tag-input');
-        tagInput.focus();
+        if (tagInput) {
+            tagInput.focus();
+        }
     }
     
     bindTagEditorEvents(modal, appName, originalTags) {
@@ -1313,15 +1365,22 @@ ApplicationsSettings.prototype.updateApplicationsList = function() {
     // Bind launch buttons
     appsList.querySelectorAll('.launch-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
-            const appName = e.target.getAttribute('data-app');
+            e.stopPropagation(); // Prevent triggering card click
+            const appName = e.target.closest('.launch-btn').getAttribute('data-app');
             this.launchApplication(appName);
         });
     });
     
-    // Bind edit tags buttons
-    appsList.querySelectorAll('.edit-tags-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            const appName = e.target.getAttribute('data-app');
+    // Bind edit tags to app card click
+    appsList.querySelectorAll('.editable-app-card').forEach(card => {
+        card.addEventListener('click', (e) => {
+            // Don't trigger if clicking on launch button or its children
+            if (e.target.closest('.launch-btn')) {
+                return;
+            }
+            const appName = card.getAttribute('data-app');
+            console.log('App card clicked:', appName);
+            console.log('Applications data:', this.applications);
             this.editApplicationTags(appName);
         });
     });
@@ -1332,5 +1391,4 @@ ApplicationsSettings.prototype.updateApplicationsList = function() {
     }
 };
 
-// Force browser cache refresh - timestamp: 2025-08-22T04:45:00Z
-console.log('Applications Manager - fixed settings modal bug');
+// Force browser cache refresh - timestamp: 2025-08-22T05:05:00Z
