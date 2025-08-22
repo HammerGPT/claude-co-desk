@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "app-control": {
+      "command": "/Users/yuhao/Documents/Heliki/Heliki_OS/venv/bin/python",
+      "args": [
+        "/Users/yuhao/Documents/Heliki/Heliki_OS/app_control_mcp.py"
+      ],
+      "env": {
+        "PYTHONPATH": "/Users/yuhao/Documents/Heliki/Heliki_OS"
+      }
+    }
+  }
+}

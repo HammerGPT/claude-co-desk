@@ -37,6 +37,7 @@
     <link rel="stylesheet" href="/static/css/enhanced_components.css">
     <link rel="stylesheet" href="/static/css/session_mode.css">
     <link rel="stylesheet" href="/static/css/icons.css">
+    <link rel="stylesheet" href="/static/css/applications_manager.css">
     
     <!-- CSS修复已移动到components.css -->
 </head>
@@ -313,6 +314,9 @@
                             <button class="settings-menu-item active" data-section="general">
                                 <img src="/static/assets/icons/interface/settings.png" width="16" height="16" alt=""> <span data-i18n="settings.general">通用设置</span>
                             </button>
+                            <button class="settings-menu-item" data-section="applications" data-icon-inactive="apps.png" data-icon-active="app_active.png">
+                                <img src="/static/assets/icons/interface/apps.png" width="16" height="16" alt=""> <span data-i18n="apps.management">Application Management</span>
+                            </button>
                             <button class="settings-menu-item" data-section="mcp-tools">
                                 <img src="/static/assets/icons/interface/tools.png" width="16" height="16" alt=""> <span data-i18n="mcp.tools">MCP工具</span>
                             </button>
@@ -335,6 +339,55 @@
                                         <option value="zh">中文</option>
                                     </select>
                                     <small class="form-text text-muted" data-i18n="settings.languageDescription">选择界面显示语言</small>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Application Management Content -->
+                        <div id="settings-applications" class="settings-section">
+                            <div class="settings-section-header apps-management-header">
+                                <div class="header-content">
+                                    <h4 data-i18n="apps.management">Application Management</h4>
+                                    <div class="header-right">
+                                        <p class="settings-section-desc" data-i18n="apps.managementDescription">Discover and manage system applications for Claude Code integration</p>
+                                        <button id="settings-scan-apps-btn" class="btn btn-secondary" data-i18n-title="apps.refresh">
+                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/>
+                                                <path d="M21 3v5h-5"/>
+                                                <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/>
+                                                <path d="M3 21v-5h5"/>
+                                            </svg>
+                                            <span data-i18n="apps.refresh">Refresh</span>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="applications-settings-content">
+                                
+                                <!-- Unified Filter section -->
+                                <div class="apps-filter-section">
+                                    <div class="unified-filter-tabs" id="unified-filter-tabs">
+                                        <button class="filter-tab-btn active" data-filter-type="all" data-filter-value="" data-i18n="common.all">All Apps</button>
+                                        <button class="filter-tab-btn" data-filter-type="type" data-filter-value="gui" data-i18n="apps.localApps">GUI Apps</button>
+                                        <button class="filter-tab-btn" data-filter-type="type" data-filter-value="cli" data-i18n="apps.cliTools">CLI Tools</button>
+                                        <!-- Dynamic tag buttons will be added here -->
+                                    </div>
+                                </div>
+                                
+                                <!-- Applications list container -->
+                                <div class="apps-list-container">
+                                    <div id="settings-apps-loading" class="loading-state hidden">
+                                        <div class="spinner"></div>
+                                        <span data-i18n="common.loading">Loading...</span>
+                                    </div>
+                                    
+                                    <div id="settings-apps-empty" class="empty-state hidden">
+                                        <p data-i18n="apps.noApps">No applications found</p>
+                                        <button class="btn btn-primary" onclick="window.applicationsSettings?.scanApplications()" data-i18n="apps.scanApps">Scan Applications</button>
+                                    </div>
+                                    
+                                    <div id="settings-apps-list" class="apps-list-settings"></div>
                                 </div>
                             </div>
                         </div>
@@ -900,6 +953,7 @@
     <script src="/static/js/sidebar_drawers.js"></script>
     <script src="/static/js/task_manager_v2.js"></script>
     <script src="/static/js/employees_manager.js"></script>
+    <script src="/static/js/applications_manager.js"></script>
     <script src="/static/js/folder_selector.js"></script>
     <script src="/static/js/sidebar_enhanced.js"></script>
     <script src="/static/js/files_drawer.js"></script>

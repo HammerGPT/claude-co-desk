@@ -120,6 +120,7 @@ class EnhancedSidebar {
             this.showSettings();
         });
 
+
         // 新建项目按钮
         this.newProjectBtn?.addEventListener('click', (e) => {
             e.stopPropagation(); // 阻止事件冒泡
@@ -1109,7 +1110,7 @@ class EnhancedSidebar {
     /**
      * 显示设置
      */
-    showSettings() {
+    showSettings(activeTab = null) {
         const settingsModal = document.getElementById('settings-modal');
         if (!settingsModal) return;
         
@@ -1120,7 +1121,29 @@ class EnhancedSidebar {
         // 初始化设置界面
         this.initializeSettingsModal();
         
+        // 如果指定了活动标签，切换到该标签
+        if (activeTab) {
+            setTimeout(() => {
+                this.switchSettingsTab(activeTab);
+                
+                // 如果是应用管理标签，初始化应用设置
+                if (activeTab === 'applications') {
+                    this.initializeApplicationsSettings();
+                }
+            }, 100);
+        }
+        
         // 注意：不在这里加载MCP工具，等项目列表加载完成后再加载
+    }
+
+    /**
+     * Show applications manager (integrated in settings)
+     */
+    showApplications() {
+        console.log('Applications button clicked');
+        
+        // Open settings modal and switch to applications tab
+        this.showSettings('applications');
     }
     
     /**
@@ -1147,6 +1170,13 @@ class EnhancedSidebar {
                 const targetElement = document.getElementById(`settings-${targetSection}`);
                 if (targetElement) {
                     targetElement.classList.add('active');
+                }
+                
+                // 如果是应用管理标签，初始化应用设置
+                if (targetSection === 'applications') {
+                    setTimeout(() => {
+                        this.initializeApplicationsSettings();
+                    }, 100);
                 }
             });
         });
@@ -1178,6 +1208,80 @@ class EnhancedSidebar {
     }
     
     /**
+     * 切换设置标签页
+     */
+    switchSettingsTab(tabName) {
+        const menuItems = document.querySelectorAll('.settings-menu-item');
+        const sections = document.querySelectorAll('.settings-section');
+        
+        // 找到对应的菜单项
+        const targetMenuItem = Array.from(menuItems).find(item => 
+            item.getAttribute('data-section') === tabName
+        );
+        
+        if (!targetMenuItem) {
+            console.warn(`Settings tab not found: ${tabName}`);
+            return;
+        }
+        
+        // 移除所有active类
+        menuItems.forEach(mi => {
+            mi.classList.remove('active');
+            this.updateMenuItemIcon(mi, false);
+        });
+        sections.forEach(section => section.classList.remove('active'));
+        
+        // 激活目标标签
+        targetMenuItem.classList.add('active');
+        this.updateMenuItemIcon(targetMenuItem, true);
+        
+        const targetSection = document.getElementById(`settings-${tabName}`);
+        if (targetSection) {
+            targetSection.classList.add('active');
+        }
+        
+        console.log(`Switched to settings tab: ${tabName}`);
+    }
+    
+    /**
+     * 初始化应用管理设置
+     */
+    async initializeApplicationsSettings() {
+        console.log('Initializing applications settings...');
+        
+        // 确保应用设置组件已初始化
+        if (typeof window.initializeApplicationsSettings === 'function') {
+            try {
+                await window.initializeApplicationsSettings();
+                console.log('Applications settings initialized successfully');
+            } catch (error) {
+                console.error('Failed to initialize applications settings:', error);
+            }
+        } else if (window.applicationsSettings) {
+            // 如果全局实例已存在，直接初始化
+            try {
+                await window.applicationsSettings.initialize();
+                console.log('Applications settings initialized using existing instance');
+            } catch (error) {
+                console.error('Failed to initialize existing applications settings:', error);
+            }
+        } else {
+            console.warn('initializeApplicationsSettings function and applicationsSettings instance not found');
+            
+            // 尝试手动创建实例
+            if (typeof ApplicationsSettings !== 'undefined') {
+                try {
+                    window.applicationsSettings = new ApplicationsSettings();
+                    await window.applicationsSettings.initialize();
+                    console.log('Created and initialized new ApplicationsSettings instance');
+                } catch (error) {
+                    console.error('Failed to create new ApplicationsSettings instance:', error);
+                }
+            }
+        }
+    }
+    
+    /**
      * 更新设置菜单项的图标
      */
     updateMenuItemIcon(menuItem, isActive) {
@@ -1185,6 +1289,18 @@ class EnhancedSidebar {
         if (!img) return;
         
         const section = menuItem.getAttribute('data-section');
+        
+        // Check for custom icon configuration first
+        const customInactive = menuItem.getAttribute('data-icon-inactive');
+        const customActive = menuItem.getAttribute('data-icon-active');
+        
+        if (customInactive && customActive) {
+            const iconName = isActive ? customActive : customInactive;
+            img.src = `/static/assets/icons/interface/${iconName}`;
+            return;
+        }
+        
+        // Fallback to default icon mapping
         const iconMap = {
             'general': 'settings',
             'mcp-tools': 'tools', 
@@ -2461,3 +2577,4 @@ class EnhancedSidebar {
 
 // 创建全局实例
 window.enhancedSidebar = new EnhancedSidebar();
+
