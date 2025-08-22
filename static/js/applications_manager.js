@@ -311,6 +311,15 @@ class ApplicationsManager {
         // Update texts for dynamic content
         this.updateTexts();
     }
+
+    getAppIcon(app) {
+        // Check if app has browser tag for browser-specific icon
+        if (app.tags && app.tags.includes('browser')) {
+            return 'browser';
+        }
+        // Default to type-based icons
+        return app.type === 'gui' ? 'gui' : 'cli';
+    }
     
     createAppCard(name, app) {
         const typeClass = app.type === 'gui' ? 'app-gui' : 'app-cli';
@@ -321,7 +330,7 @@ class ApplicationsManager {
             <div class="app-card ${typeClass}">
                 <div class="app-header">
                     <div class="app-icon">
-                        ${app.type === 'gui' ? '🖥️' : '⚙️'}
+                        <img src="/static/assets/icons/interface/${this.getAppIcon(app)}.png" alt="${app.type}" width="24" height="24">
                     </div>
                     <div class="app-info">
                         <div class="app-name" title="${name}">${name}</div>
@@ -533,6 +542,15 @@ class ApplicationsSettings {
         this.isInitialized = false;
         
         console.log('Applications Settings initialized');
+    }
+
+    getAppIcon(app) {
+        // Check if app has browser tag for browser-specific icon
+        if (app.tags && app.tags.includes('browser')) {
+            return 'browser';
+        }
+        // Default to type-based icons
+        return app.type === 'gui' ? 'gui' : 'cli';
     }
     
     async initialize() {
@@ -778,7 +796,7 @@ class ApplicationsSettings {
         return `
             <div class="app-card-settings ${typeClass} editable-app-card" data-app="${name}" title="Click to edit tags">
                 <div class="app-icon">
-                    ${app.type === 'gui' ? '🖥️' : '⚙️'}
+                    <img src="/static/assets/icons/interface/${this.getAppIcon(app)}.png" alt="${app.type}" width="24" height="24">
                 </div>
                 <div class="app-info">
                     <div class="app-name" title="${name}">${name}</div>
@@ -1391,4 +1409,4 @@ ApplicationsSettings.prototype.updateApplicationsList = function() {
     }
 };
 
-// Force browser cache refresh - timestamp: 2025-08-22T05:05:00Z
+// Force browser cache refresh - timestamp: 2025-08-22T14:00:00Z
