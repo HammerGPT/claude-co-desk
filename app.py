@@ -28,6 +28,8 @@ from claude_cli import claude_cli
 from projects_manager import ProjectManager
 from task_scheduler import TaskScheduler
 from config import Config
+from app_scanner import ApplicationScanner, ApplicationInfo
+from mcp_config_generator import MCPConfigGenerator
 import os
 import mimetypes
 import aiofiles
@@ -1224,6 +1226,14 @@ manager = ConnectionManager()
 
 # 初始化任务调度器
 task_scheduler = TaskScheduler(websocket_manager=manager)
+
+# 初始化应用扫描器
+app_scanner = ApplicationScanner()
+logger.info("Application scanner initialized")
+
+# 初始化MCP配置生成器
+mcp_config_generator = MCPConfigGenerator()
+logger.info("MCP configuration generator initialized")
 
 # 文件管理辅助函数
 async def build_file_tree(path: Path, max_depth: int = 3, current_depth: int = 0) -> List[Dict[str, Any]]:
@@ -2844,6 +2854,312 @@ async def get_project_mcp_status(project_path: str):
             'isProjectSpecific': False
         }
 
+
+# Application Control API Endpoints
+@app.get("/api/applications")
+async def get_applications():
+    """Get all discovered applications API"""
+    try:
+        logger.info("Getting all discovered applications")
+        applications = app_scanner.scan_all_applications()
+        applications_dict = app_scanner.to_dict(applications)
+        
+        logger.info(f"Found {len(applications_dict)} applications")
+        return JSONResponse(content={
+            "success": True,
+            "applications": applications_dict,
+            "count": len(applications_dict)
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting applications: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={
+                "success": False,
+                "error": "Failed to get applications",
+                "details": str(e)
+            }
+        )
+
+@app.post("/api/applications/scan")
+async def scan_applications():
+    """Scan and refresh applications API"""
+    try:
+        logger.info("Starting application scan")
+        applications = app_scanner.scan_all_applications()
+        applications_dict = app_scanner.to_dict(applications)
+        
+        logger.info(f"Application scan completed. Found {len(applications_dict)} applications")
+        return JSONResponse(content={
+            "success": True,
+            "applications": applications_dict,
+            "count": len(applications_dict),
+            "message": f"Successfully scanned {len(applications_dict)} applications"
+        })
+        
+    except Exception as e:
+        logger.error(f"Error scanning applications: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={
+                "success": False,
+                "error": "Failed to scan applications",
+                "details": str(e)
+            }
+        )
+
+@app.post("/api/applications/launch")
+async def launch_application(request: Request):
+    """Launch application API"""
+    try:
+        data = await request.json()
+        app_name = data.get('app_name', '')
+        
+        if not app_name:
+            return JSONResponse(
+                status_code=400,
+                content={
+                    "success": False,
+                    "error": "Application name is required"
+                }
+            )
+        
+        logger.info(f"Launching application: {app_name}")
+        
+        # Get application info
+        app_info = app_scanner.get_application_by_name(app_name)
+        if not app_info:
+            return JSONResponse(
+                status_code=404,
+                content={
+                    "success": False,
+                    "error": f"Application '{app_name}' not found"
+                }
+            )
+        
+        # Launch the application
+        import subprocess
+        try:
+            if app_info.platform == "darwin":
+                # macOS
+                result = subprocess.run(
+                    app_info.launch_command.split(),
+                    capture_output=True,
+                    text=True,
+                    timeout=10
+                )
+            elif app_info.platform == "windows":
+                # Windows
+                result = subprocess.run(
+                    app_info.launch_command,
+                    shell=True,
+                    capture_output=True,
+                    text=True,
+                    timeout=10
+                )
+            else:
+                # Linux
+                result = subprocess.run(
+                    app_info.launch_command.split(),
+                    capture_output=True,
+                    text=True,
+                    timeout=10
+                )
+            
+            if result.returncode == 0:
+                logger.info(f"Successfully launched application: {app_name}")
+                return JSONResponse(content={
+                    "success": True,
+                    "message": f"Successfully launched {app_name}"
+                })
+            else:
+                logger.error(f"Failed to launch {app_name}: {result.stderr}")
+                return JSONResponse(
+                    status_code=500,
+                    content={
+                        "success": False,
+                        "error": f"Failed to launch {app_name}",
+                        "details": result.stderr
+                    }
+                )
+                
+        except subprocess.TimeoutExpired:
+            logger.warning(f"Timeout launching {app_name} - application may have started")
+            return JSONResponse(content={
+                "success": True,
+                "message": f"Application {app_name} launch initiated (timeout reached, may be running in background)"
+            })
+            
+    except Exception as e:
+        logger.error(f"Error launching application {app_name}: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={
+                "success": False,
+                "error": "Failed to launch application",
+                "details": str(e)
+            }
+        )
+
+@app.get("/api/applications/{app_name}")
+async def get_application_info(app_name: str):
+    """Get specific application information API"""
+    try:
+        logger.info(f"Getting info for application: {app_name}")
+        app_info = app_scanner.get_application_by_name(app_name)
+        
+        if not app_info:
+            return JSONResponse(
+                status_code=404,
+                content={
+                    "success": False,
+                    "error": f"Application '{app_name}' not found"
+                }
+            )
+        
+        app_dict = app_scanner.to_dict({app_name: app_info})
+        return JSONResponse(content={
+            "success": True,
+            "application": app_dict[app_name]
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting application info for {app_name}: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={
+                "success": False,
+                "error": "Failed to get application info",
+                "details": str(e)
+            }
+        )
+
+@app.post("/api/applications/setup-mcp")
+async def setup_mcp_configuration():
+    """Setup MCP configuration for application control API"""
+    try:
+        logger.info("Setting up MCP configuration for application control")
+        
+        success = mcp_config_generator.setup_mcp_configuration()
+        
+        if success:
+            # Get updated status
+            status = mcp_config_generator.get_mcp_status()
+            
+            return JSONResponse(content={
+                "success": True,
+                "message": "MCP configuration setup successful",
+                "status": status,
+                "restart_required": True
+            })
+        else:
+            return JSONResponse(
+                status_code=500,
+                content={
+                    "success": False,
+                    "error": "Failed to setup MCP configuration"
+                }
+            )
+            
+    except Exception as e:
+        logger.error(f"Error setting up MCP configuration: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={
+                "success": False,
+                "error": "Failed to setup MCP configuration",
+                "details": str(e)
+            }
+        )
+
+@app.get("/api/applications/mcp-status")
+async def get_mcp_status():
+    """Get MCP configuration status API"""
+    try:
+        logger.info("Getting MCP configuration status")
+        
+        status = mcp_config_generator.get_mcp_status()
+        
+        return JSONResponse(content={
+            "success": True,
+            "status": status
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting MCP status: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={
+                "success": False,
+                "error": "Failed to get MCP status",
+                "details": str(e)
+            }
+        )
+
+@app.post("/api/applications/update-tags")
+async def update_application_tags(request: Request):
+    """Update application tags API"""
+    try:
+        data = await request.json()
+        app_name = data.get('app_name', '')
+        tags = data.get('tags', [])
+        
+        if not app_name:
+            return JSONResponse(
+                status_code=400,
+                content={
+                    "success": False,
+                    "error": "Application name is required"
+                }
+            )
+        
+        if not isinstance(tags, list):
+            return JSONResponse(
+                status_code=400,
+                content={
+                    "success": False,
+                    "error": "Tags must be a list"
+                }
+            )
+        
+        logger.info(f"Updating tags for application: {app_name}, tags: {tags}")
+        
+        # Validate that the application exists
+        app_info = app_scanner.get_application_by_name(app_name)
+        if not app_info:
+            return JSONResponse(
+                status_code=404,
+                content={
+                    "success": False,
+                    "error": f"Application '{app_name}' not found"
+                }
+            )
+        
+        # Update tags using the scanner's update method
+        app_scanner.update_app_tags(app_name, tags)
+        
+        # Clear cache to ensure fresh data on next scan
+        app_scanner.clear_cache()
+        
+        logger.info(f"Successfully updated tags for {app_name}: {tags}")
+        return JSONResponse(content={
+            "success": True,
+            "message": f"Tags updated for {app_name}",
+            "app_name": app_name,
+            "tags": tags
+        })
+        
+    except Exception as e:
+        logger.error(f"Error updating tags for application: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={
+                "success": False,
+                "error": "Failed to update application tags",
+                "details": str(e)
+            }
+        )
 
 # WebSocket路由
 @app.websocket("/ws")

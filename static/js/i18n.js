@@ -288,7 +288,35 @@ const TEXTS = {
         'dashboard.welcomeInfo': 'Tasks: system-wide operations, Projects: single folder development',
         'dashboard.systemNotReady': 'System components not loaded, please refresh and try again',
         'dashboard.taskManagerNotReady': 'Task manager not loaded, please refresh and try again',
-        'dashboard.claudeNotFound': 'Claude CLI not found'
+        'dashboard.claudeNotFound': 'Claude CLI not found',
+        
+        // 应用控制
+        'apps.title': 'Application Control',
+        'apps.management': 'Application Management',
+        'apps.managementDescription': 'Discover and manage system applications for Claude Code integration',
+        'apps.scanApps': 'Scan Applications',
+        'apps.refresh': 'Refresh',
+        'apps.noApps': 'No applications found',
+        'apps.localApps': 'Local Applications',
+        'apps.cliTools': 'CLI Tools',
+        'apps.discovered': 'applications discovered',
+        'apps.mcpServer': 'MCP Server',
+        'apps.status': 'Status',
+        'apps.connected': 'Connected',
+        'apps.disconnected': 'Disconnected',
+        'apps.launching': 'Launching application...',
+        'apps.launchSuccess': 'Application launched successfully',
+        'apps.launchFailed': 'Failed to launch application',
+        'apps.scanSuccess': 'Applications scanned successfully',
+        'apps.scanFailed': 'Failed to scan applications',
+        'apps.configuring': 'Configuring MCP server...',
+        'apps.configSuccess': 'MCP server configured successfully',
+        'apps.configFailed': 'Failed to configure MCP server',
+        'apps.type': 'Type',
+        'apps.path': 'Path',
+        'apps.platform': 'Platform',
+        'apps.launch': 'Launch',
+        'apps.info': 'Info'
     },
     
     // 中文翻译
@@ -575,7 +603,35 @@ const TEXTS = {
         'dashboard.welcomeInfo': '任务：全系统操作，项目：单文件夹开发',
         'dashboard.systemNotReady': '系统组件未加载完成，请刷新页面重试',
         'dashboard.taskManagerNotReady': '任务管理器未加载完成，请刷新页面重试',
-        'dashboard.claudeNotFound': 'Claude CLI未找到'
+        'dashboard.claudeNotFound': 'Claude CLI未找到',
+        
+        // 应用控制
+        'apps.title': '应用控制',
+        'apps.management': '应用管理',
+        'apps.managementDescription': '发现并管理系统应用程序，用于Claude Code集成',
+        'apps.scanApps': '扫描应用',
+        'apps.refresh': '刷新',
+        'apps.noApps': '未发现应用',
+        'apps.localApps': '本地应用',
+        'apps.cliTools': '命令行工具',
+        'apps.discovered': '个应用已发现',
+        'apps.mcpServer': 'MCP服务器',
+        'apps.status': '状态',
+        'apps.connected': '已连接',
+        'apps.disconnected': '已断开',
+        'apps.launching': '正在启动应用...',
+        'apps.launchSuccess': '应用启动成功',
+        'apps.launchFailed': '应用启动失败',
+        'apps.scanSuccess': '应用扫描成功',
+        'apps.scanFailed': '应用扫描失败',
+        'apps.configuring': '正在配置MCP服务器...',
+        'apps.configSuccess': 'MCP服务器配置成功',
+        'apps.configFailed': 'MCP服务器配置失败',
+        'apps.type': '类型',
+        'apps.path': '路径',
+        'apps.platform': '平台',
+        'apps.launch': '启动',
+        'apps.info': '详情'
     }
 };
 
