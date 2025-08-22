@@ -316,7 +316,15 @@ const TEXTS = {
         'apps.path': 'Path',
         'apps.platform': 'Platform',
         'apps.launch': 'Launch',
-        'apps.info': 'Info'
+        'apps.info': 'Info',
+        'apps.editTagsFor': 'Edit Tags for',
+        'apps.currentTags': 'Current Tags:',
+        'apps.noTags': 'No tags',
+        'apps.addTag': 'Add Tag:',
+        'apps.enterTagName': 'Enter tag name...',
+        'apps.add': 'Add',
+        'apps.commonTags': 'Common Tags:',
+        'apps.saveTags': 'Save Tags'
     },
     
     // 中文翻译
@@ -631,7 +639,15 @@ const TEXTS = {
         'apps.path': '路径',
         'apps.platform': '平台',
         'apps.launch': '启动',
-        'apps.info': '详情'
+        'apps.info': '详情',
+        'apps.editTagsFor': '编辑标签：',
+        'apps.currentTags': '当前标签：',
+        'apps.noTags': '无标签',
+        'apps.addTag': '添加标签：',
+        'apps.enterTagName': '输入标签名称...',
+        'apps.add': '添加',
+        'apps.commonTags': '常用标签：',
+        'apps.saveTags': '保存标签'
     }
 };
 
