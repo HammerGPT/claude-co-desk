@@ -825,10 +825,9 @@ class FilesDrawer {
             const response = await fetch('/api/config');
             if (response.ok) {
                 this.systemConfig = await response.json();
-                console.log('[FILES] FilesDrawer系统配置已加载:', this.systemConfig);
             }
         } catch (error) {
-            console.error('FilesDrawer加载系统配置失败:', error);
+            console.error('FilesDrawer failed to load system config:', error);
         }
     }
 

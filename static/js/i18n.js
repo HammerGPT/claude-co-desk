@@ -788,7 +788,6 @@ class I18n {
             return;
         }
         this.components.set(name, refreshMethod);
-        console.log(`组件 ${name} 已注册语言切换刷新方法`);
     }
     
     /**
@@ -798,7 +797,6 @@ class I18n {
     unregisterComponent(name) {
         if (this.components.has(name)) {
             this.components.delete(name);
-            console.log(`组件 ${name} 已取消注册`);
         }
     }
     
@@ -820,9 +818,8 @@ class I18n {
         this.components.forEach((refreshMethod, name) => {
             try {
                 refreshMethod();
-                console.log(`组件 ${name} 语言切换刷新完成`);
             } catch (error) {
-                console.error(`组件 ${name} 语言切换刷新失败:`, error);
+                console.error(`Component ${name} language refresh failed:`, error);
             }
         });
         

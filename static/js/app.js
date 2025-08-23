@@ -86,12 +86,10 @@ class App {
         
         // 页面卸载事件监听 - 修复标签页关闭时连接未断开的bug
         window.addEventListener('beforeunload', () => {
-            console.log(' [APP] 页面即将卸载，清理应用资源');
             this.cleanup();
         });
         
         window.addEventListener('pagehide', () => {
-            console.log(' [APP] 页面隐藏，清理应用资源');
             this.cleanup();
         });
         
@@ -285,7 +283,6 @@ class App {
         // 激活默认标签
         this.switchTab(this.activeTab);
         
-        console.log(' 主应用界面已显示');
     }
 
     /**
@@ -299,10 +296,6 @@ class App {
      * 切换标签
      */
     switchTab(tabName) {
-        console.log(`[DEBUG] 切换标签: ${this.activeTab} -> ${tabName}`, {
-            terminalBufferLength: window.terminal?.terminal?.buffer?.active?.length || 0,
-            timestamp: new Date().toISOString()
-        });
         
         this.activeTab = tabName;
         
@@ -331,10 +324,6 @@ class App {
                 break;
         }
         
-        console.log(`[DEBUG] 标签切换完成: ${tabName}`, {
-            terminalBufferLength: window.terminal?.terminal?.buffer?.active?.length || 0,
-            timestamp: new Date().toISOString()
-        });
     }
 
     /**
@@ -351,11 +340,6 @@ class App {
     handleTerminalTabActivation() {
         // 终端标签激活时不进行任何操作，避免内容丢失
         // 移除对window.terminal.onActivate()的调用
-        console.log(`[DEBUG] 终端标签激活，保持当前状态`, {
-            terminalBufferLength: window.terminal?.terminal?.buffer?.active?.length || 0,
-            isConnected: window.terminal?.isConnected,
-            timestamp: new Date().toISOString()
-        });
     }
 
     /**
@@ -545,7 +529,6 @@ class App {
         this.activeSessions.add(sessionId);
         this.sessionActivity.set(sessionId, Date.now());
         
-        console.log(` 会话已激活: ${sessionId}`);
         
         // 通知侧边栏更新视觉状态
         this.notifySessionStateChange();
@@ -560,7 +543,6 @@ class App {
         this.activeSessions.delete(sessionId);
         this.sessionActivity.delete(sessionId);
         
-        console.log(` 会话已去激活: ${sessionId}`);
         
         // 通知侧边栏更新视觉状态
         this.notifySessionStateChange();
@@ -580,7 +562,6 @@ class App {
         const previousSession = this.selectedSession;
         this.selectedSession = session;
         
-        console.log(`[TARGET] 选中会话: ${session?.id || 'null'}`);
         
         // 如果选择了新会话，激活它
         if (session?.id) {
@@ -645,7 +626,6 @@ class App {
     handleSessionClick(session) {
         // 如果点击的是已选中的会话，直接切换到chat标签
         if (this.selectedSession?.id === session.id) {
-            console.log(` 切换到已连接的会话: ${session.id}`);
             this.switchTab('chat');
             return false; // 阻止重复连接
         }
@@ -660,29 +640,24 @@ class App {
      * 清理应用资源 - 修复页面关闭时连接未断开的问题
      */
     cleanup() {
-        console.log(' [APP] 开始清理应用资源...');
         
         try {
             // 1. 清理会话终端（新版多会话终端）
             if (window.sessionTerminal) {
-                console.log(' [APP] 清理会话终端...');
                 window.sessionTerminal.cleanup();
             }
             
             // 2. 清理旧版终端（兼容性）
             if (window.terminal) {
-                console.log(' [APP] 清理旧版终端...');
                 window.terminal.cleanup();
             }
             
             // 3. 清理WebSocket连接
             if (window.wsManager) {
-                console.log(' [APP] 清理聊天WebSocket...');
                 window.wsManager.disconnect();
             }
             
             if (window.shellWsManager) {
-                console.log(' [APP] 清理Shell WebSocket...');
                 window.shellWsManager.cleanup();
             }
             
@@ -691,7 +666,6 @@ class App {
             this.sessionActivity.clear();
             this.selectedSession = null;
             
-            console.log(' [APP] 应用资源清理完成');
             
         } catch (error) {
             console.error(' [APP] 清理过程中出现错误:', error);
@@ -702,13 +676,12 @@ class App {
 
 // 应用启动
 document.addEventListener('DOMContentLoaded', () => {
-    console.log(' 启动 Claude Co-Desk...');
     window.app = new App();
 });
 
 // 全局错误处理
 window.addEventListener('error', (event) => {
-    console.error('全局错误:', event.error);
+    console.error('Global error:', event.error);
 });
 
 window.addEventListener('unhandledrejection', (event) => {

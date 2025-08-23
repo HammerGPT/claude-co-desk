@@ -968,9 +968,8 @@
             if (typeof TaskManager !== 'undefined') {
                 window.taskManagerV2 = new TaskManager(); // V2版本任务管理器
                 window.taskManager = window.taskManagerV2; // 统一引用
-                console.log('TaskManager 实例创建成功');
             } else {
-                console.error('TaskManager 类未定义，延迟重试...');
+                console.error('TaskManager class undefined, retrying...');
                 setTimeout(initTaskManager, 100); // 100ms后重试
             }
         }
