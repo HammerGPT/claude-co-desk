@@ -23,6 +23,9 @@ class EnhancedSidebar {
         this.searchFilter = '';
         this.systemConfig = null; // 系统配置
         
+        // MCP智能添加防抖状态
+        this.mcpSearchInProgress = false;
+        
         this.initElements();
         this.initEventListeners();
         this.initSessionStateHandlers();
@@ -1662,6 +1665,11 @@ class EnhancedSidebar {
         const startSearchBtn = document.getElementById('start-mcp-search');
         if (startSearchBtn) {
             startSearchBtn.addEventListener('click', () => {
+                // 防抖保护：防止重复点击
+                if (this.mcpSearchInProgress) {
+                    console.log('MCP search already in progress, ignoring duplicate click');
+                    return;
+                }
                 this.startMCPToolSearch();
             });
         }
@@ -1740,6 +1748,16 @@ class EnhancedSidebar {
             return;
         }
         
+        // 设置搜索进行中状态，防止重复执行
+        this.mcpSearchInProgress = true;
+        
+        // 禁用按钮并添加视觉反馈
+        const startSearchBtn = document.getElementById('start-mcp-search');
+        if (startSearchBtn) {
+            startSearchBtn.disabled = true;
+            startSearchBtn.textContent = '正在启动...';
+        }
+        
         try {
             // 关闭MCP添加弹窗
             this.closeMCPAddModal();
@@ -1776,6 +1794,11 @@ class EnhancedSidebar {
                 console.log('📡 发送MCP管理员会话创建请求:', sessionData);
                 window.wsManager.sendMessage(sessionData);
                 console.log('✅ MCP管理员会话请求已发送');
+                
+                // 请求发送成功后，延迟重置状态（给弹窗关闭留时间）
+                setTimeout(() => {
+                    this.resetMCPSearchState();
+                }, 500);
             } else {
                 throw new Error('WebSocket连接未建立，请刷新页面重试');
             }
@@ -1783,9 +1806,24 @@ class EnhancedSidebar {
         } catch (error) {
             console.error('启动MCP工具搜索失败:', error);
             alert('启动MCP工具搜索失败: ' + error.message);
+            // 错误情况下立即重置状态
+            this.resetMCPSearchState();
         }
     }
     
+    /**
+     * 重置MCP搜索状态
+     */
+    resetMCPSearchState() {
+        this.mcpSearchInProgress = false;
+        
+        // 恢复按钮状态
+        const startSearchBtn = document.getElementById('start-mcp-search');
+        if (startSearchBtn) {
+            startSearchBtn.disabled = false;
+            startSearchBtn.textContent = '智能添加MCP';
+        }
+    }
     
     /**
      * 更新MCP会话状态
