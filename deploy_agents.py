@@ -46,7 +46,9 @@ class AgentDeployer:
             "work-assistant.md", 
             "finance-assistant.md",
             "info-collector.md",
-            "fullstack-engineer.md"
+            "fullstack-engineer.md",
+            "ai-product-manager.md",
+            "mcp-manager.md"
         ]
     
     def should_deploy_agents(self, transcript_path: str, project_path: str = None, session_identifier: str = None) -> bool:
