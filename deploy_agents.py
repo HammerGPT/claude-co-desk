@@ -11,6 +11,7 @@ import os
 import requests
 import hashlib
 import logging
+import subprocess
 from pathlib import Path
 from datetime import datetime
 from typing import List, Optional
@@ -202,6 +203,67 @@ class AgentDeployer:
             logger.error(f"通知Claude Co-Desk时出现错误: {e}")
             return True
     
+    def register_system_mcp(self) -> bool:
+        """
+        使用 claude mcp add 命令将 app-control MCP 注册为用户级系统服务
+        """
+        logger.info("Registering app-control MCP as system-level service...")
+        
+        try:
+            # 构建 app_control_mcp.py 的绝对路径
+            mcp_server_path = self.project_dir / "app_control_mcp.py"
+            
+            if not mcp_server_path.exists():
+                logger.error(f"MCP server file not found: {mcp_server_path}")
+                return False
+            
+            # 检查虚拟环境中的Python路径
+            python_executable = sys.executable
+            if not python_executable:
+                logger.error("Could not determine Python executable")
+                return False
+            
+            # 构建 claude mcp add 命令
+            claude_mcp_command = [
+                "claude", "mcp", "add",
+                "--scope", "user",
+                "app-control",
+                "-e", f"PYTHONPATH={self.project_dir}",
+                "--",
+                python_executable,
+                str(mcp_server_path)
+            ]
+            
+            logger.info(f"Executing command: {' '.join(claude_mcp_command)}")
+            
+            # 在用户主目录下执行命令
+            result = subprocess.run(
+                claude_mcp_command,
+                cwd=str(Path.home()),
+                capture_output=True,
+                text=True,
+                timeout=30
+            )
+            
+            if result.returncode == 0:
+                logger.info(" Successfully registered app-control MCP at user level")
+                logger.info(f"Command output: {result.stdout}")
+                return True
+            else:
+                logger.error(f"Failed to register app-control MCP. Exit code: {result.returncode}")
+                logger.error(f"Error output: {result.stderr}")
+                return False
+                
+        except subprocess.TimeoutExpired:
+            logger.error("MCP registration command timed out")
+            return False
+        except subprocess.SubprocessError as e:
+            logger.error(f"Error executing MCP registration command: {e}")
+            return False
+        except Exception as e:
+            logger.error(f"Unexpected error during MCP registration: {e}")
+            return False
+    
     def cleanup_hooks(self) -> bool:
         """
         清理临时hooks配置
@@ -284,10 +346,13 @@ class AgentDeployer:
                 logger.error("Deployment failed")
                 return False
             
-            # 3. 通知Claude Co-Desk
+            # 3. 注册系统级MCP服务
+            self.register_system_mcp()
+            
+            # 4. 通知Claude Co-Desk
             self.notify_heliki_completion()
             
-            # 4. 清理临时hooks配置
+            # 5. 清理临时hooks配置
             self.cleanup_hooks()
             
             logger.info("==================== Digital agent auto-deployment completed ====================")

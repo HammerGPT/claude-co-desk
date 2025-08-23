@@ -14,6 +14,7 @@ class TaskManagerDashboard {
             path: null // 将通过API动态获取
         };
         this.agentsCount = 0;
+        this.applicationsData = null; // 应用数据，初始为null表示未加载
         this.isInitialized = false;
         
         this.initElements();
@@ -167,6 +168,7 @@ class TaskManagerDashboard {
             // 并行加载所有数据，不阻塞页面显示
             this.loadBasicDataAsync();
             this.loadMCPStatusAsync();
+            this.loadApplicationsDataAsync();
             
         } catch (error) {
             console.error('加载仪表板数据失败:', error);
@@ -291,6 +293,24 @@ class TaskManagerDashboard {
     }
 
     /**
+     * 异步加载应用数据（不阻塞页面显示）
+     */
+    async loadApplicationsDataAsync() {
+        try {
+            console.log('开始异步加载应用数据...');
+            await this.loadApplicationsData();
+            console.log('应用数据加载完成，重新渲染Dashboard');
+            // 应用数据加载完成后重新渲染Dashboard
+            this.updateDashboard();
+        } catch (error) {
+            console.error('异步加载应用数据失败:', error);
+            // 即使应用数据加载失败，也要更新显示错误状态
+            this.applicationsData = null;
+            this.updateDashboard();
+        }
+    }
+
+    /**
      * 加载系统信息
      */
     async loadSystemInfo() {
@@ -342,6 +362,49 @@ class TaskManagerDashboard {
             console.error('加载MCP状态异常:', error);
             this.mcpStatus = null;
         }
+    }
+
+    /**
+     * 加载应用数据
+     */
+    async loadApplicationsData() {
+        try {
+            const response = await fetch('/api/applications');
+            if (response.ok) {
+                const data = await response.json();
+                if (data.success) {
+                    // 过滤掉utility标签的应用
+                    this.applicationsData = this.filterNonUtilityApps(data.applications);
+                    console.log('Dashboard应用数据加载成功:', Object.keys(this.applicationsData).length, '个应用');
+                } else {
+                    console.warn('加载应用数据失败:', data.error);
+                    this.applicationsData = null;
+                }
+            } else {
+                console.warn('应用数据API请求失败:', response.status);
+                this.applicationsData = null;
+            }
+        } catch (error) {
+            console.error('加载应用数据异常:', error);
+            this.applicationsData = null;
+        }
+    }
+
+    /**
+     * 过滤掉utility标签的应用
+     */
+    filterNonUtilityApps(applications) {
+        if (!applications) return {};
+        
+        const filtered = {};
+        Object.entries(applications).forEach(([name, app]) => {
+            // 如果应用没有tags或者tags中不包含'utility'，则保留
+            if (!app.tags || !app.tags.includes('utility')) {
+                filtered[name] = app;
+            }
+        });
+        
+        return filtered;
     }
 
     /**
@@ -455,13 +518,132 @@ class TaskManagerDashboard {
             `;
         });
         
-        html += `
-            <div class="mcp-management-tip">
-                <small>${t('dashboard.mcpManageTip')}</small>
-            </div>
-        `;
         
         return html;
+    }
+
+    /**
+     * 渲染应用卡片
+     */
+    renderApplicationsCard() {
+        // 检查加载状态
+        if (this.applicationsData === null) {
+            return `
+                <div class="dashboard-card applications-overview-card">
+                    <h3>${t('dashboard.systemApps')}</h3>
+                    <div class="applications-dashboard-content">
+                        <div class="applications-content-wrapper">
+                            <div class="applications-loading">
+                                <p>${t('dashboard.appsLoading')}</p>
+                                <small>Scanning applications...</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        if (!this.applicationsData || Object.keys(this.applicationsData).length === 0) {
+            return `
+                <div class="dashboard-card applications-overview-card">
+                    <h3>${t('dashboard.systemApps')}</h3>
+                    <div class="applications-dashboard-content">
+                        <div class="applications-content-wrapper">
+                            <div class="applications-empty">
+                                <p>${t('dashboard.noAppsFound')}</p>
+                                <small>${t('dashboard.appsManageTip')}</small>
+                            </div>
+                        </div>
+                        <div class="apps-management-tip">
+                            <button id="manage-more-apps-btn" class="btn-link">${t('dashboard.manageMoreApps')}</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // 按类型分组应用
+        const guiApps = [];
+        const cliApps = [];
+        
+        Object.entries(this.applicationsData).forEach(([name, app]) => {
+            if (app.type === 'gui') {
+                guiApps.push([name, app]);
+            } else if (app.type === 'cli') {
+                cliApps.push([name, app]);
+            }
+        });
+
+        let appSectionsHtml = '';
+        
+        // GUI应用部分
+        if (guiApps.length > 0) {
+            const displayApps = guiApps.slice(0, 5); // 最多显示5个
+            appSectionsHtml += `
+                <div class="apps-section">
+                    <h6><img src="/static/assets/icons/interface/gui.png" width="16" height="16" alt=""> ${t('dashboard.guiApps')} (${guiApps.length})</h6>
+                    <div class="apps-list">
+                        ${displayApps.map(([name, app]) => this.renderAppItem(name, app)).join('')}
+                        ${guiApps.length > 5 ? `<div class="more-apps">...</div>` : ''}
+                    </div>
+                </div>
+            `;
+        }
+
+        // CLI工具部分
+        if (cliApps.length > 0) {
+            const displayApps = cliApps.slice(0, 5); // 最多显示5个
+            appSectionsHtml += `
+                <div class="apps-section">
+                    <h6><img src="/static/assets/icons/interface/cli.png" width="16" height="16" alt=""> ${t('dashboard.cliTools')} (${cliApps.length})</h6>
+                    <div class="apps-list">
+                        ${displayApps.map(([name, app]) => this.renderAppItem(name, app)).join('')}
+                        ${cliApps.length > 5 ? `<div class="more-apps">...</div>` : ''}
+                    </div>
+                </div>
+            `;
+        }
+
+        return `
+            <div class="dashboard-card applications-overview-card">
+                <h3>${t('dashboard.systemApps')}</h3>
+                <div class="applications-dashboard-content">
+                    <div class="applications-content-wrapper">
+                        ${appSectionsHtml}
+                    </div>
+                    <div class="apps-management-tip">
+                        <button id="manage-more-apps-btn" class="btn-link">${t('dashboard.manageMoreApps')}</button>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    /**
+     * 渲染单个应用项目
+     */
+    renderAppItem(name, app) {
+        const iconType = this.getAppIcon(app);
+        return `
+            <div class="app-item">
+                <div class="app-info">
+                    <img src="/static/assets/icons/interface/${iconType}.png" width="16" height="16" alt="${app.type}">
+                    <span class="app-name" title="${name}">${name}</span>
+                </div>
+            </div>
+        `;
+    }
+
+    /**
+     * 获取应用图标类型
+     */
+    getAppIcon(app) {
+        // 检查是否有browser标签
+        if (app.tags && app.tags.includes('browser')) {
+            return 'browser';
+        }
+        // 默认基于类型的图标
+        return app.type === 'gui' ? 'gui' : 'cli';
     }
 
     /**
@@ -506,10 +688,15 @@ class TaskManagerDashboard {
                         </div>
                     </div>
 
+                    ${this.renderApplicationsCard()}
+
                     <div class="dashboard-card mcp-overview-card">
                         <h3>${this.getMCPTitle()}</h3>
                         <div class="mcp-dashboard-content">
                             ${this.renderMCPDistribution(this.mcpStatus)}
+                        </div>
+                        <div class="mcp-management-tip">
+                            <button id="manage-mcp-tools-btn" class="btn-link">${t('dashboard.manageMcpTools')}</button>
                         </div>
                     </div>
                 </div>
@@ -596,6 +783,20 @@ class TaskManagerDashboard {
         if (initBtn) {
             initBtn.addEventListener('click', () => this.handleInitializeSystem());
         }
+
+        // 应用启动按钮功能已移除，仅用于查看
+
+        // 管理更多应用按钮
+        const manageMoreAppsBtn = document.getElementById('manage-more-apps-btn');
+        if (manageMoreAppsBtn) {
+            manageMoreAppsBtn.addEventListener('click', () => this.handleManageMoreApps());
+        }
+
+        // 管理MCP工具按钮
+        const manageMcpToolsBtn = document.getElementById('manage-mcp-tools-btn');
+        if (manageMcpToolsBtn) {
+            manageMcpToolsBtn.addEventListener('click', () => this.handleManageMcpTools());
+        }
     }
 
     /**
@@ -625,6 +826,98 @@ class TaskManagerDashboard {
         } else {
             console.error('❌ 员工管理器未加载');
             alert(t('dashboard.systemNotReady'));
+        }
+    }
+
+    /**
+     * 处理启动应用
+     */
+    async handleLaunchApplication(appName) {
+        if (!appName) return;
+        
+        console.log('从仪表板启动应用:', appName);
+        
+        // 找到对应的启动按钮
+        const launchBtn = this.dashboardContainer.querySelector(`.app-launch-btn[data-app="${appName}"]`);
+        if (launchBtn) {
+            const originalTitle = launchBtn.title;
+            launchBtn.disabled = true;
+            launchBtn.title = t('dashboard.launching');
+        }
+        
+        try {
+            const response = await fetch('/api/applications/launch', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ app_name: appName })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                console.log(`应用 ${appName} 启动成功`);
+                // 可以在这里添加成功提示
+            } else {
+                console.error(`应用 ${appName} 启动失败:`, data.error);
+                alert(t('dashboard.launchFailed') + ': ' + appName);
+            }
+        } catch (error) {
+            console.error(`启动应用 ${appName} 时出错:`, error);
+            alert(t('dashboard.launchFailed') + ': ' + appName);
+        } finally {
+            // 恢复按钮状态
+            if (launchBtn) {
+                launchBtn.disabled = false;
+                launchBtn.title = t('dashboard.launch');
+            }
+        }
+    }
+
+    /**
+     * 处理管理更多应用
+     */
+    handleManageMoreApps() {
+        console.log('从仪表板打开应用管理');
+        
+        // 打开设置模态窗口并切换到应用管理标签
+        const settingsBtn = document.getElementById('settings-btn');
+        if (settingsBtn) {
+            settingsBtn.click();
+            
+            // 等待模态窗口打开后切换到应用管理标签
+            setTimeout(() => {
+                const applicationsTab = document.querySelector('.settings-menu-item[data-section="applications"]');
+                if (applicationsTab) {
+                    applicationsTab.click();
+                }
+            }, 100);
+        } else {
+            console.error('❌ 设置按钮未找到');
+        }
+    }
+
+    /**
+     * 处理管理MCP工具
+     */
+    handleManageMcpTools() {
+        console.log('从仪表板打开MCP工具管理');
+        
+        // 打开设置模态窗口并切换到MCP工具标签
+        const settingsBtn = document.getElementById('settings-btn');
+        if (settingsBtn) {
+            settingsBtn.click();
+            
+            // 等待模态窗口打开后切换到MCP工具标签
+            setTimeout(() => {
+                const mcpTab = document.querySelector('.settings-menu-item[data-section="mcp-tools"]');
+                if (mcpTab) {
+                    mcpTab.click();
+                }
+            }, 100);
+        } else {
+            console.error('❌ 设置按钮未找到');
         }
     }
 
