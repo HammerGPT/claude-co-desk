@@ -196,7 +196,6 @@ class EnhancedSidebar {
             const response = await fetch('/api/config');
             if (response.ok) {
                 this.systemConfig = await response.json();
-                console.log('🔧 侧边栏系统配置已加载:', this.systemConfig);
             }
         } catch (error) {
             console.error('Sidebar failed to load system config:', error);
@@ -393,7 +392,6 @@ class EnhancedSidebar {
         });
 
         // 渲染完成后，通知抽屉管理器重新计算高度
-        console.log(' 项目列表渲染完成，通知抽屉管理器重新计算高度');
         this.notifyDrawerHeightUpdate('projects');
     }
 
@@ -2591,7 +2589,6 @@ class EnhancedSidebar {
         setTimeout(() => {
             if (window.sidebarDrawers) {
                 window.sidebarDrawers.recalculateDrawerHeight(drawerName);
-                console.log(` 已通知抽屉管理器重新计算 ${drawerName} 抽屉高度`);
             }
         }, 50);
         

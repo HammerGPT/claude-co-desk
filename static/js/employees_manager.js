@@ -5,7 +5,6 @@
 
 class EmployeesManager {
     constructor() {
-        console.log('EmployeesManager 初始化开始');
         this.employees = [];
         this.systemProjectStatus = null;
         this.refreshInterval = null;
@@ -19,7 +18,6 @@ class EmployeesManager {
         this.initEventListeners();
         this.loadEmployeesStatus();
         this.startAutoRefresh();
-        console.log(' EmployeesManager 初始化完成');
     }
 
     /**
@@ -29,11 +27,7 @@ class EmployeesManager {
         // 现在员工管理通过弹窗显示，不再需要固定的DOM元素
         this.agentsTeamBtn = document.getElementById('agents-team-btn');
         
-        console.log(' DOM元素检查:', {
-            agentsTeamBtn: !!this.agentsTeamBtn
-        });
         
-        console.log(' DOM元素初始化成功');
     }
 
     /**
@@ -79,9 +73,8 @@ class EmployeesManager {
                 this.isInitialized = this.employees.length > 0;
             }
 
-            console.log(' 员工数据加载完成:', this.employees.length, '个员工');
         } catch (error) {
-            console.error('加载员工状态失败:', error);
+            console.error('Failed to load employees status:', error);
             this.employees = [];
         }
     }
@@ -92,7 +85,6 @@ class EmployeesManager {
      * 显示智能体团队管理弹窗
      */
     showAgentsModal() {
-        console.log('显示智能体团队管理弹窗');
         
         // 创建弹窗容器
         const modal = document.createElement('div');
@@ -182,7 +174,6 @@ class EmployeesManager {
         const agent = this.employees.find(emp => emp.id === agentId);
         if (!agent) return;
 
-        console.log('选择智能体:', agent.name || agent.id);
         
         // 更新选中状态
         document.querySelectorAll('.agent-item').forEach(item => {
@@ -241,7 +232,7 @@ class EmployeesManager {
             this.renderFileContent(agent, fileData.content, container);
             
         } catch (error) {
-            console.error('读取智能体文件失败:', error);
+            console.error('Failed to read agent file:', error);
             container.innerHTML = `
                 <div class="agent-detail-placeholder">
                     <div class="placeholder-icon"></div>
@@ -304,7 +295,6 @@ class EmployeesManager {
     handleInitClick(e) {
         e.preventDefault();
         e.stopPropagation();
-        console.log('初始化按钮被点击');
         
         // 防重复点击
         if (this.isInitializing) {
@@ -347,7 +337,6 @@ class EmployeesManager {
      * 初始化系统 - 使用页签机制
      */
     async initializeSystem() {
-        console.log('initializeSystem() 被调用 - 使用页签机制');
         
         // 设置正在初始化状态
         this.isInitializing = true;
@@ -670,15 +659,12 @@ Please execute /init command directly to start analysis, and follow the above pr
      * 设置WebSocket监听器
      */
     setupWebSocketListener() {
-        console.log('开始设置员工管理器WebSocket监听器...');
         
         // 监听全局WebSocket消息
         if (window.websocketManager) {
-            console.log(' WebSocket管理器已存在，直接注册监听器');
             // 如果WebSocket管理器存在，直接注册监听器
             this.registerWebSocketHandler();
         } else {
-            console.log('⏳ WebSocket管理器不存在，等待初始化...');
             // 等待WebSocket管理器初始化
             let attempts = 0;
             const maxAttempts = 50; // 5秒超时
@@ -713,12 +699,6 @@ Please execute /init command directly to start analysis, and follow the above pr
      * 注册WebSocket处理器
      */
     registerWebSocketHandler() {
-        console.log('注册数字员工部署WebSocket监听器');
-        console.log(' WebSocket管理器状态:', {
-            exists: !!window.websocketManager,
-            hasOnMessage: !!(window.websocketManager && window.websocketManager.onMessage),
-            isConnected: window.websocketManager ? window.websocketManager.isConnected : false
-        });
         
         // 通过WebSocket管理器注册消息处理器
         if (window.websocketManager && window.websocketManager.onMessage) {
@@ -726,7 +706,6 @@ Please execute /init command directly to start analysis, and follow the above pr
                 console.log('WebSocket管理器收到agents_deployed消息:', message);
                 this.handleAgentsDeployed(message);
             });
-            console.log(' WebSocket监听器注册成功');
         } else {
             console.warn('WebSocket管理器不可用，使用备用方案');
         }

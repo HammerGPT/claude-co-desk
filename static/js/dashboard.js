@@ -5,7 +5,6 @@
 
 class TaskManagerDashboard {
     constructor() {
-        console.log(' TaskManagerDashboard 初始化开始');
         this.systemStatus = null;
         this.taskStats = { total: 0, immediate: 0 }; // 初始显示0
         this.mcpStatus = undefined; // 初始状态为undefined，表示未开始加载
@@ -31,7 +30,6 @@ class TaskManagerDashboard {
             this.updateDisplayState();
         }, 500);
         
-        console.log('✅ TaskManagerDashboard 初始化完成');
     }
 
     /**
@@ -42,11 +40,6 @@ class TaskManagerDashboard {
         this.sessionHeader = document.querySelector('.session-header');
         this.sessionTabBar = document.querySelector('.session-tab-bar');
         
-        console.log('🔍 Dashboard DOM元素检查:', {
-            dashboardContainer: !!this.dashboardContainer,
-            sessionHeader: !!this.sessionHeader,
-            sessionTabBar: !!this.sessionTabBar
-        });
     }
 
     /**
@@ -89,7 +82,6 @@ class TaskManagerDashboard {
      * 处理会话切换
      */
     handleSessionSwitch(sessionData) {
-        console.log(' Dashboard收到会话切换事件:', sessionData);
         // 有活跃会话时隐藏仪表板，显示session-header
         this.hideDashboard();
         this.showSessionHeader();
@@ -99,7 +91,6 @@ class TaskManagerDashboard {
      * 显示仪表板
      */
     showDashboard() {
-        console.log(' 显示任务管理器仪表板');
         if (this.dashboardContainer) {
             this.dashboardContainer.style.display = '';
         }
@@ -171,7 +162,7 @@ class TaskManagerDashboard {
             this.loadApplicationsDataAsync();
             
         } catch (error) {
-            console.error('加载仪表板数据失败:', error);
+            console.error('Failed to load dashboard data:', error);
             this.renderErrorState();
         }
     }
@@ -193,10 +184,9 @@ class TaskManagerDashboard {
                 // 保存配置供其他方法使用
                 this.systemConfig = config;
                 
-                console.log('系统配置已加载:', config);
             }
         } catch (error) {
-            console.error('加载系统配置失败:', error);
+            console.error('Failed to load system config:', error);
         }
     }
 
@@ -215,9 +205,7 @@ class TaskManagerDashboard {
      */
     async loadBasicDataAsync() {
         try {
-            console.log('开始异步加载基础数据...');
             await this.loadBasicData();
-            console.log('基础数据加载完成，重新渲染Dashboard');
             // 基础数据加载完成后重新渲染Dashboard
             this.updateDashboard();
         } catch (error) {
@@ -279,9 +267,7 @@ class TaskManagerDashboard {
      */
     async loadMCPStatusAsync() {
         try {
-            console.log('开始异步加载MCP状态...');
             await this.loadMCPStatus();
-            console.log('MCP状态加载完成，重新渲染Dashboard');
             // MCP数据加载完成后重新渲染Dashboard
             this.updateDashboard();
         } catch (error) {
@@ -297,9 +283,7 @@ class TaskManagerDashboard {
      */
     async loadApplicationsDataAsync() {
         try {
-            console.log('开始异步加载应用数据...');
             await this.loadApplicationsData();
-            console.log('应用数据加载完成，重新渲染Dashboard');
             // 应用数据加载完成后重新渲染Dashboard
             this.updateDashboard();
         } catch (error) {
@@ -353,7 +337,6 @@ class TaskManagerDashboard {
             const response = await fetch('/api/mcp/cross-project-status');
             if (response.ok) {
                 this.mcpStatus = await response.json();
-                console.log('Dashboard MCP状态加载成功:', this.mcpStatus);
             } else {
                 console.warn('加载MCP状态失败:', response.status);
                 this.mcpStatus = null;
@@ -375,7 +358,6 @@ class TaskManagerDashboard {
                 if (data.success) {
                     // 过滤掉utility标签的应用
                     this.applicationsData = this.filterNonUtilityApps(data.applications);
-                    console.log('Dashboard应用数据加载成功:', Object.keys(this.applicationsData).length, '个应用');
                 } else {
                     console.warn('加载应用数据失败:', data.error);
                     this.applicationsData = null;
@@ -805,7 +787,6 @@ class TaskManagerDashboard {
      * 处理初始化系统
      */
     handleInitializeSystem() {
-        console.log('从仪表板启动系统初始化');
         
         // 使用员工管理器的初始化功能
         if (window.employeesManager) {
@@ -820,7 +801,6 @@ class TaskManagerDashboard {
      * 处理管理数字员工
      */
     handleManageAgents() {
-        console.log('从仪表板打开数字员工管理');
         
         // 使用员工管理器的显示功能
         if (window.employeesManager) {
@@ -837,7 +817,6 @@ class TaskManagerDashboard {
     async handleLaunchApplication(appName) {
         if (!appName) return;
         
-        console.log('从仪表板启动应用:', appName);
         
         // 找到对应的启动按钮
         const launchBtn = this.dashboardContainer.querySelector(`.app-launch-btn[data-app="${appName}"]`);
@@ -859,7 +838,6 @@ class TaskManagerDashboard {
             const data = await response.json();
             
             if (data.success) {
-                console.log(`应用 ${appName} 启动成功`);
                 // 可以在这里添加成功提示
             } else {
                 console.error(`应用 ${appName} 启动失败:`, data.error);

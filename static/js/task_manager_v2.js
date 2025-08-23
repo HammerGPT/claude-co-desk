@@ -5,7 +5,6 @@
 
 class TaskManager {
     constructor() {
-        console.log(' TaskManager V2 初始化开始');
         this.tasks = [];
         this.selectedTaskId = null;
         this.currentView = 'empty'; // 'empty', 'detail', 'form'
@@ -18,13 +17,11 @@ class TaskManager {
         
         // 监听任务创建事件（来自SimpleTaskManager）
         document.addEventListener('taskCreated', (event) => {
-            console.log(' 收到任务创建事件:', event.detail.task);
             this.loadTasks(); // 重新加载任务列表
         });
         
         // 监听任务更新事件（来自SimpleTaskManager）
         document.addEventListener('taskUpdated', (event) => {
-            console.log(' 收到任务更新事件:', event.detail.task);
             this.loadTasks(); // 重新加载任务列表
         });
         
@@ -34,7 +31,6 @@ class TaskManager {
         // 初始化路径自动补全功能
         this.initPathAutocomplete();
         
-        console.log('✅ TaskManager V2 初始化完成');
     }
 
     /**
@@ -58,7 +54,6 @@ class TaskManager {
             const response = await fetch('/api/config');
             if (response.ok) {
                 this.systemConfig = await response.json();
-                console.log(' TaskManager系统配置已加载:', this.systemConfig);
             }
         } catch (error) {
             console.error('加载系统配置失败:', error);
@@ -129,14 +124,6 @@ class TaskManager {
         this.manualPathInput = document.getElementById('manual-path');
         this.addManualPathBtn = document.getElementById('add-manual-path');
         
-        console.log('🔍 TaskManager DOM元素检查:', {
-            modal: !!this.modal,
-            tasksList: !!this.tasksList,
-            addTaskBtn: !!this.addTaskBtn,
-            taskDetailEmpty: !!this.taskDetailEmpty,
-            taskDetailView: !!this.taskDetailView,
-            addTaskForm: !!this.addTaskForm
-        });
     }
 
     /**
@@ -474,7 +461,6 @@ class TaskManager {
                 // 后端返回格式是 {tasks: [...]}，需要提取tasks数组
                 this.tasks = Array.isArray(data.tasks) ? data.tasks : (Array.isArray(data) ? data : []);
                 
-                console.log(' 任务加载成功，数量:', this.tasks.length);
                 
                 // 详细检查每个任务的sessionId
                 this.tasks.forEach((task, index) => {
@@ -656,7 +642,6 @@ class TaskManager {
             });
 
             if (response.ok) {
-                console.log('✅ 任务删除成功');
                 // 重新加载任务列表
                 this.loadTasks();
             } else {
@@ -741,7 +726,6 @@ class TaskManager {
         }
 
         // 任务板块不再使用动态高度控制，改为CSS默认布局
-        console.log(' 任务列表渲染完成，任务板块使用CSS默认布局');
     }
 
     /**
@@ -2227,11 +2211,9 @@ class TaskManager {
                 if (!this.resources.includes(path)) {
                     this.resources.push(path);
                     this.renderResourceList();
-                    console.log(`✅ 已添加资源: ${path}`);
                 }
             };
             new PathInputEnhancer(mainPathInput, getWorkingDirectory, onPathSelected);
-            console.log('✅ 主任务表单路径自动补全已初始化');
         }
         
         // 为独立新建任务的手动输入框添加自动补全
@@ -2243,11 +2225,9 @@ class TaskManager {
                 if (!this.standaloneResources.includes(path)) {
                     this.standaloneResources.push(path);
                     this.renderStandaloneResourceList();
-                    console.log(`✅ 已添加资源: ${path}`);
                 }
             };
             new PathInputEnhancer(standalonePathInput, getWorkingDirectory, onPathSelected);
-            console.log('✅ 独立新建任务路径自动补全已初始化');
         }
         
         // 为独立编辑任务的手动输入框添加自动补全
@@ -2259,11 +2239,9 @@ class TaskManager {
                 if (!this.standaloneEditResources.includes(path)) {
                     this.standaloneEditResources.push(path);
                     this.renderStandaloneEditResourceList();
-                    console.log(`✅ 已添加资源: ${path}`);
                 }
             };
             new PathInputEnhancer(standaloneEditPathInput, getWorkingDirectory, onPathSelected);
-            console.log('✅ 独立编辑任务路径自动补全已初始化');
         }
     }
 

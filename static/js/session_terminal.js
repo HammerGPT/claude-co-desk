@@ -82,7 +82,6 @@ class SessionTerminal {
         // 完全禁用beforeunload自动清理
         /*
         window.addEventListener('beforeunload', () => {
-            console.log('🔄 [SESSION TERMINAL] 页面即将卸载，清理所有会话终端状态');
             this.cleanup();
         });
         */
@@ -90,7 +89,6 @@ class SessionTerminal {
         // 完全禁用pagehide自动清理
         /*
         window.addEventListener('pagehide', () => {
-            console.log('🔄 [SESSION TERMINAL] 页面隐藏，清理所有会话终端状态');
             this.cleanup();
         });
         */
@@ -98,10 +96,8 @@ class SessionTerminal {
         // 监听浏览器标签页可见性变化 - 完全禁用自动清理
         document.addEventListener('visibilitychange', () => {
             if (document.hidden) {
-                console.log('🔄 [SESSION TERMINAL] 页面变为隐藏状态，保持连接不清理');
                 // 完全禁用自动清理，保持终端连接状态
             } else {
-                console.log('🔄 [SESSION TERMINAL] 页面变为可见状态');
                 // 取消任何可能的延迟清理
                 if (this.pageHideTimeout) {
                     clearTimeout(this.pageHideTimeout);
@@ -121,7 +117,6 @@ class SessionTerminal {
         
         // 检查是否为初始化会话（通过sessionName或其他标识）
         if (sessionName && sessionName.includes('系统初始化')) {
-            console.log('🚀 检测到初始化会话，将使用组合命令直接启动:', sessionId);
             // 不再需要复杂的启动检测，直接使用组合命令
         }
         
@@ -229,7 +224,6 @@ class SessionTerminal {
         terminal.writeln('\x1b[90m正在连接到 Claude CLI...\x1b[0m');
         terminal.writeln('');
 
-        console.log('✅ xterm.js多会话终端初始化完成:', sessionId);
         console.log('创建终端成功:', sessionId);
     }
 
@@ -296,8 +290,6 @@ class SessionTerminal {
                 const hasSession = !!originalSession; // 关键修复：基于originalSession判断
                 
                 console.log(`📐 发送固定终端尺寸: ${fixedCols}x${fixedRows}`, sessionId);
-                console.log(`🔍 会话状态: hasSession=${hasSession}, originalSessionId=${originalSession?.id}`, sessionId);
-                console.log(`🚀 初始命令: ${initialCommand || 'claude'}`, sessionId);
                 
                 // 检查是否为任务执行（sessionId以task_开头）
                 const isTaskExecution = sessionId && sessionId.startsWith('task_');
@@ -319,7 +311,6 @@ class SessionTerminal {
                 terminalData.terminal.write('\x1b[2J\x1b[H'); // 清屏并移动光标到左上角
                 
                 if (!hasSession) {
-                    console.log('🆕 新会话已清屏', sessionId);
                 } else {
                     console.log('🔄 恢复已有会话，等待历史内容加载', sessionId, originalSession.id);
                 }
@@ -332,7 +323,6 @@ class SessionTerminal {
                 // 保存连接状态
                 this.saveConnectionState();
                 
-                console.log('✅ WebSocket连接已建立:', sessionId);
             };
             
             ws.onmessage = (event) => {
@@ -410,11 +400,6 @@ class SessionTerminal {
         if (!terminalData || !terminalData.terminal || !data) return;
 
         // 基本的输出监控（简化版）
-        console.log(`📤 [TERMINAL] 会话输出:`, {
-            sessionId: sessionId,
-            length: data.length,
-            preview: data.substring(0, 50) + (data.length > 50 ? '...' : '')
-        });
         
         // 不再需要复杂的启动检测，组合命令会直接处理初始化
         
@@ -423,20 +408,8 @@ class SessionTerminal {
         
         // 基本的终端状态检查
         if (terminalData.terminal && terminalData.terminal.buffer) {
-            console.log(`🔍 [TERMINAL DEBUG] 写入终端:`, {
-                sessionId: sessionId,
-                outputLength: output.length,
-                terminalBufferLength: terminalData.terminal.buffer.active?.length || 0
-            });
             terminalData.terminal.write(output);
         } else {
-            console.warn(`🔍 [TERMINAL DEBUG] 终端状态异常，跳过写入:`, {
-                sessionId: sessionId,
-                hasTerminal: !!terminalData.terminal,
-                hasBuffer: !!terminalData.terminal?.buffer,
-                hasActive: !!terminalData.terminal?.buffer?.active,
-                dataLength: output.length
-            });
             // 尝试恢复终端状态
             this._tryRecoverTerminalState(sessionId);
         }
@@ -512,7 +485,7 @@ class SessionTerminal {
                 const rows = terminalData.terminal.rows;
                 
                 if (cols > 500 || rows > 200 || cols < 20 || rows < 5) {
-                    console.warn(`⚠️ 检测到异常尺寸 ${cols}x${rows}，使用安全默认值`, sessionId);
+                    console.warn(`Detected abnormal dimensions ${cols}x${rows}, using safe defaults`, sessionId);
                     // 使用安全的默认尺寸
                     const safeCols = Math.min(Math.max(maxCols, 80), 150);
                     const safeRows = Math.min(Math.max(maxRows, 24), 50);
@@ -521,7 +494,6 @@ class SessionTerminal {
                     terminalData.terminal.resize(safeCols, safeRows);
                     console.log(` 已修正为安全尺寸: ${safeCols}x${safeRows}`, sessionId);
                 } else {
-                    console.log(`✅ 终端尺寸正常: ${cols}x${rows}`, sessionId);
                 }
                 
                 // 如果已连接，通知后端
@@ -531,11 +503,10 @@ class SessionTerminal {
                 }
             } else {
                 // 容器尺寸为0，延迟重试
-                console.warn('⚠️ 容器尺寸太小，延迟重试...', sessionId);
                 setTimeout(() => this._fitTerminalSize(sessionId), 200);
             }
         } catch (error) {
-            console.error('❌ 调整终端大小失败:', sessionId, error);
+            console.error('Terminal resize failed:', sessionId, error);
             // 使用默认尺寸作为后备
             if (terminalData.terminal) {
                 terminalData.terminal.resize(80, 24);
@@ -578,7 +549,7 @@ class SessionTerminal {
             try {
                 connection.close();
             } catch (error) {
-                console.warn('⚠️ [SESSION TERMINAL] 关闭连接失败:', error);
+                console.warn('Session terminal connection close failed:', error);
             }
             this.connections.delete(sessionId);
         }
@@ -594,7 +565,7 @@ class SessionTerminal {
                     terminalData.container.remove();
                 }
             } catch (error) {
-                console.warn('⚠️ [SESSION TERMINAL] 清理终端实例失败:', error);
+                console.warn('Session terminal cleanup failed:', error);
             }
             this.terminals.delete(sessionId);
         }
@@ -609,7 +580,6 @@ class SessionTerminal {
             console.log('🗝 [SESSION TERMINAL] 当前活跃会话已清除，等待sidebar切换逐譡');
         }
 
-        console.log('✅ [SESSION TERMINAL] 会话关闭完成:', sessionId);
     }
 
     /**
@@ -648,14 +618,12 @@ class SessionTerminal {
                 
                 // 检查恢复结果
                 if (terminalData.terminal.buffer && terminalData.terminal.buffer.active) {
-                    console.log('✅ [TERMINAL DEBUG] 终端状态恢复成功', sessionId);
                     return true;
                 } else {
-                    console.warn('⚠️ [TERMINAL DEBUG] 终端状态恢复失败', sessionId);
                     return false;
                 }
             } catch (error) {
-                console.error('❌ [TERMINAL DEBUG] 终端状态恢复出错:', sessionId, error);
+                console.error('Terminal state restore error:', sessionId, error);
                 return false;
             }
         }
@@ -704,20 +672,12 @@ class SessionTerminal {
             // 监听选择变化
             if (typeof terminal.onSelectionChange === 'function') {
                 terminal.onSelectionChange(() => {
-                    console.log(`🔍 [XTERM DEBUG] 选择变化事件:`, {
-                        sessionId: sessionId,
-                        hasSelection: typeof terminal.hasSelection === 'function' ? terminal.hasSelection() : 'N/A',
-                        bufferLength: terminal?.buffer?.active?.length || 0,
-                        timestamp: new Date().toISOString()
-                    });
                 });
             } else {
-                console.warn('🔍 [XTERM DEBUG] onSelectionChange方法不存在:', sessionId);
             }
 
-            console.log('🔍 [XTERM DEBUG] 事件监听器已添加:', sessionId);
         } catch (error) {
-            console.error('❌ [XTERM DEBUG] 添加事件监听器失败:', sessionId, error);
+            console.error('Failed to add terminal event listeners:', sessionId, error);
         }
     }
 
@@ -726,7 +686,6 @@ class SessionTerminal {
      */
     saveConnectionState() {
         if (!this.activeSessionId) {
-            console.warn('⚠️ 没有活跃的会话，清除保存的状态');
             this.clearConnectionState();
             return;
         }
@@ -734,7 +693,6 @@ class SessionTerminal {
         // 获取当前活跃会话的信息
         const terminalData = this.terminals.get(this.activeSessionId);
         if (!terminalData) {
-            console.warn('⚠️ 找不到活跃会话的终端数据，清除保存的状态');
             this.clearConnectionState();
             return;
         }
@@ -772,7 +730,6 @@ class SessionTerminal {
         try {
             const stateStr = localStorage.getItem(this.CONNECTION_STATE_KEY);
             if (!stateStr) {
-                console.log('📭 没有保存的会话终端连接状态');
                 return false;
             }
 
@@ -1070,7 +1027,6 @@ class SessionTerminal {
         this.applyTheme();
         this.updateThemeButton();
         
-        console.log('切换终端主题:', this.isLightTheme ? '明亮模式' : '暗色模式');
     }
 
     /**
@@ -1202,11 +1158,6 @@ class SessionTerminal {
         // 更新按钮标题
         this.themeToggleBtn.title = this.isLightTheme ? t('nav.darkMode') : t('nav.lightMode');
         
-        console.log('更新主题按钮状态:', {
-            isLightTheme: this.isLightTheme,
-            iconClass: this.isLightTheme ? 'terminal-theme-light' : 'terminal-theme-dark',
-            buttonClass: this.isLightTheme ? 'theme-active' : 'normal'
-        });
     }
 
     /**
@@ -1214,7 +1165,6 @@ class SessionTerminal {
      * 通过JavaScript内联样式绕过所有CSS冲突
      */
     forceButtonStyles() {
-        console.log('🎨 [强制样式] 开始设置session-actions按钮样式... [v2.0-蓝色主题]');
         
         // 文件按钮 - 主题蓝色
         const filesBtn = document.getElementById('files-drawer-btn');
@@ -1249,7 +1199,6 @@ class SessionTerminal {
                 this.style.boxShadow = '0 2px 4px rgba(0, 0, 0, 0.2)';
             };
             
-            console.log('✅ [强制样式] 文件按钮样式已设置');
         }
 
         // 主题切换按钮 - 统一主题蓝色
@@ -1301,7 +1250,6 @@ class SessionTerminal {
                 setTimeout(setThemeButtonStyle, 100); // 延迟执行确保类已更新
             };
             
-            console.log('✅ [强制样式] 主题切换按钮样式已设置');
         }
 
         // 终极解决方案：强制覆盖所有可能的样式设置
@@ -1345,7 +1293,6 @@ class SessionTerminal {
             }
         });
 
-        console.log('🎨 [强制样式] 所有按钮样式设置完成！');
     }
 
     /**

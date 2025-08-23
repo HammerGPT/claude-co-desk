@@ -158,10 +158,9 @@ class FolderSelector {
             const response = await fetch('/api/config');
             if (response.ok) {
                 this.systemConfig = await response.json();
-                console.log('[FOLDER] 文件夹选择器系统配置已加载:', this.systemConfig);
             }
         } catch (error) {
-            console.error('文件夹选择器加载系统配置失败:', error);
+            console.error('Folder selector failed to load system config:', error);
         }
     }
 

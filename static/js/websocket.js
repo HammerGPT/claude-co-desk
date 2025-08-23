@@ -22,12 +22,10 @@ class WebSocketManager {
             const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
             const wsUrl = `${protocol}//${window.location.host}/ws`;
             
-            console.log('连接WebSocket:', wsUrl);
             
             this.ws = new WebSocket(wsUrl);
             
             this.ws.onopen = () => {
-                console.log('WebSocket连接已建立');
                 this.isConnected = true;
                 this._notifyConnectionHandlers(true);
                 
@@ -41,7 +39,6 @@ class WebSocketManager {
             this.ws.onmessage = (event) => {
                 try {
                     const data = JSON.parse(event.data);
-                    console.log('收到WebSocket消息:', data);
                     
                     this.messages.push(data);
                     this._handleMessage(data);
@@ -51,14 +48,12 @@ class WebSocketManager {
             };
             
             this.ws.onclose = () => {
-                console.log('WebSocket连接已断开');
                 this.isConnected = false;
                 this.ws = null;
                 this._notifyConnectionHandlers(false);
                 
                 // 3秒后尝试重连
                 this.reconnectTimeout = setTimeout(() => {
-                    console.log(' 尝试重新连接WebSocket...');
                     this.connect();
                 }, 3000);
             };
@@ -78,7 +73,6 @@ class WebSocketManager {
     sendMessage(message) {
         if (this.ws && this.isConnected) {
             const messageStr = JSON.stringify(message);
-            console.log('发送WebSocket消息:', messageStr);
             this.ws.send(messageStr);
             return true;
         } else {
@@ -168,7 +162,6 @@ class WebSocketManager {
                 }
             });
         } else {
-            console.log(` 没有为消息类型 '${type}' 注册处理器，仅触发全局事件`);
         }
     }
 
@@ -210,9 +203,6 @@ class WebSocketManager {
             case 'create-task-tab':
                 // 创建任务页签
                 if (data.taskId && data.taskName && window.enhancedSidebar) {
-                    console.log(' 创建任务页签:', data.taskName);
-                    console.log(' 初始命令:', data.initialCommand);
-                    console.log('[WS] 工作目录:', data.workingDirectory);
                     console.log(' 恢复会话:', data.resumeSession);
                     console.log(' 会话ID:', data.sessionId);
                     
@@ -735,7 +725,6 @@ window.websocketManager = window.wsManager;
 
 // 添加全局调试监听器
 window.addEventListener('load', () => {
-    console.log('[GLOBAL DEBUG] WebSocket全局监听器已启动');
     
     // 监听所有可能导致页面状态变化的事件
     ['beforeunload', 'pagehide', 'visibilitychange', 'focus', 'blur'].forEach(eventType => {

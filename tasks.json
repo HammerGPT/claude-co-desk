@@ -666,7 +666,7 @@
     "createdAt": "2025-08-21T13:56:47.096430",
     "lastRun": null,
     "workDirectory": "/Users/yuhao/Documents/Heliki/Heliki_OS/mission/task_1755755807_6_af52kh",
-    "deleted": false,
+    "deleted": true,
     "executionMode": "immediate",
     "sessionId": "67fad8ec-e48a-403c-8247-a80004b1b4db"
   },
@@ -685,8 +685,44 @@
     "createdAt": "2025-08-21T14:36:35.065698",
     "lastRun": null,
     "workDirectory": "/Users/yuhao/Documents/Heliki/Heliki_OS/mission/task_1755758195_4_o6qs9b",
-    "deleted": false,
+    "deleted": true,
     "executionMode": "immediate",
     "sessionId": null
+  },
+  {
+    "id": "task_1755929061_6",
+    "name": "测试日志命令",
+    "goal": "测试日志命令是否拼接正常",
+    "skipPermissions": true,
+    "verboseLogs": false,
+    "resources": [
+      "Downloads/duibi.md"
+    ],
+    "scheduleFrequency": "immediate",
+    "scheduleTime": "",
+    "enabled": true,
+    "createdAt": "2025-08-23T14:04:21.083864",
+    "lastRun": null,
+    "workDirectory": "/Users/yuhao/Documents/Heliki/Heliki_OS/mission/task_1755929061_6_zftpcr",
+    "deleted": true,
+    "executionMode": "immediate",
+    "sessionId": "664c488b-085f-45fb-b161-596a8fa5e986"
+  },
+  {
+    "id": "task_1755929115_6",
+    "name": "测试日志命令",
+    "goal": "测试命令日志问题",
+    "skipPermissions": true,
+    "verboseLogs": true,
+    "resources": [],
+    "scheduleFrequency": "immediate",
+    "scheduleTime": "",
+    "enabled": true,
+    "createdAt": "2025-08-23T14:05:15.803207",
+    "lastRun": null,
+    "workDirectory": "/Users/yuhao/Documents/Heliki/Heliki_OS/mission/task_1755929115_6_kulygu",
+    "deleted": true,
+    "executionMode": "immediate",
+    "sessionId": "df80689f-15b9-41d3-bd61-d5c76f52d03d"
   }
 ]
