@@ -387,44 +387,55 @@ class EmployeesManager {
             const sessionName = t('agents.systemInitialization');
             
             // 构建完整的初始化命令 - 直接使用Claude CLI组合命令  
-            const guidanceText = `你现在要初始化用户电脑的根目录/主目录 (~/)，包含用户的全部数字生活内容，可能会包含：
+            const guidanceText = `You are now initializing the user's home directory (~) containing all their digital life content, which may include:
 
-- 各种应用程序和工具
-- 工作文档和项目文件  
-- 财务数据和个人文档
-- 代码项目和开发环境
-- 媒体文件和个人资料
-- 系统配置和环境设置
+- Various applications and tools
+- Work documents and project files  
+- Financial data and personal documents
+- Code projects and development environment
+- Media files and personal data
+- System configurations and environment settings
 
-请按照以下标准流程执行：
+**IMPORTANT INSTRUCTIONS:**
+- Always respond to users in the same language they use when asking questions
+- Utilize all available MCP tools and system applications to complete tasks effectively
+- Leverage the system's existing applications and resources for comprehensive analysis
 
-1. 创建TodoList追踪进度：
-   - 分析主目录整体结构和文件分布
-   - 识别开发项目、工作文档、个人文件分类  
-   - 检测系统配置和开发环境
-   - 必须创建CLAUDE.md系统初始化文件
-   - 建立智能管理规则
+Please follow this standard process:
 
-2. 系统分析步骤：
-   - 使用系统命令分析主目录结构
-   - 查找关键文件类型（*.py, *.js, *.json等）
-   - 检测开发环境配置（Python, Node.js, Git等）
-   - 读取系统配置文件(.zshrc, .bash_profile等）
+1. Create TodoList to track progress:
+   - Analyze home directory structure and file distribution
+   - Identify development projects, work documents, personal file categories  
+   - Detect system configuration and development environment
+   - Must create CLAUDE.md system initialization file
+   - Establish intelligent management rules
+
+2. System analysis steps:
+   - Use system commands to analyze home directory structure
+   - Search for key file types (*.py, *.js, *.json, etc.)
+   - Detect development environment configuration (Python, Node.js, Git, etc.)
+   - Read system configuration files (.zshrc, .bash_profile, etc.)
 	   
-3. 配置文件创建：
-   - 创建详细的CLAUDE.md系统初始化文件，包含目录映射、工作流程、你分析系统资源等信息推理出来的系统用户画像、可能的潜在工作等
-   - 生成系统分析报告
+3. Configuration file creation:
+   - Create detailed CLAUDE.md system initialization file, including directory mapping, workflows, system user profile inferred from your system resource analysis, and potential work areas
+   - **IMPORTANT**: Include all analysis results directly in CLAUDE.md file:
+     * System analysis report
+     * Initialization completion report
+     * Intelligent management rules
+     * User profile analysis
+     * Potential work areas identification
+   - Do NOT create separate .md files - consolidate everything into the single CLAUDE.md file
 
-4. 完成标志：
-   - 所有TodoList项目标记为完成
-   - 生成最终的初始化总结报告
-   - 确认系统已AI化并准备就绪
+4. Completion criteria:
+   - All TodoList items marked as completed
+   - All analysis results integrated into CLAUDE.md file
+   - Confirm system is AI-ready and prepared
 
-严格按照上述流程完成初始化。`;
+Follow the above process strictly to complete initialization.`;
             
             // 对引导文字进行转义，处理引号问题
             const escapedGuidanceText = guidanceText.replace(/"/g, '\\"');
-            const initialCommand = `claude "${escapedGuidanceText}"`;
+            const initialCommand = `claude "${escapedGuidanceText}" --dangerously-skip-permissions`;
             
             console.log('构建初始化命令:', {
                 guidanceTextLength: guidanceText.length,
@@ -499,27 +510,9 @@ class EmployeesManager {
         `;
         
         notification.innerHTML = `
-            <div style="display: flex; flex-direction: column; gap: 8px;">
-                <div style="display: flex; align-items: center; gap: 8px;">
-                    <span></span>
-                    <span style="font-weight: 600;">系统初始化已启动</span>
-                </div>
-                <div style="font-size: 12px; opacity: 0.9; margin-bottom: 8px;">
-                    新页签已创建，将直接启动Claude并发送初始化指令
-                </div>
-                <button id="manual-send-guidance" style="
-                    background: rgba(255,255,255,0.2);
-                    border: 1px solid rgba(255,255,255,0.3);
-                    color: white;
-                    padding: 6px 12px;
-                    border-radius: 4px;
-                    font-size: 11px;
-                    cursor: pointer;
-                    transition: all 0.2s;
-                    align-self: flex-start;
-                " onmouseover="this.style.background='rgba(255,255,255,0.3)'" onmouseout="this.style.background='rgba(255,255,255,0.2)'">
-                    手动发送引导（备用）
-                </button>
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <span style="font-size: 18px;">⚡</span>
+                <span style="font-weight: 600;">${t('agents.doNotCloseTab')}</span>
             </div>
         `;
         
@@ -535,27 +528,10 @@ class EmployeesManager {
         
         document.body.appendChild(notification);
         
-        // 添加手动发送按钮事件
-        const manualSendBtn = notification.querySelector('#manual-send-guidance');
-        if (manualSendBtn) {
-            manualSendBtn.addEventListener('click', () => {
-                this._manualSendGuidance();
-                // 点击后立即移除通知
-                notification.remove();
-                style.remove();
-            });
-        }
+        // 为通知添加唯一标识以便后续清理
+        notification.id = 'init-notification';
         
-        // 8秒后自动移除通知（延长显示时间）
-        setTimeout(() => {
-            if (notification.parentNode) {
-                notification.style.animation = 'slideIn 0.3s ease reverse';
-                setTimeout(() => {
-                    notification.remove();
-                    style.remove();
-                }, 300);
-            }
-        }, 8000);
+        // 初始化通知持续显示，不自动关闭
     }
 
     /**
@@ -578,41 +554,51 @@ class EmployeesManager {
         }
 
         // 发送完整的引导文字
-        const guidanceText = `你现在要初始化用户电脑的根目录/主目录 (~/)，包含用户的全部数字生活内容：
+        const guidanceText = `You are now initializing the user's home directory (~) containing all their digital life content:
 
-- 各种应用程序和工具
-- 工作文档和项目文件  
-- 财务数据和个人文档
-- 代码项目和开发环境
-- 媒体文件和个人资料
-- 系统配置和环境设置
+- Various applications and tools
+- Work documents and project files  
+- Financial data and personal documents
+- Code projects and development environment
+- Media files and personal data
+- System configurations and environment settings
 
-请按照以下标准流程执行：
+**IMPORTANT INSTRUCTIONS:**
+- Always respond to users in the same language they use when asking questions
+- Utilize all available MCP tools and system applications to complete tasks effectively
+- Leverage the system's existing applications and resources for comprehensive analysis
 
-1. 创建TodoList追踪进度：
-   - 分析主目录整体结构和文件分布
-   - 识别开发项目、工作文档、个人文件分类  
-   - 检测系统配置和开发环境
-   - 创建CLAUDE.md配置文件
-   - 建立智能管理规则
+Please follow this standard process:
 
-2. 系统分析步骤：
-   - 使用LS(.)命令分析主目录结构
-   - 使用Glob命令查找关键文件类型（*.py, *.js, *.json等）
-   - 检测开发环境配置（Python, Node.js, Git等）
-   - 读取系统配置文件(.zshrc, .bash_profile等）
+1. Create TodoList to track progress:
+   - Analyze home directory structure and file distribution
+   - Identify development projects, work documents, personal file categories  
+   - Detect system configuration and development environment
+   - Create CLAUDE.md configuration file
+   - Establish intelligent management rules
 
-3. 配置文件创建：
-   - 创建详细的CLAUDE.md配置文件，包含目录映射和工作流程
-   - 创建智能管理脚本claude_system_manager.py
-   - 生成系统分析报告
+2. System analysis steps:
+   - Use LS(.) command to analyze home directory structure
+   - Use Glob command to find key file types (*.py, *.js, *.json, etc.)
+   - Detect development environment configuration (Python, Node.js, Git, etc.)
+   - Read system configuration files (.zshrc, .bash_profile, etc.)
 
-4. 完成标志：
-   - 所有TodoList项目标记为完成
-   - 生成最终的初始化总结报告
-   - 确认系统已AI化并准备就绪
+3. Configuration file creation:
+   - Create detailed CLAUDE.md configuration file, including directory mapping and workflows
+   - **IMPORTANT**: Include all analysis results directly in CLAUDE.md file:
+     * System analysis report
+     * Initialization completion report
+     * Intelligent management rules
+     * User profile analysis
+     * Potential work areas identification
+   - Do NOT create separate .md files or .py files - consolidate everything into the single CLAUDE.md file
 
-请直接执行 /init 命令开始分析，并严格按照上述流程完成初始化。`;
+4. Completion criteria:
+   - All TodoList items marked as completed
+   - All analysis results integrated into CLAUDE.md file
+   - Confirm system is AI-ready and prepared
+
+Please execute /init command directly to start analysis, and follow the above process strictly to complete initialization.`;
 
         console.log(' 手动发送初始化引导文字:', sessionId);
         
@@ -778,6 +764,18 @@ class EmployeesManager {
      * 显示部署成功通知
      */
     showDeploymentSuccessNotification(message) {
+        // 清理之前的初始化通知
+        const existingInitNotification = document.getElementById('init-notification');
+        if (existingInitNotification) {
+            existingInitNotification.remove();
+        }
+        
+        // 清理之前的成功通知
+        const existingSuccessNotification = document.getElementById('success-notification');
+        if (existingSuccessNotification) {
+            existingSuccessNotification.remove();
+        }
+        
         const notification = document.createElement('div');
         notification.style.cssText = `
             position: fixed;
@@ -796,36 +794,35 @@ class EmployeesManager {
         `;
         
         const agentCount = message.agent_count || message.deployed_agents?.length || 5;
-        const agentNames = [
-            ' 文档管理员',
-            ' 工作助理', 
-            ' 财务助理',
-            ' 信息收集员',
-            ' 全栈工程师'
-        ];
+        const deployedAgents = message.deployed_agents || ['document-manager', 'work-assistant', 'finance-assistant', 'info-collector', 'fullstack-engineer'];
+        const employeeNames = t('agents.employeeNames');
+        const agentNames = deployedAgents.map(agentKey => employeeNames[agentKey] || agentKey);
         
         notification.innerHTML = `
             <div style="display: flex; flex-direction: column; gap: 12px;">
                 <div style="display: flex; align-items: center; gap: 10px;">
-                    <span style="font-size: 24px;"></span>
+                    <span style="font-size: 24px;">✅</span>
                     <div>
-                        <div style="font-weight: 600; font-size: 16px;">数字员工团队部署成功！</div>
-                        <div style="font-size: 12px; opacity: 0.9;">已部署 ${agentCount} 个专业数字员工</div>
+                        <div style="font-weight: 600; font-size: 16px;">${t('agents.deploymentSuccess')}</div>
+                        <div style="font-size: 12px; opacity: 0.9;">${t('agents.deploymentCount').replace('{count}', agentCount)}</div>
                     </div>
                 </div>
                 
                 <div style="background: rgba(255, 255, 255, 0.1); padding: 12px; border-radius: 8px;">
-                    <div style="font-size: 12px; font-weight: 600; margin-bottom: 8px;">可用员工：</div>
+                    <div style="font-size: 12px; font-weight: 600; margin-bottom: 8px;">${t('agents.availableEmployees')}</div>
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; font-size: 11px;">
-                        ${agentNames.map(name => `<div>${name}</div>`).join('')}
+                        ${agentNames.map(name => `<div>• ${name}</div>`).join('')}
                     </div>
                 </div>
                 
                 <div style="font-size: 11px; opacity: 0.8; text-align: center; margin-top: 8px;">
-                    现在可以通过Claude Code直接调用这些数字员工了！
+                    ${t('agents.deploymentComplete')}
                 </div>
             </div>
         `;
+        
+        // 为通知添加唯一标识
+        notification.id = 'success-notification';
         
         // 添加弹性动画
         const style = document.createElement('style');
@@ -848,6 +845,12 @@ class EmployeesManager {
         document.head.appendChild(style);
         
         document.body.appendChild(notification);
+        
+        // 触发dashboard刷新以隐藏初始化按钮
+        if (window.dashboard && typeof window.dashboard.loadDashboardData === 'function') {
+            console.log('🔄 触发dashboard刷新以更新初始化状态');
+            window.dashboard.loadDashboardData();
+        }
         
         // 12秒后自动移除通知
         setTimeout(() => {

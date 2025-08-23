@@ -206,6 +206,24 @@ const TEXTS = {
         'agents.initializationFailed': 'Failed to create initialization session: ',
         'agents.noActiveTerminal': 'No active terminal session found, please make sure initialization tab is open',
         'agents.terminalUnavailable': 'Terminal connection unavailable, please check if Claude Code is running normally',
+        'agents.initializationStarted': 'System Initialization Started',
+        'agents.initializationInProgress': 'Initializing system, please wait...',
+        'agents.initializationTabCreated': 'New tab created, Claude will start and send initialization instructions',
+        'agents.manualSendGuidance': 'Manual Send (Backup)',
+        'agents.doNotCloseTab': 'Please do not close this tab during initialization',
+        'agents.deploymentSuccess': 'Digital Employee Team Deployed Successfully!',
+        'agents.deploymentCount': 'Deployed {count} professional digital employees',
+        'agents.availableEmployees': 'Available Employees:',
+        'agents.deploymentComplete': 'You can now directly call these digital employees through Claude Code!',
+        'agents.employeeNames': {
+            'document-manager': 'Document Manager',
+            'work-assistant': 'Work Assistant', 
+            'finance-assistant': 'Finance Assistant',
+            'info-collector': 'Info Collector',
+            'fullstack-engineer': 'Fullstack Engineer',
+            'ai-product-manager': 'AI Product Manager',
+            'mcp-manager': 'MCP Manager'
+        },
         
         // 通用操作
         'common.confirm': 'Connect',
@@ -540,6 +558,24 @@ const TEXTS = {
         'agents.initializationFailed': '创建初始化会话失败: ',
         'agents.noActiveTerminal': '未找到活跃的终端会话，请确保初始化页签已打开',
         'agents.terminalUnavailable': '终端连接不可用，请检查Claude Code是否正常启动',
+        'agents.initializationStarted': '系统初始化已启动',
+        'agents.initializationInProgress': '正在初始化系统，请稍候...',
+        'agents.initializationTabCreated': '新页签已创建，将直接启动Claude并发送初始化指令',
+        'agents.manualSendGuidance': '手动发送引导（备用）',
+        'agents.doNotCloseTab': '初始化期间请勿关闭此页签',
+        'agents.deploymentSuccess': '数字员工团队部署成功！',
+        'agents.deploymentCount': '已部署 {count} 个专业数字员工',
+        'agents.availableEmployees': '可用员工：',
+        'agents.deploymentComplete': '现在可以通过Claude Code直接调用这些数字员工了！',
+        'agents.employeeNames': {
+            'document-manager': '文档管理员',
+            'work-assistant': '工作助理', 
+            'finance-assistant': '财务助理',
+            'info-collector': '信息收集员',
+            'fullstack-engineer': '全栈工程师',
+            'ai-product-manager': 'AI产品经理',
+            'mcp-manager': 'MCP管理员'
+        },
         
         // 通用操作
         'common.confirm': '连接',

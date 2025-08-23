@@ -1434,41 +1434,51 @@ class SessionTerminal {
         }
 
         // 完整的初始化引导文字（标准化流程）
-        const guidanceText = `你现在要初始化用户电脑的根目录/主目录 (~/)，包含用户的全部数字生活内容：
+        const guidanceText = `You are now initializing the user's home directory (~) containing all their digital life content:
 
-- 各种应用程序和工具
-- 工作文档和项目文件  
-- 财务数据和个人文档
-- 代码项目和开发环境
-- 媒体文件和个人资料
-- 系统配置和环境设置
+- Various applications and tools
+- Work documents and project files  
+- Financial data and personal documents
+- Code projects and development environment
+- Media files and personal data
+- System configurations and environment settings
 
-请按照以下标准流程执行：
+**IMPORTANT INSTRUCTIONS:**
+- Always respond to users in the same language they use when asking questions
+- Utilize all available MCP tools and system applications to complete tasks effectively
+- Leverage the system's existing applications and resources for comprehensive analysis
 
-1. 创建TodoList追踪进度：
-   - 分析主目录整体结构和文件分布
-   - 识别开发项目、工作文档、个人文件分类  
-   - 检测系统配置和开发环境
-   - 创建CLAUDE.md配置文件
-   - 建立智能管理规则
+Please follow this standard process:
 
-2. 系统分析步骤：
-   - 使用List(.)命令分析主目录结构
-   - 使用Search命令查找关键文件类型（*.py, *.js, *.json等）
-   - 检测开发环境配置（Python, Node.js, Git等）
-   - 读取系统配置文件(.zshrc, .bash_profile等）
+1. Create TodoList to track progress:
+   - Analyze home directory structure and file distribution
+   - Identify development projects, work documents, personal file categories  
+   - Detect system configuration and development environment
+   - Create CLAUDE.md configuration file
+   - Establish intelligent management rules
 
-3. 配置文件创建：
-   - 创建详细的CLAUDE.md配置文件，包含目录映射和工作流程
-   - 创建智能管理脚本claude_system_manager.py
-   - 生成系统分析报告
+2. System analysis steps:
+   - Use List(.) command to analyze home directory structure
+   - Use Search command to find key file types (*.py, *.js, *.json, etc.)
+   - Detect development environment configuration (Python, Node.js, Git, etc.)
+   - Read system configuration files (.zshrc, .bash_profile, etc.)
 
-4. 完成标志：
-   - 所有TodoList项目标记为完成
-   - 生成最终的初始化总结报告
-   - 确认系统已AI化并准备就绪
+3. Configuration file creation:
+   - Create detailed CLAUDE.md configuration file, including directory mapping and workflows
+   - **IMPORTANT**: Include all analysis results directly in CLAUDE.md file:
+     * System analysis report
+     * Initialization completion report
+     * Intelligent management rules
+     * User profile analysis
+     * Potential work areas identification
+   - Do NOT create separate .md files or .py files - consolidate everything into the single CLAUDE.md file
 
-请直接执行 /init 命令开始分析，并严格按照上述流程完成初始化。`;
+4. Completion criteria:
+   - All TodoList items marked as completed
+   - All analysis results integrated into CLAUDE.md file
+   - Confirm system is AI-ready and prepared
+
+Please execute /init command directly to start analysis, and follow the above process strictly to complete initialization.`;
 
         console.log('📤 [引导发送] 准备发送的引导文字长度:', guidanceText.length);
         console.log('📤 [引导发送] 引导文字预览:', guidanceText.substring(0, 100) + '...');

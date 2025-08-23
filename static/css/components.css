@@ -536,6 +536,12 @@
   color: hsl(var(--primary));
 }
 
+.dashboard-action-icon img {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+}
+
 .dashboard-action-content h4 {
   font-size: 14px;
   font-weight: 600;
