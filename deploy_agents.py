@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-数字员工自动部署脚本
-通过Claude Code hooks触发，在初始化完成后自动部署数字员工团队
+Digital Employee Auto-Deployment Script
+Triggered by Claude Code hooks to automatically deploy digital employee teams after initialization completion
 """
 
 import json
@@ -16,7 +16,7 @@ from pathlib import Path
 from datetime import datetime
 from typing import List, Optional
 
-# 配置日志
+# Configure logging
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
@@ -28,58 +28,114 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 class AgentDeployer:
-    """数字员工部署器"""
+    """Digital Employee Deployer"""
     
     def __init__(self):
         self.project_dir = Path(__file__).parent
         self.source_dir = self.project_dir / "static" / "agents"
         self.target_dir = Path.home() / ".claude" / "agents"
         self.deployed_marker = self.target_dir / ".heliki_agents_deployed"
-        # 从环境变量获取Claude Co-Desk API地址，默认为localhost:3005
+        # Get Claude Co-Desk API address from environment variables, default to localhost:3005
         heliki_host = os.getenv('HELIKI_HOST', 'localhost')
         heliki_port = os.getenv('HELIKI_PORT', '3005')
         self.heliki_api_url = f"http://{heliki_host}:{heliki_port}/api/agents-deployed"
         
-        # 预期的数字员工文件列表
-        self.expected_agents = [
-            "document-manager.md",
-            "work-assistant.md", 
-            "finance-assistant.md",
-            "info-collector.md",
-            "fullstack-engineer.md",
-            "ai-product-manager.md",
-            "mcp-manager.md"
-        ]
+        # Dynamically discover agent files from source directory
+        self.expected_agents = self._discover_agent_files()
+    
+    def _discover_agent_files(self) -> List[str]:
+        """
+        Dynamically discover agent files from the source directory
+        """
+        agent_files = []
+        try:
+            if self.source_dir.exists():
+                # Find all .md files in the agents directory
+                for agent_file in self.source_dir.glob("*.md"):
+                    agent_files.append(agent_file.name)
+                
+                logger.info(f"Discovered {len(agent_files)} agent files: {agent_files}")
+            else:
+                logger.warning(f"Agents source directory not found: {self.source_dir}")
+        except Exception as e:
+            logger.error(f"Error discovering agent files: {e}")
+        
+        return sorted(agent_files)  # Sort for consistent ordering
+    
+    def _add_language_instruction(self) -> bool:
+        """
+        Add language adaptation instruction to user home CLAUDE.md file
+        """
+        try:
+            home_claude_md = Path.home() / "CLAUDE.md"
+            
+            if not home_claude_md.exists():
+                logger.error("User home CLAUDE.md file does not exist")
+                return False
+            
+            # Language adaptation instruction
+            language_instruction = """
+
+## Language Communication Setting
+
+**IMPORTANT**: Always respond to users in the same language they use when asking questions. If a user asks in Chinese, respond in Chinese; if they ask in English, respond in English; and so on for other languages. This ensures natural and accessible communication for users worldwide.
+
+---
+*This instruction was automatically added by Heliki OS digital employee deployment system*
+"""
+            
+            # Read current content
+            with open(home_claude_md, 'r', encoding='utf-8') as f:
+                current_content = f.read()
+            
+            # Check if instruction already exists
+            if "Language Communication Setting" in current_content:
+                logger.info("Language instruction already exists in CLAUDE.md")
+                return True
+            
+            # Append language instruction
+            updated_content = current_content + language_instruction
+            
+            # Write back to file
+            with open(home_claude_md, 'w', encoding='utf-8') as f:
+                f.write(updated_content)
+            
+            logger.info("Successfully added language adaptation instruction to CLAUDE.md")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error adding language instruction: {e}")
+            return False
     
     def should_deploy_agents(self, transcript_path: str, project_path: str = None, session_identifier: str = None) -> bool:
         """
-        简化判断逻辑：检查用户主目录CLAUDE.md是否存在
+        Simplified logic: check if user home directory CLAUDE.md file exists
         """
-        logger.info(f"Checking if agent deployment is needed，session: {session_identifier}")
+        logger.info(f"Checking if agent deployment is needed, session: {session_identifier}")
         
         try:
-            # 1. 检查是否已经部署过（防重复）
+            # 1. Check if already deployed (prevent duplicates)
             if self.deployed_marker.exists():
                 logger.info("Detected deployment marker file, skipping duplicate deployment")
                 return False
             
-            # 2. 检查用户主目录的CLAUDE.md文件是否存在
+            # 2. Check if user home directory CLAUDE.md file exists
             home_claude_md = Path.home() / "CLAUDE.md"
             
             if not home_claude_md.exists():
                 logger.info("User home directory CLAUDE.md file does not exist, initialization not yet complete")
                 return False
             
-            # 3. 检查文件是否不为空（确保已写入内容）
+            # 3. Check if file is not empty (ensure content has been written)
             try:
                 if home_claude_md.stat().st_size == 0:
                     logger.info("User home directory CLAUDE.md file is empty, initialization not yet complete")
                     return False
             except OSError as e:
-                logger.warning(f"无法检查CLAUDE.md文件大小: {e}")
+                logger.warning(f"Unable to check CLAUDE.md file size: {e}")
                 return False
             
-            # 4. 检查会话标识是否为初始化会话
+            # 4. Check if session identifier is initialization session
             if session_identifier and not session_identifier.startswith('init-'):
                 logger.info(f"Non-initialization session, skipping deployment: {session_identifier}")
                 return False
@@ -88,26 +144,26 @@ class AgentDeployer:
             return True
             
         except Exception as e:
-            logger.error(f"检查部署条件时出错: {e}")
+            logger.error(f"Error checking deployment conditions: {e}")
             return False
     
     def deploy_agents(self) -> bool:
         """
-        执行数字员工文件部署
+        Execute digital employee file deployment
         """
         logger.info("Starting agent deployment...")
         
         try:
-            # 1. 检查源文件目录
+            # 1. Check source file directory
             if not self.source_dir.exists():
-                logger.error(f"源文件目录不存在: {self.source_dir}")
+                logger.error(f"Source file directory does not exist: {self.source_dir}")
                 return False
             
-            # 2. 创建目标目录
+            # 2. Create target directory
             self.target_dir.mkdir(parents=True, exist_ok=True)
             logger.info(f"Ensuring target directory exists: {self.target_dir}")
             
-            # 3. 检查所有预期的agent文件是否存在
+            # 3. Check if all expected agent files exist
             missing_files = []
             for agent_file in self.expected_agents:
                 source_file = self.source_dir / agent_file
@@ -115,10 +171,10 @@ class AgentDeployer:
                     missing_files.append(agent_file)
             
             if missing_files:
-                logger.error(f"缺少必要的agent文件: {missing_files}")
+                logger.error(f"Missing required agent files: {missing_files}")
                 return False
             
-            # 4. 复制所有agent文件
+            # 4. Copy all agent files
             deployed_files = []
             failed_files = []
             
@@ -127,10 +183,10 @@ class AgentDeployer:
                 target_file = self.target_dir / agent_file
                 
                 try:
-                    # 复制文件并保持元数据
+                    # Copy file and preserve metadata
                     shutil.copy2(source_file, target_file)
                     
-                    # 验证复制成功
+                    # Verify copy success
                     if target_file.exists():
                         deployed_files.append(agent_file)
                         logger.info(f" Successfully deployed: {agent_file}")
@@ -140,14 +196,19 @@ class AgentDeployer:
                         
                 except Exception as e:
                     failed_files.append(agent_file)
-                    logger.error(f" 复制文件失败 {agent_file}: {e}")
+                    logger.error(f" Failed to copy file {agent_file}: {e}")
             
-            # 5. 检查部署结果
+            # 5. Check deployment results
             if failed_files:
-                logger.error(f"部分文件Deployment failed: {failed_files}")
+                logger.error(f"Partial file deployment failed: {failed_files}")
                 return False
             
-            # 6. 创建部署标记文件
+            # 6. Add language adaptation instruction to user home CLAUDE.md
+            success = self._add_language_instruction()
+            if not success:
+                logger.warning("Failed to add language instruction, but deployment continues")
+            
+            # 7. Create deployment marker file
             deployment_info = {
                 "deployed_at": datetime.now().isoformat(),
                 "deployed_files": deployed_files,
@@ -163,27 +224,27 @@ class AgentDeployer:
             return True
             
         except Exception as e:
-            logger.error(f"部署过程中出现错误: {e}")
+            logger.error(f"Error occurred during deployment: {e}")
             return False
     
     def notify_heliki_completion(self) -> bool:
         """
-        通知Claude Co-Desk部署完成
+        Notify Claude Co-Desk of deployment completion
         """
         logger.info("Notifying Claude Co-Desk of agent deployment completion...")
         
         try:
-            # 准备通知数据
+            # Prepare notification data
             notification_data = {
                 "status": "success",
-                "message": "数字员工团队部署完成",
+                "message": "Digital employee team deployment completed",
                 "deployed_agents": self.expected_agents,
                 "timestamp": datetime.now().isoformat(),
-                "refresh_required": True,  # 指示前端需要刷新
+                "refresh_required": True,  # Indicate frontend needs refresh
                 "agent_count": len(self.expected_agents)
             }
             
-            # 发送POST请求通知
+            # Send POST request notification
             response = requests.post(
                 self.heliki_api_url,
                 json=notification_data,
@@ -194,38 +255,38 @@ class AgentDeployer:
                 logger.info(" Successfully notified Claude Co-Desk of deployment completion")
                 return True
             else:
-                logger.warning(f"Claude Co-Desk通知响应异常: {response.status_code}")
+                logger.warning(f"Claude Co-Desk notification response abnormal: {response.status_code}")
                 return False
                 
         except requests.exceptions.RequestException as e:
-            logger.warning(f"无法连接到Claude Co-Desk API: {e}")
-            # 通知失败不影响部署成功
+            logger.warning(f"Unable to connect to Claude Co-Desk API: {e}")
+            # Notification failure does not affect deployment success
             return True
         except Exception as e:
-            logger.error(f"通知Claude Co-Desk时出现错误: {e}")
+            logger.error(f"Error occurred while notifying Claude Co-Desk: {e}")
             return True
     
     def register_system_mcp(self) -> bool:
         """
-        使用 claude mcp add 命令将 app-control MCP 注册为用户级系统服务
+        Use claude mcp add command to register app-control MCP as user-level system service
         """
         logger.info("Registering app-control MCP as system-level service...")
         
         try:
-            # 构建 app_control_mcp.py 的绝对路径
+            # Build absolute path for app_control_mcp.py
             mcp_server_path = self.project_dir / "app_control_mcp.py"
             
             if not mcp_server_path.exists():
                 logger.error(f"MCP server file not found: {mcp_server_path}")
                 return False
             
-            # 检查虚拟环境中的Python路径
+            # Check Python path in virtual environment
             python_executable = sys.executable
             if not python_executable:
                 logger.error("Could not determine Python executable")
                 return False
             
-            # 构建 claude mcp add 命令
+            # Build claude mcp add command
             claude_mcp_command = [
                 "claude", "mcp", "add",
                 "--scope", "user",
@@ -238,7 +299,7 @@ class AgentDeployer:
             
             logger.info(f"Executing command: {' '.join(claude_mcp_command)}")
             
-            # 在用户主目录下执行命令
+            # Execute command in user home directory
             result = subprocess.run(
                 claude_mcp_command,
                 cwd=str(Path.home()),
@@ -268,12 +329,12 @@ class AgentDeployer:
     
     def cleanup_hooks(self) -> bool:
         """
-        清理临时hooks配置
+        Clean up temporary hooks configuration
         """
         logger.info("Starting to clean up temporary hooks configuration...")
         
         try:
-            # 发送清理请求到Claude Co-Desk API
+            # Send cleanup request to Claude Co-Desk API
             cleanup_data = {
                 "cleanup_reason": "deployment_completed",
                 "timestamp": datetime.now().isoformat()
@@ -292,20 +353,20 @@ class AgentDeployer:
                 logger.info(" Successfully cleaned up temporary hooks configuration")
                 return True
             else:
-                logger.warning(f"hooks清理响应异常: {response.status_code}")
+                logger.warning(f"Hooks cleanup response abnormal: {response.status_code}")
                 return False
                 
         except requests.exceptions.RequestException as e:
-            logger.warning(f"无法连接到Claude Co-Desk清理hooks: {e}")
+            logger.warning(f"Unable to connect to Claude Co-Desk to clean hooks: {e}")
             
-            # 备用方案：直接使用HookManager清理
+            # Backup plan: use HookManager directly for cleanup
             try:
                 logger.info("Trying alternative method to clean hooks...")
-                # 直接导入setup_hooks模块
+                # Import setup_hooks module directly
                 import sys
                 import os
                 
-                # 添加项目目录到路径
+                # Add project directory to path
                 project_dir = Path(__file__).parent
                 sys.path.insert(0, str(project_dir))
                 
@@ -317,60 +378,60 @@ class AgentDeployer:
                     logger.info(" Alternative method successfully cleaned hooks")
                     return True
                 else:
-                    logger.error(" 备用方案清理hooks失败")
+                    logger.error(" Backup plan to clean hooks failed")
                     return False
                     
             except Exception as backup_error:
-                logger.error(f"备用方案也失败: {backup_error}")
+                logger.error(f"Backup plan also failed: {backup_error}")
                 return False
         
         except Exception as e:
-            logger.error(f"清理hooks时出现错误: {e}")
+            logger.error(f"Error occurred while cleaning hooks: {e}")
             return False
     
     def run(self, transcript_path: str, project_path: str = None, session_identifier: str = None) -> bool:
         """
-        主执行流程
+        Main execution flow
         """
         logger.info("==================== Digital agent auto-deployment started ====================")
-        logger.info(f"Transcript路径: {transcript_path}")
-        logger.info(f"项目路径: {project_path}")
-        logger.info(f"会话标识: {session_identifier}")
+        logger.info(f"Transcript path: {transcript_path}")
+        logger.info(f"Project path: {project_path}")
+        logger.info(f"Session identifier: {session_identifier}")
         
         try:
-            # 1. 判断是否需要部署
+            # 1. Determine if deployment is needed
             if not self.should_deploy_agents(transcript_path, project_path, session_identifier):
-                logger.info("不满足部署条件，退出")
+                logger.info("Deployment conditions not met, exiting")
                 return False
             
-            # 2. 执行部署
+            # 2. Execute deployment
             if not self.deploy_agents():
                 logger.error("Deployment failed")
                 return False
             
-            # 3. 注册系统级MCP服务
+            # 3. Register system-level MCP service
             self.register_system_mcp()
             
-            # 4. 通知Claude Co-Desk
+            # 4. Notify Claude Co-Desk
             self.notify_heliki_completion()
             
-            # 5. 清理临时hooks配置
+            # 5. Clean up temporary hooks configuration
             self.cleanup_hooks()
             
             logger.info("==================== Digital agent auto-deployment completed ====================")
             return True
             
         except Exception as e:
-            logger.error(f"部署过程中发生未预期的错误: {e}")
+            logger.error(f"Unexpected error occurred during deployment: {e}")
             return False
 
 def main():
     """
-    主入口函数
+    Main entry function
     """
     if len(sys.argv) < 2:
-        logger.error("缺少transcript路径参数")
-        logger.info("用法: python deploy_agents.py <transcript_path> [project_path] [session_identifier]")
+        logger.error("Missing transcript path parameter")
+        logger.info("Usage: python deploy_agents.py <transcript_path> [project_path] [session_identifier]")
         return 1
     
     transcript_path = sys.argv[1]

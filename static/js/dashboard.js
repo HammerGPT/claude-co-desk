@@ -718,7 +718,9 @@ class TaskManagerDashboard {
     renderInitializationAction() {
         return `
             <div class="dashboard-action-btn init-system-highlight" id="init-system-action">
-                <div class="dashboard-action-icon"></div>
+                <div class="dashboard-action-icon">
+                    <img src="static/assets/icons/interface/zap.png" alt="Initialize System" />
+                </div>
                 <div class="dashboard-action-content">
                     <h4>${t('dashboard.initializeSystem')}</h4>
                     <p>${t('dashboard.initializeDesc')}</p>
@@ -962,7 +964,9 @@ class TaskManagerDashboard {
             
             <div class="dashboard-actions">
                 <div class="dashboard-action-btn" onclick="dashboard.loadDashboardData()">
-                    <div class="dashboard-action-icon"></div>
+                    <div class="dashboard-action-icon">
+                        <img src="static/assets/icons/interface/refresh.png" alt="Reload" />
+                    </div>
                     <div class="dashboard-action-content">
                         <h4>重新加载</h4>
                         <p>重新获取系统状态信息</p>
