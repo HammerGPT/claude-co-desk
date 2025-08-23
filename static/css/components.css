@@ -291,11 +291,19 @@
 
 .dashboard-content-wrapper .dashboard-grid {
   display: grid;
-  grid-template-columns: 500px 1fr;
+  grid-template-columns: 400px 400px 400px;
   gap: 24px;
   margin: 0 auto 32px auto;
   max-width: 1200px;
   width: 100%;
+  justify-content: center;
+}
+
+@media (max-width: 1024px) {
+  .dashboard-content-wrapper .dashboard-grid {
+    grid-template-columns: 1fr;
+    max-width: 600px;
+  }
 }
 
 .dashboard-card {
@@ -304,6 +312,11 @@
   border-radius: var(--radius);
   padding: 20px;
   transition: all 200ms ease;
+  min-height: 320px;
+  max-height: 400px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
 }
 
 .dashboard-card:hover {
@@ -316,6 +329,133 @@
   font-weight: 600;
   margin: 0 0 12px 0;
   color: hsl(var(--foreground));
+}
+
+/* 应用卡片样式 */
+.applications-overview-card {
+  /* 继承基础dashboard-card样式 */
+}
+
+.applications-dashboard-content {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  flex: 1;
+  overflow: hidden;
+}
+
+.applications-content-wrapper {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.applications-loading,
+.applications-empty {
+  text-align: center;
+  padding: 20px;
+  color: hsl(var(--muted-foreground));
+}
+
+.applications-loading p,
+.applications-empty p {
+  margin: 0 0 8px 0;
+  font-weight: 500;
+}
+
+.applications-loading small,
+.applications-empty small {
+  color: hsl(var(--muted-foreground) / 0.7);
+}
+
+.apps-section {
+  margin-bottom: 16px;
+}
+
+.apps-section:last-child {
+  margin-bottom: 0;
+}
+
+.apps-section h6 {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0 0 12px 0;
+  color: hsl(var(--foreground));
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.apps-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem; /* Updated gap spacing */
+}
+
+.app-item {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 8px 12px;
+  background: hsl(var(--muted) / 0.3);
+  border: 1px solid hsl(var(--border));
+  border-radius: 6px;
+  transition: all 200ms ease;
+}
+
+.app-item:hover {
+  background: hsl(var(--muted) / 0.5);
+  border-color: hsl(var(--primary) / 0.3);
+}
+
+.app-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+
+.app-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: hsl(var(--foreground));
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 应用启动按钮样式已移除，仅用于查看 */
+
+.more-apps {
+  text-align: center;
+  color: hsl(var(--muted-foreground));
+  font-size: 14px;
+  padding: 8px;
+  font-style: italic;
+}
+
+.apps-management-tip {
+  text-align: center;
+  padding-top: 12px;
+  border-top: 1px solid hsl(var(--border));
+  margin-top: auto;
+}
+
+.btn-link {
+  background: none;
+  border: none;
+  color: hsl(var(--primary));
+  cursor: pointer;
+  font-size: 14px;
+  text-decoration: underline;
+  transition: color 200ms ease;
+}
+
+.btn-link:hover {
+  color: hsl(var(--primary) / 0.8);
 }
 
 .dashboard-actions {
