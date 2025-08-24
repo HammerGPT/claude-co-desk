@@ -521,3 +521,115 @@ else:
 - **绝对禁止硬编码**：任何路径、URL、用户信息都必须通过配置系统获取
 - **绝对禁止表情符号**：保持代码和界面的专业性
 - 代码中的注释要用英文。项目中界面中的文案一定要适配设计好的语言控制机制。debug日志信息用英文
+
+## Git提交规范
+
+### 提交信息格式规范
+**严格遵循专业开源项目标准，绝对禁止表情符号和中文！**
+
+#### 标准提交信息格式：
+```
+<type>: <subject>
+
+<body>
+```
+
+#### 提交类型（type）：
+- `feat`: 新功能
+- `fix`: Bug修复  
+- `docs`: 文档更新
+- `style`: 代码格式调整（不影响功能）
+- `refactor`: 重构代码
+- `test`: 测试相关
+- `chore`: 构建过程或工具变动
+- `perf`: 性能优化
+- `ci`: CI/CD配置更改
+
+#### 提交信息示例：
+```bash
+# 好的提交信息
+feat: Add Chinese version link to English README
+fix: Resolve task statistics reset issue in internationalization system  
+docs: Update installation instructions for cross-platform compatibility
+refactor: Optimize MCP tool management architecture
+chore: Clean up repository for professional open source release
+
+# 错误的提交信息（绝对禁止）
+🎯 完成MVP第一阶段：默认数字员工自动部署系统
+📋 GitHub开源发布准备：README视觉优化和国际化完善  
+🐛 修复任务统计被国际化系统重置为0的关键问题
+```
+
+#### 提交主题（subject）要求：
+- 使用英文，首字母大写
+- 动词开头，使用祈使句（Add, Fix, Update, Remove等）
+- 不超过50个字符
+- 末尾不加句号
+- 简洁明了地描述所做的更改
+
+#### 提交正文（body）要求：
+- 详细说明更改的原因和内容
+- 每行不超过72个字符
+- 与主题空一行
+- 使用列表形式说明多个更改点
+
+#### 严格禁止的提交行为：
+1. **绝对禁止表情符号**：🎯🐛📋🧹🌐🎨等任何Unicode表情符号
+2. **绝对禁止中文提交信息**：所有提交信息必须使用英文
+3. **禁止无意义署名**：不添加"Generated with Claude Code"等AI工具署名
+4. **禁止空提交信息**：每个提交必须有清晰的描述信息
+
+#### 示例对比：
+```bash
+# ✅ 正确示例
+git commit -m "Add bilingual navigation support
+
+- Added Chinese version link to English README
+- Improved user experience for international contributors  
+- Enhanced project accessibility for Chinese-speaking users"
+
+# ❌ 错误示例
+git commit -m "📋 GitHub开源发布准备：README视觉优化和国际化完善
+
+🤖 Generated with [Claude Code](https://claude.ai/code)
+
+Co-Authored-By: Claude <noreply@anthropic.com>"
+```
+
+### 强制推送规则
+- 只有在清理历史提交或修复重大问题时才使用 `git push --force`
+- 使用前务必确保团队成员知晓
+- 优先使用 `git push --force-with-lease` 以防意外覆盖
+
+### 文件管理规则
+#### .gitignore 维护：
+确保以下文件类型始终被忽略：
+```bash
+# 个人配置和敏感信息
+.claude/
+CLAUDE.local.md
+tasks.json
+
+# 运行时生成文件
+mission/
+debug_session.log
+*.log
+
+# 开发环境文件
+node_modules/
+venv/
+.env
+.env.local
+
+# 内部文档（不适合开源）
+PRD_*.md
+*工具管理方案.md
+*MECHANISM.md
+```
+
+### 提交前检查清单
+1. ✅ 提交信息使用英文，无表情符号
+2. ✅ 代码中无硬编码路径或敏感信息
+3. ✅ 界面文案适配国际化系统
+4. ✅ 无调试日志输出到控制台
+5. ✅ 文件路径符合跨平台兼容性要求
