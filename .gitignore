@@ -16,16 +16,30 @@ heliki_venv/
 .DS_Store
 Thumbs.db
 
-# Logs
+# Logs and debugging
 *.log
 debug_session.log
+test_*.py
 
-# Mission files (runtime generated)
+# Runtime generated files
 mission/
+tasks.json
 
-# Node modules
+# Node modules and dependencies
 node_modules/
+package-lock.json
+yarn.lock
 
-# Temporary files
+# Personal and sensitive configurations
+.claude/
+CLAUDE.local.md
+
+# Temporary and cache files
 *.tmp
 *.temp
+.cache/
+
+# Development and non-production files
+PRD_*.md
+MCP工具管理方案.md
+SHELL_INITIALIZATION_MECHANISM.md
