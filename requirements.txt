@@ -1,7 +1,19 @@
+# Core Web Framework
 fastapi>=0.110.0
 uvicorn[standard]>=0.30.0
-websockets==12.0
+
+# WebSocket Support
+websockets>=12.0
+
+# File Handling
 python-multipart>=0.0.9
-watchdog==3.0.0
-aiofiles==23.2.1
-schedule==1.2.0
+aiofiles>=23.2.1
+
+# HTTP Requests (for agent deployment)
+requests>=2.31.0
+
+# Task Scheduling
+schedule>=1.2.0
+
+# File System Monitoring
+watchdog>=3.0.0

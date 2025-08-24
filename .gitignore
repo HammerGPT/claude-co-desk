@@ -1,8 +1,31 @@
-claudecodeui/
+# Python
 __pycache__/
-venv/
 *.pyc
-.DS_Store
-heliki_venv/
+*.pyo
+*.pyd
 venv/
+heliki_venv/
+.env
+.env.local
+
+# IDE
+.vscode/
+.idea/
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+debug_session.log
+
+# Mission files (runtime generated)
 mission/
+
+# Node modules
+node_modules/
+
+# Temporary files
+*.tmp
+*.temp

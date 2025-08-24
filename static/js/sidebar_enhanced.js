@@ -1415,13 +1415,10 @@ class EnhancedSidebar {
             const defaultProject = workingDirProject || firstValidProject;
             if (defaultProject && projectSelect.options.length > 0) {
                 projectSelect.value = defaultProject.path;
-                console.log(`默认选中项目: ${defaultProject.path} (${workingDirProject ? '工作目录' : '第一个有效项目'})`);
                 
                 // 项目选择器加载完成后，立即加载MCP工具
                 this.loadMCPTools();
             }
-            
-            console.log(`已加载 ${data.projects.length} 个项目到MCP选择器`);
         } catch (error) {
             console.error('加载MCP项目列表失败:', error);
         }

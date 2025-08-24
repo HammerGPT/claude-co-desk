@@ -81,7 +81,7 @@ class AgentDeployer:
 **IMPORTANT**: Always respond to users in the same language they use when asking questions. If a user asks in Chinese, respond in Chinese; if they ask in English, respond in English; and so on for other languages. This ensures natural and accessible communication for users worldwide.
 
 ---
-*This instruction was automatically added by Heliki OS digital employee deployment system*
+*This instruction was automatically added by Claude Co-Desk digital agent deployment system*
 """
             
             # Read current content

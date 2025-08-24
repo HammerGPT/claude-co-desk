@@ -687,9 +687,7 @@ Please execute /init command directly to start analysis, and follow the above pr
         // 也可以通过全局事件监听（备用方案）
         document.addEventListener('websocketMessage', (event) => {
             const message = event.detail;
-            console.log('员工管理器收到全局WebSocket事件:', message);
             if (message.type === 'agents_deployed') {
-                console.log(' 检测到agents_deployed消息，准备处理');
                 this.handleAgentsDeployed(message);
             }
         });
