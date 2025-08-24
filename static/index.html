@@ -471,13 +471,13 @@
                 <div class="mcp-query-section">
                     <div class="section-header">
                         <div class="section-header-content">
-                            <h4>🤖 描述您的工具需求</h4>
-                            <p class="section-desc">详细描述您希望添加的MCP工具功能，AI助手将为您搜索和推荐合适的工具。</p>
+                            <h4 data-text="mcp.toolRequirementsTitle">🤖 Describe Your Tool Requirements</h4>
+                            <p class="section-desc" data-text="mcp.toolRequirementsDesc">Describe the MCP tool functionality you want to add in detail, and the AI assistant will search and recommend suitable tools for you.</p>
                         </div>
-                        <button id="start-mcp-search" class="btn btn-primary">智能添加MCP</button>
+                        <button id="start-mcp-search" class="btn btn-primary" data-text="mcp.smartAddButton">Smart Add MCP</button>
                     </div>
                     <div class="mcp-query-input">
-                        <textarea id="mcp-add-query" class="form-control" placeholder="请描述您需要的工具功能，或直接输入MCP服务器安装命令...&#10;&#10;功能需求示例：&#10;• 我需要连接和操作PostgreSQL数据库&#10;• 我想要一个能够处理PDF文件的工具&#10;• 我需要与Slack集成发送消息的功能&#10;&#10;直接安装命令示例：&#10;• npx -y @modelcontextprotocol/server-filesystem /path/to/files&#10;• npx -y @modelcontextprotocol/server-github&#10;• npx -y @modelcontextprotocol/server-memory&#10;• uv --directory /path/to/server run server.py"></textarea>
+                        <textarea id="mcp-add-query" class="form-control" data-i18n-placeholder="mcp.queryPlaceholder" placeholder="请描述您需要的工具功能，或直接输入MCP服务器安装命令...&#10;&#10;功能需求示例：&#10;• 我需要连接和操作PostgreSQL数据库&#10;• 我想要一个能够处理PDF文件的工具&#10;• 我需要与Slack集成发送消息的功能&#10;&#10;直接安装命令示例：&#10;• npx -y @modelcontextprotocol/server-filesystem /path/to/files&#10;• npx -y @modelcontextprotocol/server-github&#10;• npx -y @modelcontextprotocol/server-memory&#10;• uv --directory /path/to/server run server.py"></textarea>
                     </div>
                 </div>
                         
@@ -485,13 +485,13 @@
                         <div id="mcp-assistant-session" class="mcp-session-area hidden">
                             <div class="mcp-session-header">
                                 <div class="session-info">
-                                    <h5>🤖 MCP工具助手</h5>
+                                    <h5 data-text="mcp.assistant">🤖 MCP Tool Assistant</h5>
                                     <div class="session-status">
                                         <span id="mcp-session-status" class="status-indicator status-active"></span>
-                                        <span id="mcp-session-text">正在搜索合适的工具...</span>
+                                        <span id="mcp-session-text" data-text="mcp.searchingTools">Searching for suitable tools...</span>
                                     </div>
                                 </div>
-                                <button id="collapse-mcp-session" class="btn-collapse">收起</button>
+                                <button id="collapse-mcp-session" class="btn-collapse" data-text="mcp.collapse">Collapse</button>
                             </div>
                             <div id="mcp-assistant-terminal" class="mcp-terminal"></div>
                         </div>

@@ -1,8 +1,8 @@
-# Heliki OS Shell初始化机制文档
+# Claude Co-Desk Shell初始化机制文档
 
 ## 系统架构概览
 
-Heliki OS的Shell初始化是一个多层协作的复杂机制，涉及前端页签管理、WebSocket通信、PTY Shell进程管理等多个组件。
+Claude Co-Desk的Shell初始化是一个多层协作的复杂机制，涉及前端页签管理、WebSocket通信、PTY Shell进程管理等多个组件。
 
 ## 核心组件和职责
 
