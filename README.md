@@ -1,6 +1,9 @@
 <div align="center">
   <img src="static/assets/icons/system/app-icon-192.png" alt="Claude Co-Desk Logo" width="64" height="64">
   <h1>Claude Co-Desk</h1>
+  <p>
+    <a href="README_CN.md">中文版本 / Chinese Version</a>
+  </p>
 </div>
 
 **Exploring the Limits of AI Agent System Resource Control**
