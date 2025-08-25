@@ -132,7 +132,7 @@ python app.py
 <td align="center" width="140">
 <img src="./static/assets/icons/social/github-color.png" width="48" height="48" alt="GitHub"><br>
 <strong><a href="https://github.com/HammerGPT/claude-co-desk">GitHub</a></strong><br>
-<sub>源码与问题反馈</sub>
+<sub>反馈问题</sub>
 </td>
 <td align="center" width="140">
 <img src="./static/assets/icons/social/twitter-color.png" width="48" height="48" alt="Twitter"><br>
@@ -147,7 +147,6 @@ python app.py
 <td align="center" width="140">
 <img src="./static/assets/icons/social/wechat_qrcode.jpg" width="80" height="80" alt="WeChat"><br>
 <strong>微信</strong><br>
-<sub>扫码联系</sub>
 </td>
 </tr>
 </table>
