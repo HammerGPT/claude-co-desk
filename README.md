@@ -2,7 +2,7 @@
   <img src="static/assets/icons/system/app-icon-192.png" alt="Claude Co-Desk Logo" width="64" height="64">
   <h1>Claude Co-Desk</h1>
   <p>
-    <a href="README_CN.md">中文版本 / Chinese Version</a>
+    <a href="README_CN.md">中文</a>
   </p>
 </div>
 
@@ -118,6 +118,38 @@ python app.py
 ## Development Status
 
 Active development focusing on pushing the boundaries of AI agent automation capabilities.
+
+## FAQ
+
+### Why is this still Claude Code CLI mode instead of chat mode?
+This tool aims to explore the limits of AI automated task execution. Chat mode is a nice-to-have feature that we may consider developing in the future.
+
+## Feedback and Support
+
+### Get in Touch
+
+<div align="center">
+  
+**GitHub**  
+[https://github.com/HammerGPT/claude-co-desk](https://github.com/HammerGPT/claude-co-desk)
+
+**Twitter/X**  
+[https://x.com/GptHammer3309](https://x.com/GptHammer3309)
+
+**Douyin**  
+[https://www.douyin.com/user/MS4wLjABAAAA3b9nQ5Ow1s0mOTERBjmQyVn0-WCvyT_FAK_LdMyVQuY](https://www.douyin.com/user/MS4wLjABAAAA3b9nQ5Ow1s0mOTERBjmQyVn0-WCvyT_FAK_LdMyVQuY)
+
+**WeChat**  
+<img src="./static/assets/icons/social/wechat_qrcode.jpg" alt="WeChat QR Code" width="150"/>
+
+</div>
+
+### Show Your Support
+- Star this repository to show support
+- Watch for updates and new releases  
+- Follow the project for announcements
+
+Thank you for your interest in Claude Co-Desk!
 
 ## License
 
