@@ -135,7 +135,7 @@ This tool aims to explore the limits of AI automated task execution. Chat mode i
 <td align="center" width="140">
 <img src="./static/assets/icons/social/github-color.png" width="48" height="48" alt="GitHub"><br>
 <strong><a href="https://github.com/HammerGPT/claude-co-desk">GitHub</a></strong><br>
-<sub>Source code & issues</sub>
+<sub>Feedback issues</sub>
 </td>
 <td align="center" width="140">
 <img src="./static/assets/icons/social/twitter-color.png" width="48" height="48" alt="Twitter"><br>
@@ -150,7 +150,6 @@ This tool aims to explore the limits of AI automated task execution. Chat mode i
 <td align="center" width="140">
 <img src="./static/assets/icons/social/wechat_qrcode.jpg" width="80" height="80" alt="WeChat"><br>
 <strong>WeChat</strong><br>
-<sub>Scan to connect</sub>
 </td>
 </tr>
 </table>
