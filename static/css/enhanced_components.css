@@ -1446,10 +1446,7 @@
 
 /* Dashboard 社交图标样式 */
 .dashboard-content-wrapper > .flex {
-  position: absolute;
-  bottom: 1rem;
-  left: 50%;
-  transform: translateX(-50%);
+  margin-top: 2rem;
   padding-top: 1rem;
   border-top: 1px solid hsl(var(--border) / 0.3);
   width: 100%;

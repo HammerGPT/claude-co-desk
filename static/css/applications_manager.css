@@ -539,7 +539,7 @@
 /* Compact app card for settings */
 .app-card-settings {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     gap: 0.75rem;
     padding: 0.75rem;
     background: var(--bg-primary, #ffffff);
@@ -576,6 +576,9 @@
 .app-card-settings .app-info {
     flex: 1;
     min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
 }
 
 .app-card-settings .app-name {
@@ -585,7 +588,7 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    margin-bottom: 0.25rem;
+    text-align: left;
 }
 
 .app-card-settings .app-type {
@@ -625,7 +628,6 @@
 
 /* Tag System Styles */
 .app-tags {
-    margin-top: 0.25rem;
     display: flex;
     flex-wrap: wrap;
     gap: 0.25rem;

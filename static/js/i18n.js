@@ -130,7 +130,7 @@ const TEXTS = {
         'project.loadFailed': 'Failed to load projects',
         'project.networkError': 'Network error, unable to load projects',
         'project.noProjects': 'No projects found',
-        'project.workingDirectory': 'Working Directory',
+        'project.workingDirectory': 'Main Directory',
         'project.unknownPath': 'Unknown Path',
         'project.search': 'Search projects...',
         'project.expand': 'Expand',
@@ -169,7 +169,7 @@ const TEXTS = {
         'mcp.collapse': 'Collapse',
         'mcp.noTools': 'No MCP tools',
         'mcp.noInstalledTools': 'No installed MCP tools',
-        'mcp.workingDirectory': 'Working Directory',
+        'mcp.workingDirectory': 'Home Directory',
         'mcp.toolsCountUnit': 'tools',
         'mcp.statusRunning': 'Running',
         'mcp.statusDisabled': 'Disabled',
@@ -325,6 +325,17 @@ const TEXTS = {
         'dashboard.noAppsFound': 'No applications found',
         'dashboard.appsManageTip': 'Settings - Application Management to manage apps',
         'dashboard.manageMcpTools': 'Manage MCP Tools',
+        
+        // 初始化引导
+        'initGuide.welcomeTitle': 'Welcome to Claude Co-Desk!',
+        'initGuide.welcomeMessage': 'To get started, we need to initialize your system. This will set up your digital workspace and deploy AI agents to help you with various tasks.',
+        'initGuide.startInit': 'Start Initialization',
+        'initGuide.skipForNow': 'Skip for Now',
+        'initGuide.bannerTitle': 'System Initialization Required',
+        'initGuide.bannerMessage': 'Complete setup to unlock all features',
+        'initGuide.initializeNow': 'Initialize Now',
+        'initGuide.remindLater': 'Later',
+        'initGuide.systemNotReady': 'System not ready. Please refresh and try again.',
         
         // 应用控制
         'apps.title': 'Application Control',
@@ -684,6 +695,17 @@ const TEXTS = {
         'dashboard.noAppsFound': '未找到应用',
         'dashboard.appsManageTip': '设置 - 应用管理 可以管理应用',
         'dashboard.manageMcpTools': '管理MCP工具',
+        
+        // 初始化引导
+        'initGuide.welcomeTitle': '欢迎使用 Claude Co-Desk！',
+        'initGuide.welcomeMessage': '开始使用前，我们需要初始化您的系统。这将设置您的数字工作区并部署AI智能体来协助您完成各种任务。',
+        'initGuide.startInit': '开始初始化',
+        'initGuide.skipForNow': '暂时跳过',
+        'initGuide.bannerTitle': '需要系统初始化',
+        'initGuide.bannerMessage': '完成设置以解锁所有功能',
+        'initGuide.initializeNow': '立即初始化',
+        'initGuide.remindLater': '稍后',
+        'initGuide.systemNotReady': '系统未就绪，请刷新后重试。',
         
         // 应用控制
         'apps.title': '应用控制',

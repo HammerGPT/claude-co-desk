@@ -20,6 +20,9 @@ class TaskManagerDashboard {
         this.initEventListeners();
         this.loadDashboardData();
         
+        // 标记需要完整重建 (初始化时)
+        this.needsFullRebuild = true;
+        
         // 初始化时就检查显示状态
         setTimeout(() => {
             this.updateDisplayState();
@@ -29,6 +32,15 @@ class TaskManagerDashboard {
         setTimeout(() => {
             this.updateDisplayState();
         }, 500);
+        
+        // 监听初始化完成事件
+        document.addEventListener('systemInitializationComplete', () => {
+            if (window.initGuide) {
+                window.initGuide.onInitializationComplete();
+            }
+            // 重新加载状态
+            this.loadDashboardData();
+        });
         
     }
 
@@ -76,6 +88,12 @@ class TaskManagerDashboard {
         if (window.i18n) {
             window.i18n.registerComponent('dashboard', () => this.updateDashboard());
         }
+        
+        // 监听图标预加载完成事件
+        document.addEventListener('iconsPreloaded', () => {
+            console.log('Dashboard: Icons preloaded, refreshing display');
+            this.updateDashboard();
+        });
     }
 
     /**
@@ -636,44 +654,62 @@ class TaskManagerDashboard {
 
         const needsInitialization = this.systemStatus && this.systemStatus.needs_initialization;
         
+        // 如果容器为空或结构发生重大变化，进行完整重建
+        if (!this.dashboardContainer.querySelector('.dashboard-content-wrapper') || 
+            this.needsFullRebuild) {
+            this.fullRebuildDashboard(needsInitialization);
+            this.needsFullRebuild = false;
+            return;
+        }
+
+        // 否则进行选择性更新
+        this.selectiveUpdateDashboard(needsInitialization);
+    }
+
+    /**
+     * 完整重建仪表板 (仅在必要时使用)
+     */
+    fullRebuildDashboard(needsInitialization) {
         this.dashboardContainer.innerHTML = `
             <div class="dashboard-content-wrapper">
                 <div class="dashboard-welcome">
-                    <h2>${t('dashboard.welcome')}</h2>
-                    <p>${t('dashboard.subtitle')}</p>
+                    <h2 class="dashboard-welcome-title">${t('dashboard.welcome')}</h2>
+                    <p class="dashboard-welcome-subtitle">${t('dashboard.subtitle')}</p>
                 </div>
 
                 <div class="dashboard-grid">
-                    <div class="dashboard-card">
+                    <div class="dashboard-card system-status-card">
                         <h3>${t('dashboard.systemStatus')}</h3>
                         <div class="system-status">
                             <div class="status-item">
                                 <span class="status-label">${t('dashboard.claudeCli')}:</span>
-                                <span class="status-value">${this.claudeInfo ? this.claudeInfo.version : '1.0.73 (Claude Code)'}</span>
+                                <span class="status-value claude-version">${this.claudeInfo ? this.claudeInfo.version : '1.0.73 (Claude Code)'}</span>
                             </div>
                             <div class="status-item">
                                 <span class="status-label">${t('dashboard.executionPath')}:</span>
-                                <span class="status-value code">${this.claudeInfo ? this.claudeInfo.path : (this.systemConfig?.claudeCliPath || t('dashboard.claudeNotFound'))}</span>
+                                <span class="status-value code claude-path">${this.formatHomePath(this.claudeInfo ? this.claudeInfo.path : (this.systemConfig?.claudeCliPath || t('dashboard.claudeNotFound')))}</span>
                             </div>
                             <div class="status-item">
                                 <span class="status-label">${t('dashboard.agentsCount')}:</span>
-                                <span class="status-value">${this.agentsCount || 0}</span>
+                                <span class="status-value agents-count">${this.agentsCount || 0}</span>
                             </div>
                             <div class="status-item">
                                 <span class="status-label">${t('dashboard.totalTasks')}:</span>
-                                <span class="status-value">${this.taskStats ? this.taskStats.total : 0}</span>
+                                <span class="status-value total-tasks">${this.taskStats ? this.taskStats.total : 0}</span>
                             </div>
                             <div class="status-item">
                                 <span class="status-label">${t('dashboard.immediateTasks')}:</span>
-                                <span class="status-value">${this.taskStats ? this.taskStats.immediate : 0}</span>
+                                <span class="status-value immediate-tasks">${this.taskStats ? this.taskStats.immediate : 0}</span>
                             </div>
                         </div>
                     </div>
 
-                    ${this.renderApplicationsCard()}
+                    <div class="applications-card-container">
+                        ${this.renderApplicationsCard()}
+                    </div>
 
                     <div class="dashboard-card mcp-overview-card">
-                        <h3>${this.getMCPTitle()}</h3>
+                        <h3 class="mcp-title">${this.getMCPTitle()}</h3>
                         <div class="mcp-dashboard-content">
                             ${this.renderMCPDistribution(this.mcpStatus)}
                         </div>
@@ -687,11 +723,77 @@ class TaskManagerDashboard {
                     ${needsInitialization ? this.renderInitializationAction() : this.renderNormalActions()}
                 </div>
 
-                ${this.renderSocialIcons()}
+                <div class="social-icons-container">
+                    ${this.renderSocialIcons()}
+                </div>
             </div>
         `;
 
         this.bindActionEvents();
+    }
+
+    /**
+     * 选择性更新仪表板内容 (保持图标不重新加载)
+     */
+    selectiveUpdateDashboard(needsInitialization) {
+        try {
+            // 更新欢迎文本
+            this.updateElement('.dashboard-welcome-title', t('dashboard.welcome'));
+            this.updateElement('.dashboard-welcome-subtitle', t('dashboard.subtitle'));
+
+            // 更新系统状态文本 (不重建HTML结构)
+            this.updateElement('.claude-version', this.claudeInfo ? this.claudeInfo.version : '1.0.73 (Claude Code)');
+            this.updateElement('.claude-path', this.formatHomePath(this.claudeInfo ? this.claudeInfo.path : (this.systemConfig?.claudeCliPath || t('dashboard.claudeNotFound'))));
+            this.updateElement('.agents-count', this.agentsCount || 0);
+            this.updateElement('.total-tasks', this.taskStats ? this.taskStats.total : 0);
+            this.updateElement('.immediate-tasks', this.taskStats ? this.taskStats.immediate : 0);
+
+            // 更新MCP标题
+            this.updateElement('.mcp-title', this.getMCPTitle());
+
+            // 更新应用卡片 (这里需要重新渲染，但尽量保持图标)
+            const applicationsContainer = this.dashboardContainer.querySelector('.applications-card-container');
+            if (applicationsContainer) {
+                applicationsContainer.innerHTML = this.renderApplicationsCard();
+            }
+
+            // 更新MCP内容
+            const mcpContent = this.dashboardContainer.querySelector('.mcp-dashboard-content');
+            if (mcpContent) {
+                mcpContent.innerHTML = this.renderMCPDistribution(this.mcpStatus);
+            }
+
+            // 更新按钮文本
+            this.updateElement('#manage-mcp-tools-btn', t('dashboard.manageMcpTools'));
+
+            // 更新操作区域
+            const actionsContainer = this.dashboardContainer.querySelector('.dashboard-actions');
+            if (actionsContainer) {
+                actionsContainer.innerHTML = needsInitialization ? this.renderInitializationAction() : this.renderNormalActions();
+                this.bindActionEvents();
+            }
+
+        } catch (error) {
+            console.warn('Dashboard: Selective update failed, falling back to full rebuild:', error);
+            this.fullRebuildDashboard(needsInitialization);
+        }
+    }
+
+    /**
+     * 更新单个元素内容的辅助方法
+     */
+    updateElement(selector, content) {
+        const element = this.dashboardContainer.querySelector(selector);
+        if (element && element.textContent !== content) {
+            element.textContent = content;
+        }
+    }
+
+    /**
+     * 标记需要完整重建
+     */
+    markForFullRebuild() {
+        this.needsFullRebuild = true;
     }
 
     /**
@@ -701,7 +803,7 @@ class TaskManagerDashboard {
         return `
             <div class="dashboard-action-btn init-system-highlight" id="init-system-action">
                 <div class="dashboard-action-icon">
-                    <img src="static/assets/icons/interface/zap.png" alt="Initialize System" />
+                    <img src="/static/assets/icons/interface/zap.png" alt="Initialize System" />
                 </div>
                 <div class="dashboard-action-content">
                     <h4>${t('dashboard.initializeSystem')}</h4>
