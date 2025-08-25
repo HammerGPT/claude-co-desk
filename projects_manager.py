@@ -72,18 +72,8 @@ class ProjectConfigManager:
         # 使用实际项目目录或解码项目名称
         project_path = actual_project_dir or project_name.replace('-', '/')
         
-        # 尝试读取package.json获取项目名称
-        try:
-            if actual_project_dir:
-                package_json_path = Path(actual_project_dir) / 'package.json'
-                if package_json_path.exists():
-                    async with aiofiles.open(package_json_path, 'r', encoding='utf-8') as f:
-                        package_data = json.loads(await f.read())
-                        if package_data.get('name'):
-                            return package_data['name']
-        except Exception:
-            # 回退到基于路径的命名
-            pass
+        # 直接使用目录名作为显示名称，不读取package.json
+        # package.json保留用于其他用途（依赖管理、脚本等）
         
         # 如果是绝对路径，返回最后一个目录名
         if project_path.startswith('/'):

@@ -6,11 +6,9 @@ Claude Co-Desk - 基于Claude Code的智能协作平台
 
 import asyncio
 import json
-import pty
-import select
+import platform
 import shutil
 import subprocess
-import termios
 import threading
 import logging
 from datetime import datetime
@@ -22,6 +20,15 @@ from contextlib import asynccontextmanager
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
+
+# Platform-specific imports for PTY functionality
+IS_WINDOWS = platform.system() == 'Windows'
+
+if not IS_WINDOWS:
+    import pty
+    import select
+    import termios
+    # fcntl will be imported locally where needed
 
 # 导入Claude CLI集成和项目管理器
 from claude_cli import claude_cli
@@ -558,79 +565,107 @@ class PTYShellHandler:
             logger.info(f"Working directory: {project_path}")
             logger.info(f"Terminal environment: TERM={env['TERM']}, COLORTERM={env['COLORTERM']}")
             
-            # 创建PTY主从文件描述符对
-            self.master_fd, slave_fd = pty.openpty()
-            
-            # 立即设置PTY窗口尺寸
-            try:
-                import struct, fcntl
-                winsize = struct.pack('HHHH', rows, cols, 0, 0)
-                fcntl.ioctl(slave_fd, termios.TIOCSWINSZ, winsize)
-                logger.info(f"PTY initial size set: {cols}x{rows}")
-            except Exception as e:
-                logger.warning(f" 设置PTY初始尺寸失败: {e}")
-            
-            # 设置PTY属性 - 模拟node-pty的配置
-            try:
-                # 获取当前终端属性
-                attrs = termios.tcgetattr(slave_fd)
+            if IS_WINDOWS:
+                # Windows implementation using subprocess.PIPE
+                logger.info("Starting Windows subprocess mode (PTY not available)")
                 
-                # 输入模式 (iflag) - 类似node-pty的配置
-                attrs[0] &= ~(termios.IGNBRK | termios.BRKINT | termios.PARMRK | 
-                            termios.ISTRIP | termios.INLCR | termios.IGNCR | 
-                            termios.ICRNL | termios.IXON)
-                attrs[0] |= termios.BRKINT | termios.ICRNL
+                # Use cmd.exe as the shell for Windows
+                self.process = subprocess.Popen(
+                    ['cmd', '/c', shell_command],
+                    stdin=subprocess.PIPE,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                    env=env,
+                    cwd=os.path.expanduser('~'),
+                    text=True,
+                    bufsize=1,  # Line buffered
+                    universal_newlines=True
+                )
                 
-                # 输出模式 (oflag) - 启用输出处理
-                attrs[1] |= termios.OPOST | termios.ONLCR
+                # Set master_fd to None to indicate Windows mode
+                self.master_fd = None
                 
-                # 控制模式 (cflag) - 8位数据
-                attrs[2] &= ~termios.CSIZE
-                attrs[2] |= termios.CS8
+                logger.info(f"Windows subprocess started: PID {self.process.pid}")
                 
-                # 本地模式 (lflag) - 启用规范模式和回显，这是关键！
-                attrs[3] |= (termios.ECHO | termios.ECHOE | termios.ECHOK | 
-                           termios.ECHONL | termios.ICANON | termios.ISIG)
+                # Start reading thread for Windows
+                self.running = True
+                self.read_thread = threading.Thread(target=self._read_windows_output, daemon=True)
+                self.read_thread.start()
                 
-                # 特殊字符处理
-                attrs[6][termios.VEOF] = 4    # Ctrl+D
-                attrs[6][termios.VEOL] = 0    # 额外的行结束符
-                attrs[6][termios.VERASE] = 127 # 退格键 (DEL)
-                attrs[6][termios.VKILL] = 21  # Ctrl+U
-                attrs[6][termios.VMIN] = 1    # 最小读取字符
-                attrs[6][termios.VTIME] = 0   # 无超时
+            else:
+                # Unix implementation with full PTY functionality
+                logger.info("Starting Unix PTY mode with full terminal features")
                 
-                termios.tcsetattr(slave_fd, termios.TCSANOW, attrs)
-                logger.info("PTY configured in node-pty-like mode, full terminal features enabled")
-            except Exception as e:
-                logger.warning(f" 设置PTY属性失败: {e}")
-            
-            # 启动子进程，使用用户默认shell执行命令
-            # 获取用户的默认shell
-            user_shell = env.get('SHELL', '/bin/bash')
-            logger.info(f"Using shell: {user_shell}")
-            
-            self.process = subprocess.Popen(
-                [user_shell, '-c', shell_command],
-                stdin=slave_fd,
-                stdout=slave_fd,
-                stderr=slave_fd,
-                env=env,
-                preexec_fn=os.setsid,  # 创建新的会话组
-                cwd=os.path.expanduser('~')  # 从home目录开始
-            )
-            
-            # 关闭slave端，只保留master端
-            os.close(slave_fd)
-            
-            logger.info(f"PTY Shell process started: PID {self.process.pid}")
-            
-            # 不发送启动消息，让Claude CLI的原生输出成为唯一信息源
-            
-            # 启动读取线程
-            self.running = True
-            self.read_thread = threading.Thread(target=self._read_pty_output, daemon=True)
-            self.read_thread.start()
+                # 创建PTY主从文件描述符对
+                self.master_fd, slave_fd = pty.openpty()
+                
+                # 立即设置PTY窗口尺寸
+                try:
+                    import struct, fcntl
+                    winsize = struct.pack('HHHH', rows, cols, 0, 0)
+                    fcntl.ioctl(slave_fd, termios.TIOCSWINSZ, winsize)
+                    logger.info(f"PTY initial size set: {cols}x{rows}")
+                except Exception as e:
+                    logger.warning(f"Failed to set PTY initial size: {e}")
+                
+                # 设置PTY属性 - 模拟node-pty的配置
+                try:
+                    # 获取当前终端属性
+                    attrs = termios.tcgetattr(slave_fd)
+                    
+                    # 输入模式 (iflag) - 类似node-pty的配置
+                    attrs[0] &= ~(termios.IGNBRK | termios.BRKINT | termios.PARMRK | 
+                                termios.ISTRIP | termios.INLCR | termios.IGNCR | 
+                                termios.ICRNL | termios.IXON)
+                    attrs[0] |= termios.BRKINT | termios.ICRNL
+                    
+                    # 输出模式 (oflag) - 启用输出处理
+                    attrs[1] |= termios.OPOST | termios.ONLCR
+                    
+                    # 控制模式 (cflag) - 8位数据
+                    attrs[2] &= ~termios.CSIZE
+                    attrs[2] |= termios.CS8
+                    
+                    # 本地模式 (lflag) - 启用规范模式和回显，这是关键！
+                    attrs[3] |= (termios.ECHO | termios.ECHOE | termios.ECHOK | 
+                               termios.ECHONL | termios.ICANON | termios.ISIG)
+                    
+                    # 特殊字符处理
+                    attrs[6][termios.VEOF] = 4    # Ctrl+D
+                    attrs[6][termios.VEOL] = 0    # 额外的行结束符
+                    attrs[6][termios.VERASE] = 127 # 退格键 (DEL)
+                    attrs[6][termios.VKILL] = 21  # Ctrl+U
+                    attrs[6][termios.VMIN] = 1    # 最小读取字符
+                    attrs[6][termios.VTIME] = 0   # 无超时
+                    
+                    termios.tcsetattr(slave_fd, termios.TCSANOW, attrs)
+                    logger.info("PTY configured in node-pty-like mode, full terminal features enabled")
+                except Exception as e:
+                    logger.warning(f"Failed to set PTY attributes: {e}")
+                
+                # 启动子进程，使用用户默认shell执行命令
+                user_shell = env.get('SHELL', '/bin/bash')
+                logger.info(f"Using shell: {user_shell}")
+                
+                self.process = subprocess.Popen(
+                    [user_shell, '-c', shell_command],
+                    stdin=slave_fd,
+                    stdout=slave_fd,
+                    stderr=slave_fd,
+                    env=env,
+                    preexec_fn=os.setsid,  # 创建新的会话组
+                    cwd=os.path.expanduser('~')  # 从home目录开始
+                )
+                
+                # 关闭slave端，只保留master端
+                os.close(slave_fd)
+                
+                logger.info(f"PTY Shell process started: PID {self.process.pid}")
+                
+                # 启动读取线程
+                self.running = True
+                self.read_thread = threading.Thread(target=self._read_pty_output, daemon=True)
+                self.read_thread.start()
             
             # 添加进程监控
             logger.info(f"Child process status: PID={self.process.pid}, poll={self.process.poll()}")
@@ -732,25 +767,70 @@ class PTYShellHandler:
         finally:
             logger.info(f"PTY read thread ended (total reads: {read_count})")
     
+    def _read_windows_output(self):
+        """Windows subprocess output reading thread"""
+        logger.info("Windows output read thread started")
+        
+        try:
+            read_count = 0
+            while self.running and self.process and self.process.poll() is None:
+                try:
+                    # Read line from subprocess stdout
+                    line = self.process.stdout.readline()
+                    if not line:
+                        # Check if process has ended
+                        if self.process.poll() is not None:
+                            logger.info(f"Windows subprocess ended with code: {self.process.poll()}")
+                            break
+                        continue
+                    
+                    read_count += 1
+                    # Send output to WebSocket
+                    asyncio.run_coroutine_threadsafe(
+                        self.send_output(line), 
+                        self.loop
+                    )
+                    
+                except Exception as e:
+                    logger.error(f"Error reading Windows subprocess output: {e}")
+                    break
+                    
+        except Exception as e:
+            logger.error(f"Windows read thread exception: {e}")
+            import traceback
+            logger.error(f"Exception details: {traceback.format_exc()}")
+        finally:
+            logger.info(f"Windows read thread ended (total reads: {read_count})")
+    
     async def send_input(self, data: str):
-        """发送输入到PTY - 增强调试"""
-        if self.master_fd is not None:
+        """发送输入到shell - 支持PTY和Windows模式"""
+        if IS_WINDOWS and self.process and self.process.stdin:
+            # Windows mode using subprocess.PIPE
+            try:
+                logger.debug(f"Windows input: {repr(data)}")
+                self.process.stdin.write(data)
+                self.process.stdin.flush()
+            except Exception as e:
+                logger.error(f"Failed to send Windows input: {e}")
+                logger.error(f"Input data: {repr(data)}")
+        elif self.master_fd is not None:
+            # Unix PTY mode
             try:
                 # 调试输入数据
                 input_bytes = data.encode('utf-8')
                 char_repr = repr(data)
-                logger.debug(f" PTY输入: {char_repr} -> {input_bytes.hex()}")
+                logger.debug(f"PTY输入: {char_repr} -> {input_bytes.hex()}")
                 
                 # 特殊字符处理提示
                 if '\x08' in data:  # 退格键
                     logger.debug("⌫ 检测到退格键")
                 elif '\x7f' in data:  # DEL键
-                    logger.debug(" 检测到DEL键")
+                    logger.debug("检测到DEL键")
                 
                 os.write(self.master_fd, input_bytes)
             except Exception as e:
-                logger.error(f" 发送PTY输入失败: {e}")
-                logger.error(f" 输入数据: {repr(data)}")
+                logger.error(f"发送PTY输入失败: {e}")
+                logger.error(f"输入数据: {repr(data)}")
     
     def _optimize_ansi_sequences(self, text: str) -> str:
         """优化ANSI转义序列，合并重复操作"""
@@ -1034,7 +1114,12 @@ class PTYShellHandler:
                 logger.error(f" 发送WebSocket输出失败: {e}")
     
     async def resize_terminal(self, cols: int, rows: int):
-        """调整终端大小 - 改进版"""
+        """调整终端大小 - 跨平台版本"""
+        if IS_WINDOWS:
+            # Windows mode: Terminal resizing not supported, log and return
+            logger.info(f"Windows mode: Terminal resize not supported ({cols}x{rows})")
+            return
+            
         if self.master_fd is not None and cols > 0 and rows > 0:
             try:
                 import struct, fcntl, termios
@@ -1047,12 +1132,12 @@ class PTYShellHandler:
                 winsize = struct.pack('HHHH', rows, cols, 0, 0)
                 fcntl.ioctl(self.master_fd, termios.TIOCSWINSZ, winsize)
                 
-                logger.debug(f" PTY终端大小已调整为: {cols}x{rows}")
+                logger.debug(f"PTY终端大小已调整为: {cols}x{rows}")
                 
             except Exception as e:
-                logger.error(f" 调整PTY终端大小失败 ({cols}x{rows}): {e}")
+                logger.error(f"调整PTY终端大小失败 ({cols}x{rows}): {e}")
         else:
-            logger.warning(f" 无效的终端大小或PTY未就绪: {cols}x{rows}, fd={self.master_fd}")
+            logger.warning(f"无效的终端大小或PTY未就绪: {cols}x{rows}, fd={self.master_fd}")
     
     def cleanup(self):
         """清理PTY资源"""
@@ -2653,12 +2738,16 @@ async def get_cross_project_mcp_status():
                     }
             return None
         
-        # 并行执行所有项目的MCP状态查询（排除用户家目录）
-        tasks = [get_single_project_status(project) for project in projects]
-        results = await asyncio.gather(*tasks, return_exceptions=True)
-        
-        # 过滤掉None结果和异常
-        project_statuses = [result for result in results if result is not None and not isinstance(result, Exception)]
+        # 串行执行项目的MCP状态查询（排除用户家目录），避免进程竞争
+        project_statuses = []
+        for project in projects:
+            try:
+                result = await get_single_project_status(project)
+                if result is not None:
+                    project_statuses.append(result)
+            except Exception as e:
+                logger.warning(f"获取项目 {project.get('name', 'unknown')} MCP状态异常: {e}")
+                continue
         
         return JSONResponse(content={
             "userHomeStatus": user_home_status,
@@ -2812,7 +2901,7 @@ async def get_project_mcp_status(project_path: str):
         )
         
         try:
-            stdout, stderr = await asyncio.wait_for(process.communicate(), timeout=10.0)
+            stdout, stderr = await asyncio.wait_for(process.communicate(), timeout=20.0)
             result_stdout = stdout.decode('utf-8').strip()
             result_stderr = stderr.decode('utf-8')
             returncode = process.returncode
