@@ -726,6 +726,9 @@ Please execute /init command directly to start analysis, and follow the above pr
         console.log('🎨 显示部署成功通知...');
         this.showDeploymentSuccessNotification(message);
         
+        // 触发全局初始化完成事件
+        document.dispatchEvent(new CustomEvent('systemInitializationComplete'));
+        
         // 重新加载员工状态
         setTimeout(() => {
             console.log('开始重新加载员工状态...');

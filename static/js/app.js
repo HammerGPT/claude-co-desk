@@ -283,6 +283,18 @@ class App {
         // 激活默认标签
         this.switchTab(this.activeTab);
         
+        // 系统完全初始化后，触发初始化引导检查
+        setTimeout(() => {
+            if (window.initGuide) {
+                // 重新检查系统状态并显示引导（如果需要）
+                window.initGuide.checkSystemStatus().then(() => {
+                    if (window.initGuide.needsInit) {
+                        window.initGuide.showWelcomeModal();
+                    }
+                });
+            }
+        }, 1000); // 延迟1秒确保所有组件都已完全加载
+        
     }
 
     /**

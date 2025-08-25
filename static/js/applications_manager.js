@@ -800,7 +800,7 @@ class ApplicationsSettings {
                 </div>
                 <div class="app-info">
                     <div class="app-name" title="${name}">${name}</div>
-                    <div class="app-type">${typeText}</div>
+                    ${app.type === 'cli' ? `<div class="app-type">${typeText}</div>` : ''}
                     <div class="app-tags">
                         ${tagsHtml}
                     </div>
