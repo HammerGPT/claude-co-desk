@@ -116,6 +116,51 @@ python app.py
 
 正在积极开发中，专注于推动AI智能体自动化能力的边界。
 
+## 常见问题
+
+### 为什么还是Claude Code CLI模式而没有对话模式？
+这个工具旨在探索AI自动化任务执行的极限。对话模式是一个锦上添花的功能，未来会考虑开发。
+
+## 反馈与支持
+
+### 联系我们
+
+<div align="center">
+
+<table>
+<tr>
+<td align="center" width="140">
+<img src="./static/assets/icons/social/github-color.png" width="48" height="48" alt="GitHub"><br>
+<strong><a href="https://github.com/HammerGPT/claude-co-desk">GitHub</a></strong><br>
+<sub>源码与问题反馈</sub>
+</td>
+<td align="center" width="140">
+<img src="./static/assets/icons/social/twitter-color.png" width="48" height="48" alt="Twitter"><br>
+<strong><a href="https://x.com/GptHammer3309">Twitter/X</a></strong><br>
+<sub>更新与资讯</sub>
+</td>
+<td align="center" width="140">
+<img src="./static/assets/icons/social/douyin-color.png" width="48" height="48" alt="Douyin"><br>
+<strong><a href="https://www.douyin.com/user/MS4wLjABAAAA3b9nQ5Ow1s0mOTERBjmQyVn0-WCvyT_FAK_LdMyVQuY">抖音</a></strong><br>
+<sub>视频内容</sub>
+</td>
+<td align="center" width="140">
+<img src="./static/assets/icons/social/wechat_qrcode.jpg" width="80" height="80" alt="WeChat"><br>
+<strong>微信</strong><br>
+<sub>扫码联系</sub>
+</td>
+</tr>
+</table>
+
+</div>
+
+### 支持我们
+- 为这个仓库点Star表示支持
+- 关注获取更新和新版本发布信息
+- 关注项目获取公告信息
+
+感谢您对Claude Co-Desk的关注！
+
 ## 许可证
 
 MIT License - 详见 [LICENSE](LICENSE) 文件。
