@@ -23,7 +23,11 @@ except ImportError:
     print("MCP library not found. Install with: pip install mcp")
     sys.exit(1)
 
-from app_scanner import ApplicationScanner, ApplicationInfo
+try:
+    from .app_scanner import ApplicationScanner, ApplicationInfo
+except ImportError:
+    # Fall back to direct import when run as script
+    from app_scanner import ApplicationScanner, ApplicationInfo
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
