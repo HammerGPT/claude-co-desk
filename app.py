@@ -35,6 +35,15 @@ from claude_cli import claude_cli
 from projects_manager import ProjectManager
 from task_scheduler import TaskScheduler
 from config import Config
+# Dynamic import to avoid hardcoded path dependencies
+import sys
+from pathlib import Path
+
+# Add MCP services to Python path for dynamic imports
+_mcp_app_control_path = Path(__file__).parent / "mcp_services" / "app_control"
+if str(_mcp_app_control_path) not in sys.path:
+    sys.path.append(str(_mcp_app_control_path))
+
 from app_scanner import ApplicationScanner, ApplicationInfo
 from mcp_config_generator import MCPConfigGenerator
 import os

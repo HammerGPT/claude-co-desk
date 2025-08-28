@@ -1,0 +1,7 @@
+{
+  "SMTP_HOST": "smtp.exmail.qq.com",
+  "SMTP_PORT": "465",
+  "SMTP_SECURE": "true",
+  "SMTP_USER": "no-reply@heliki.com",
+  "SMTP_PASS": "6s6YqVq2v8q3pCN8"
+}

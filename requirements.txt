@@ -17,3 +17,6 @@ schedule>=1.2.0
 
 # File System Monitoring
 watchdog>=3.0.0
+
+# MCP Protocol Support
+mcp>=1.13.0

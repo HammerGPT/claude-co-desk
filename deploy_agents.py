@@ -273,8 +273,8 @@ class AgentDeployer:
         logger.info("Registering app-control MCP as system-level service...")
         
         try:
-            # Build absolute path for app_control_mcp.py
-            mcp_server_path = self.project_dir / "app_control_mcp.py"
+            # Build absolute path for app_control MCP server (updated structure)
+            mcp_server_path = self.project_dir / "mcp_services" / "app_control" / "server.py"
             
             if not mcp_server_path.exists():
                 logger.error(f"MCP server file not found: {mcp_server_path}")
