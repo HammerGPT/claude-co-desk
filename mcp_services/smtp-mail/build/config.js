@@ -1,8 +1,9 @@
 import fs from 'fs-extra';
 import * as path from 'path';
-import * as os from 'os';
+import { fileURLToPath } from 'url';
 import { logToFile } from "./index.js";
-// Define paths for configuration and data storage
+// Define paths for configuration and data storage - use current MCP service directory
+const __filename = fileURLToPath(import.meta.url);
 export const CONFIG_DIR = path.dirname(__filename);
 export const TEMPLATES_DIR = path.join(CONFIG_DIR, 'templates');
 export const SMTP_CONFIG_FILE = path.join(CONFIG_DIR, 'smtp_config.json');
