@@ -3,9 +3,9 @@ import * as path from 'path';
 import * as os from 'os';
 import { logToFile } from "./index.js";
 // Define paths for configuration and data storage
-export const CONFIG_DIR = path.join(os.homedir(), '.smtp-mcp-server');
+export const CONFIG_DIR = path.dirname(__filename);
 export const TEMPLATES_DIR = path.join(CONFIG_DIR, 'templates');
-export const SMTP_CONFIG_FILE = path.join(CONFIG_DIR, 'smtp-config.json');
+export const SMTP_CONFIG_FILE = path.join(CONFIG_DIR, 'smtp_config.json');
 export const LOG_FILE = path.join(CONFIG_DIR, 'email-logs.json');
 // Default SMTP configuration
 export const DEFAULT_SMTP_CONFIG = {

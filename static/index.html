@@ -317,6 +317,9 @@
                             <button class="settings-menu-item" data-section="applications" data-icon-inactive="apps.png" data-icon-active="app_active.png">
                                 <img src="/static/assets/icons/interface/apps.png" width="16" height="16" alt=""> <span data-i18n="apps.management">Application Management</span>
                             </button>
+                            <button class="settings-menu-item" data-section="notifications">
+                                <img src="/static/assets/icons/interface/mail.png" width="16" height="16" alt=""> <span data-i18n="notifications.settings">通知配置</span>
+                            </button>
                             <button class="settings-menu-item" data-section="mcp-tools">
                                 <img src="/static/assets/icons/interface/tools.png" width="16" height="16" alt=""> <span data-i18n="mcp.tools">MCP工具</span>
                             </button>
@@ -388,6 +391,121 @@
                                     </div>
                                     
                                     <div id="settings-apps-list" class="apps-list-settings"></div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- 通知配置内容 -->
+                        <div id="settings-notifications" class="settings-section">
+                            <div class="settings-section-header">
+                                <h4 data-i18n="notifications.settings">通知配置</h4>
+                                <p class="settings-section-desc" data-i18n="notifications.description">配置系统任务完成通知方式</p>
+                            </div>
+                            
+                            <!-- 邮件通知配置 -->
+                            <div class="notification-email-section">
+                                <div class="section-title">
+                                    <img src="/static/assets/icons/interface/mail.png" width="16" height="16" alt="">
+                                    <span data-i18n="notifications.email">邮件通知</span>
+                                    <div class="config-status" id="email-config-status">
+                                        <span class="status-indicator" id="email-status-indicator"></span>
+                                        <span class="status-text" id="email-status-text" data-i18n="notifications.notConfigured">未配置</span>
+                                    </div>
+                                </div>
+                                
+                                <div class="email-config-form">
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label for="email-address" data-i18n="notifications.emailAddress">邮箱地址</label>
+                                            <input type="email" id="email-address" class="form-control" placeholder="your@email.com">
+                                            <small class="form-text text-muted" data-i18n="notifications.emailAddressHelp">用于发送通知邮件的邮箱地址</small>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="sender-name" data-i18n="notifications.senderName">发送人名称</label>
+                                            <input type="text" id="sender-name" class="form-control" placeholder="Claude Co-Desk">
+                                            <small class="form-text text-muted" data-i18n="notifications.senderNameHelp">邮件发送人显示名称</small>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label for="app-password" data-i18n="notifications.appPassword">应用密码</label>
+                                            <div class="input-group">
+                                                <input type="password" id="app-password" class="form-control" data-i18n-placeholder="notifications.appPasswordPlaceholder" placeholder="Enter app password">
+                                                <button type="button" class="btn btn-outline-secondary" id="toggle-password">
+                                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                                                        <circle cx="12" cy="12" r="3"/>
+                                                    </svg>
+                                                </button>
+                                            </div>
+                                            <small class="form-text text-muted">
+                                                <span data-i18n="notifications.appPasswordHelp">应用密码（非登录密码）</span>
+                                            </small>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="smtp-port" data-i18n="notifications.smtpPort">SMTP端口</label>
+                                            <select id="smtp-port" class="form-control">
+                                                <option value="587" data-i18n="notifications.port587">587 (STARTTLS推荐)</option>
+                                                <option value="465" data-i18n="notifications.port465">465 (SSL/TLS)</option>
+                                                <option value="25" data-i18n="notifications.port25">25 (标准SMTP)</option>
+                                                <option value="2525" data-i18n="notifications.port2525">2525 (备用端口)</option>
+                                            </select>
+                                            <small class="form-text text-muted" data-i18n="notifications.smtpPortHelp">选择SMTP服务器端口，通常587或465</small>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- SMTP配置自动识别结果 -->
+                                    <div class="smtp-config-preview" id="smtp-config-preview" style="display: none;">
+                                        <div class="preview-header">
+                                            <img src="/static/assets/icons/interface/settings.png" width="16" height="16" alt="">
+                                            <span data-i18n="notifications.detectedConfig">检测到配置</span>
+                                        </div>
+                                        <div class="config-details">
+                                            <div class="config-item">
+                                                <span class="config-label" data-i18n="notifications.provider">服务商：</span>
+                                                <span class="config-value" id="detected-provider"></span>
+                                            </div>
+                                            <div class="config-item">
+                                                <span class="config-label" data-i18n="notifications.smtpHost">SMTP服务器：</span>
+                                                <span class="config-value" id="detected-host"></span>
+                                            </div>
+                                            <div class="config-item">
+                                                <span class="config-label" data-i18n="notifications.smtpPort">端口：</span>
+                                                <span class="config-value" id="detected-port"></span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- 操作按钮 -->
+                                    <div class="form-actions">
+                                        <button type="button" class="btn btn-outline-primary" id="test-email-config" data-i18n="notifications.testConfig">
+                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>
+                                            </svg>
+                                            <span data-i18n="notifications.testConfig">Send Test Email</span>
+                                        </button>
+                                        <button type="button" class="btn btn-primary" id="save-email-config" data-i18n="notifications.saveConfig">Save Configuration</button>
+                                    </div>
+                                    
+                                    <!-- 测试结果显示 -->
+                                    <div class="test-result" id="email-test-result" style="display: none;">
+                                        <div class="result-content">
+                                            <div class="result-icon" id="test-result-icon"></div>
+                                            <div class="result-message" id="test-result-message"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- 帮助文档区域 -->
+                                <div class="email-help-section" id="email-help-section" style="display: none;">
+                                    <div class="help-header">
+                                        <img src="/static/assets/icons/interface/help.png" width="16" height="16" alt="">
+                                        <span data-i18n="notifications.passwordHelp">应用密码获取帮助</span>
+                                    </div>
+                                    <div class="help-content" id="help-content">
+                                        <!-- 动态加载帮助内容 -->
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -956,6 +1074,7 @@
     <script src="/static/js/task_manager_v2.js"></script>
     <script src="/static/js/employees_manager.js"></script>
     <script src="/static/js/applications_manager.js"></script>
+    <script src="/static/js/notifications_manager.js"></script>
     <script src="/static/js/folder_selector.js"></script>
     <script src="/static/js/sidebar_enhanced.js"></script>
     <script src="/static/js/files_drawer.js"></script>

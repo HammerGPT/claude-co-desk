@@ -277,6 +277,11 @@ class SidebarDrawers {
         // 添加expanded类
         drawerSection.classList.add('expanded');
         
+        // Refresh notifications configuration when entering email settings
+        if (drawerName === 'notifications' && window.notificationManager) {
+            window.notificationManager.refresh();
+        }
+        
         // 计算并设置高度
         this.calculateDrawerHeight(drawerContent, drawerName);
     }

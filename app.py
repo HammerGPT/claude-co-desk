@@ -1739,6 +1739,300 @@ async def get_language_config():
     """获取语言配置API"""
     return JSONResponse(content=Config.get_language_config())
 
+# 通知配置API
+@app.get("/api/notifications/email-config")
+async def get_email_config():
+    """获取邮件通知配置"""
+    try:
+        import os
+        import json
+        from pathlib import Path
+        
+        config_file = Path(__file__).parent / 'mcp_services' / 'smtp-mail' / 'smtp_config.json'
+        
+        result = {
+            "success": True,
+            "config": None
+        }
+        
+        # Read from user's flat format config file
+        if config_file.exists():
+            with open(config_file, 'r', encoding='utf-8') as f:
+                smtp_config = json.load(f)
+                # Check if it's user's flat format
+                if smtp_config.get('SMTP_USER') and smtp_config.get('SMTP_PASS'):
+                    test_status = smtp_config.get('testStatus')
+                    result["config"] = {
+                        "email": smtp_config['SMTP_USER'],
+                        "senderName": smtp_config.get('SMTP_HOST', 'Claude Co-Desk'),
+                        "configured": True,
+                        "testStatus": test_status,
+                        # Include actual server configuration
+                        "actualProvider": {
+                            "host": smtp_config.get('SMTP_HOST', 'unknown'),
+                            "port": int(smtp_config.get('SMTP_PORT', 587)),
+                            "secure": smtp_config.get('SMTP_SECURE', 'false').lower() == 'true',
+                            "nameKey": "providers.actual"  # Use a special key for actual config
+                        }
+                    }
+                    logger.info(f"Loaded email config with testStatus: {test_status}")
+        
+        return JSONResponse(content=result)
+        
+    except Exception as e:
+        logger.error(f"获取邮件配置失败: {e}")
+        return JSONResponse(content={
+            "success": False,
+            "error": str(e)
+        })
+
+@app.post("/api/notifications/save-email-config")
+async def save_email_config(request: Request):
+    """保存邮件通知配置"""
+    try:
+        import json
+        from pathlib import Path
+        
+        body = await request.json()
+        email = body.get('email')
+        sender_name = body.get('senderName', 'Claude Co-Desk')
+        password = body.get('password')
+        provider = body.get('provider')
+        test_status = body.get('testStatus')
+        
+        if not email or not password or not provider:
+            return JSONResponse(
+                status_code=400,
+                content={"success": False, "error": "缺少必要的配置信息"}
+            )
+        
+        # Use MCP services directory for unified management
+        config_dir = Path(__file__).parent / 'mcp_services' / 'smtp-mail'
+        config_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Save to SMTP config using user's required flat format
+        smtp_config_file = config_dir / 'smtp_config.json'
+        smtp_config = {
+            "SMTP_HOST": provider['host'],
+            "SMTP_PORT": str(provider['port']),
+            "SMTP_SECURE": str(provider['secure']).lower(),
+            "SMTP_USER": email,
+            "SMTP_PASS": password,
+            "testStatus": None  # Reset test status when configuration changes
+        }
+        
+        with open(smtp_config_file, 'w', encoding='utf-8') as f:
+            json.dump(smtp_config, f, indent=2, ensure_ascii=False)
+        
+        logger.info(f"邮件配置已保存: {email}")
+        
+        return JSONResponse(content={
+            "success": True,
+            "message": "邮件配置保存成功"
+        })
+        
+    except Exception as e:
+        logger.error(f"保存邮件配置失败: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"success": False, "error": str(e)}
+        )
+
+@app.post("/api/notifications/test-email")
+async def test_email_config(request: Request):
+    """测试邮件配置 - 使用Python原生SMTP"""
+    try:
+        body = await request.json()
+        email = body.get('email')
+        sender_name = body.get('senderName', 'Claude Co-Desk')
+        password = body.get('password')
+        provider = body.get('provider')
+        
+        if not email or not password or not provider:
+            return JSONResponse(
+                status_code=400,
+                content={"success": False, "error": "Missing required configuration"}
+            )
+        
+        # Use Python's native smtplib for testing
+        import smtplib
+        import ssl
+        from email.mime.text import MIMEText
+        from email.mime.multipart import MIMEMultipart
+        
+        # Test email content
+        test_subject = "Claude Co-Desk Email Configuration Test"
+        test_body = f"""
+        <h3>Email Configuration Test Successful!</h3>
+        <p>Congratulations! Your email notification configuration has been successfully set up.</p>
+        <ul>
+            <li><strong>Sender Email:</strong> {email}</li>
+            <li><strong>Sender Name:</strong> {sender_name}</li>
+            <li><strong>Provider:</strong> {provider.get('nameKey', 'Unknown Provider')}</li>
+            <li><strong>Test Time:</strong> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</li>
+        </ul>
+        <p>The system can now send task completion notifications to this email address.</p>
+        <hr>
+        <small>This email was automatically sent by Claude Co-Desk</small>
+        """
+        
+        try:
+            # Create message with proper headers
+            message = MIMEMultipart("alternative")
+            message["Subject"] = test_subject
+            message["From"] = f"{sender_name} <{email}>"
+            message["To"] = email
+            message["Reply-To"] = email
+            message["Message-ID"] = f"<{datetime.now().strftime('%Y%m%d%H%M%S')}.test@heliki.com>"
+            
+            # Add both plain text and HTML versions
+            plain_text = f"""
+Email Configuration Test Successful!
+
+Congratulations! Your email notification configuration has been successfully set up.
+
+- Sender Email: {email}
+- Sender Name: {sender_name}
+- Provider: {provider.get('nameKey', 'Unknown Provider')}
+- Test Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+
+The system can now send task completion notifications to this email address.
+
+This email was automatically sent by Claude Co-Desk
+            """.strip()
+            
+            text_part = MIMEText(plain_text, "plain")
+            html_part = MIMEText(test_body, "html")
+            
+            message.attach(text_part)
+            message.attach(html_part)
+            
+            # Connect to server and send email with debug info
+            if provider['secure']:
+                # Use SSL/TLS
+                context = ssl.create_default_context()
+                with smtplib.SMTP_SSL(provider['host'], provider['port'], context=context) as server:
+                    server.set_debuglevel(1)
+                    server.login(email, password)
+                    result = server.sendmail(email, [email], message.as_string())
+                    logger.info(f"SMTP SSL result: {result}")
+            else:
+                # Use STARTTLS
+                with smtplib.SMTP(provider['host'], provider['port']) as server:
+                    server.set_debuglevel(1)
+                    server.starttls()
+                    server.login(email, password)
+                    result = server.sendmail(email, [email], message.as_string())
+                    logger.info(f"SMTP STARTTLS result: {result}")
+            
+            logger.info(f"Test email sent successfully to {email}")
+            
+            # Save successful test status to config file
+            try:
+                import json
+                from pathlib import Path
+                config_file = Path(__file__).parent / 'mcp_services' / 'smtp-mail' / 'smtp_config.json'
+                if config_file.exists():
+                    with open(config_file, 'r', encoding='utf-8') as f:
+                        smtp_config = json.load(f)
+                    smtp_config['testStatus'] = 'success'
+                    with open(config_file, 'w', encoding='utf-8') as f:
+                        json.dump(smtp_config, f, indent=2, ensure_ascii=False)
+                    logger.info("Test status saved as success")
+                else:
+                    logger.error(f"Config file does not exist at: {config_file}")
+            except Exception as save_error:
+                logger.error(f"Failed to save test status: {save_error}")
+            
+            return JSONResponse(content={
+                "success": True,
+                "message": "Test email sent successfully. Please check your inbox and spam folder."
+            })
+            
+        except smtplib.SMTPAuthenticationError:
+            # Save failed test status
+            try:
+                import json
+                from pathlib import Path
+                config_file = Path(__file__).parent / 'mcp_services' / 'smtp-mail' / 'smtp_config.json'
+                if config_file.exists():
+                    with open(config_file, 'r', encoding='utf-8') as f:
+                        smtp_config = json.load(f)
+                    smtp_config['testStatus'] = 'failed'
+                    with open(config_file, 'w', encoding='utf-8') as f:
+                        json.dump(smtp_config, f, indent=2, ensure_ascii=False)
+                    logger.info("Test status saved as failed - authentication error")
+            except Exception as save_error:
+                logger.error(f"Failed to save test status: {save_error}")
+            return JSONResponse(content={
+                "success": False,
+                "error": "Authentication failed. Please check your email and password."
+            })
+        except smtplib.SMTPConnectError:
+            # Save failed test status
+            try:
+                import json
+                from pathlib import Path
+                config_file = Path(__file__).parent / 'mcp_services' / 'smtp-mail' / 'smtp_config.json'
+                if config_file.exists():
+                    with open(config_file, 'r', encoding='utf-8') as f:
+                        smtp_config = json.load(f)
+                    smtp_config['testStatus'] = 'failed'
+                    with open(config_file, 'w', encoding='utf-8') as f:
+                        json.dump(smtp_config, f, indent=2, ensure_ascii=False)
+                    logger.info("Test status saved as failed - connection error")
+            except Exception as save_error:
+                logger.error(f"Failed to save test status: {save_error}")
+            return JSONResponse(content={
+                "success": False,
+                "error": "Connection failed. Please check server settings."
+            })
+        except smtplib.SMTPException as e:
+            # Save failed test status
+            try:
+                import json
+                from pathlib import Path
+                config_file = Path(__file__).parent / 'mcp_services' / 'smtp-mail' / 'smtp_config.json'
+                if config_file.exists():
+                    with open(config_file, 'r', encoding='utf-8') as f:
+                        smtp_config = json.load(f)
+                    smtp_config['testStatus'] = 'failed'
+                    with open(config_file, 'w', encoding='utf-8') as f:
+                        json.dump(smtp_config, f, indent=2, ensure_ascii=False)
+                    logger.info("Test status saved as failed - SMTP exception")
+            except Exception as save_error:
+                logger.error(f"Failed to save test status: {save_error}")
+            return JSONResponse(content={
+                "success": False,
+                "error": f"SMTP error: {str(e)}"
+            })
+        except Exception as e:
+            # Save failed test status
+            try:
+                import json
+                from pathlib import Path
+                config_file = Path(__file__).parent / 'mcp_services' / 'smtp-mail' / 'smtp_config.json'
+                if config_file.exists():
+                    with open(config_file, 'r', encoding='utf-8') as f:
+                        smtp_config = json.load(f)
+                    smtp_config['testStatus'] = 'failed'
+                    with open(config_file, 'w', encoding='utf-8') as f:
+                        json.dump(smtp_config, f, indent=2, ensure_ascii=False)
+                    logger.info("Test status saved as failed - unexpected error")
+            except Exception as save_error:
+                logger.error(f"Failed to save test status: {save_error}")
+            return JSONResponse(content={
+                "success": False,
+                "error": f"Unexpected error: {str(e)}"
+            })
+        
+    except Exception as e:
+        logger.error(f"Failed to test email configuration: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"success": False, "error": str(e)}
+        )
+
 @app.get("/api/environment")
 async def check_environment():
     """Enhanced environment detection API with progress info"""

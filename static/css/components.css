@@ -5236,3 +5236,276 @@ body.modal-open {
     font-size: 15px;
   }
 }
+
+/* 通知配置样式 */
+.notification-email-section {
+  margin-top: 24px;
+}
+
+.section-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  padding: 12px 16px;
+  background: hsl(var(--muted));
+  border-radius: var(--radius);
+  border: 1px solid hsl(var(--border));
+}
+
+.section-title img {
+  margin-right: 8px;
+}
+
+.config-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.status-indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: hsl(var(--muted-foreground));
+}
+
+.status-indicator.configured {
+  background: #fbbf24; /* warning color */
+}
+
+.status-indicator.tested {
+  background: #10b981; /* success color */
+}
+
+.status-text {
+  font-size: 12px;
+  color: hsl(var(--muted-foreground));
+}
+
+.email-config-form {
+  padding: 0 16px;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.form-row .form-group {
+  margin-bottom: 0;
+}
+
+.input-group {
+  display: flex;
+  align-items: stretch;
+}
+
+.input-group input {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+  border-right: none;
+}
+
+.input-group .btn {
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+  border-left: 1px solid hsl(var(--border));
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.input-group .btn:hover {
+  background: hsl(var(--muted));
+}
+
+.help-link {
+  color: hsl(var(--primary));
+  text-decoration: none;
+  font-size: 12px;
+  margin-left: 8px;
+}
+
+.help-link:hover {
+  text-decoration: underline;
+}
+
+.smtp-config-preview {
+  margin: 16px 0;
+  padding: 16px;
+  background: hsl(var(--muted) / 0.5);
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius);
+}
+
+.preview-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  font-weight: 500;
+  font-size: 14px;
+  color: hsl(var(--foreground));
+}
+
+.config-details {
+  display: grid;
+  gap: 8px;
+}
+
+.config-item {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+}
+
+.config-label {
+  color: hsl(var(--muted-foreground));
+}
+
+.config-value {
+  font-weight: 500;
+  color: hsl(var(--foreground));
+}
+
+.form-actions {
+  display: flex;
+  gap: 12px;
+  margin: 24px 0 16px 0;
+  justify-content: flex-end;
+}
+
+.test-result {
+  margin-top: 16px;
+  padding: 12px 16px;
+  border-radius: var(--radius);
+  border: 1px solid;
+  display: none;
+}
+
+.test-result.success {
+  background: #ecfdf5;
+  border-color: #10b981;
+  color: #065f46;
+}
+
+.test-result.error {
+  background: #fef2f2;
+  border-color: #ef4444;
+  color: #991b1b;
+}
+
+.result-content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.result-icon {
+  flex-shrink: 0;
+}
+
+.result-message {
+  flex: 1;
+  font-size: 14px;
+}
+
+.email-help-section {
+  margin-top: 24px;
+  padding: 16px;
+  background: hsl(var(--muted) / 0.3);
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius);
+}
+
+.help-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+  font-weight: 500;
+  color: hsl(var(--foreground));
+}
+
+.help-content {
+  font-size: 14px;
+  line-height: 1.5;
+  color: hsl(var(--muted-foreground));
+}
+
+.provider-help h6 {
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 12px;
+  color: hsl(var(--foreground));
+}
+
+.help-steps {
+  margin: 12px 0;
+  padding-left: 20px;
+}
+
+.help-steps li {
+  margin-bottom: 8px;
+  line-height: 1.4;
+}
+
+.help-steps a {
+  color: hsl(var(--primary));
+  text-decoration: none;
+}
+
+.help-steps a:hover {
+  text-decoration: underline;
+}
+
+.help-actions {
+  margin-top: 16px;
+  display: flex;
+  gap: 12px;
+}
+
+.general-help p {
+  margin-bottom: 12px;
+}
+
+.supported-providers {
+  margin-top: 16px;
+}
+
+.supported-providers h6 {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: hsl(var(--foreground));
+}
+
+.supported-providers ul {
+  margin-left: 20px;
+}
+
+.supported-providers li {
+  margin-bottom: 4px;
+  font-size: 13px;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .form-row {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  
+  .form-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .form-actions .btn {
+    width: 100%;
+  }
+}
