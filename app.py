@@ -35,6 +35,7 @@ from claude_cli import claude_cli
 from projects_manager import ProjectManager
 from task_scheduler import TaskScheduler
 from config import Config
+from user_config import user_config_manager
 # Dynamic import to avoid hardcoded path dependencies
 import sys
 from pathlib import Path
@@ -59,6 +60,14 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI):
     # 启动时执行
     logger.info("Application starting...")
+    
+    # 初始化用户注册配置
+    try:
+        logger.info("Initializing user configuration...")
+        await user_config_manager.ensure_user_registration()
+        logger.info("User configuration initialized successfully")
+    except Exception as e:
+        logger.warning(f"User configuration initialization failed (non-blocking): {e}")
     
     # 启动任务调度器
     logger.info("Starting task scheduler...")

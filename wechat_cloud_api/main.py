@@ -67,19 +67,148 @@ user_manager: Optional[UserBindingManager] = None
 # 微信模板消息配置
 WECHAT_TEMPLATE_ID = "_SRxCTzhN3GyZdJwICYwyTizmiOXKDFzdEqq4sW8rb4"
 
-def parse_message_to_template_data(message: str, user_identifier: str = "用户") -> Dict[str, Dict[str, str]]:
+# 任务结果存储配置
+TASK_RESULTS_FILE = os.path.join(os.path.dirname(__file__), "task_results.json")
+
+# 用户注册存储配置
+REGISTERED_USERS_FILE = os.path.join(os.path.dirname(__file__), "registered_users.json")
+
+def generate_api_key() -> str:
+    """生成API密钥"""
+    import secrets
+    return f"ak_{secrets.token_hex(16)}"
+
+async def register_user(user_identifier: str) -> str:
+    """注册用户并返回API密钥"""
+    try:
+        # 读取现有注册数据
+        if os.path.exists(REGISTERED_USERS_FILE):
+            with open(REGISTERED_USERS_FILE, 'r', encoding='utf-8') as f:
+                users = json.load(f)
+        else:
+            users = {}
+        
+        # 检查是否已注册
+        if user_identifier in users:
+            return users[user_identifier]["api_key"]
+        
+        # 生成新的API密钥
+        api_key = generate_api_key()
+        users[user_identifier] = {
+            "api_key": api_key,
+            "registered_at": datetime.now().isoformat(),
+            "message_count": 0
+        }
+        
+        # 保存注册数据
+        with open(REGISTERED_USERS_FILE, 'w', encoding='utf-8') as f:
+            json.dump(users, f, ensure_ascii=False, indent=2)
+        
+        logger.info(f"User {user_identifier} registered with API key: {api_key[:12]}...")
+        return api_key
+        
+    except Exception as e:
+        logger.error(f"Failed to register user {user_identifier}: {e}")
+        raise
+
+async def save_task_result(task_id: str, task_data: Dict[str, Any]) -> bool:
+    """保存任务结果到本地JSON文件"""
+    logger.info(f"Attempting to save task result: {task_id}")
+    logger.info(f"Task data keys: {list(task_data.keys())}")
+    logger.info(f"File path: {TASK_RESULTS_FILE}")
+    
+    try:
+        # 确保目录存在
+        task_dir = os.path.dirname(TASK_RESULTS_FILE)
+        if not os.path.exists(task_dir):
+            logger.info(f"Creating directory: {task_dir}")
+            os.makedirs(task_dir, exist_ok=True)
+        
+        # 检查目录权限
+        logger.info(f"Directory {task_dir} exists: {os.path.exists(task_dir)}")
+        logger.info(f"Directory {task_dir} writable: {os.access(task_dir, os.W_OK)}")
+        
+        # 读取现有数据
+        if os.path.exists(TASK_RESULTS_FILE):
+            logger.info(f"Task results file exists, loading existing data")
+            with open(TASK_RESULTS_FILE, 'r', encoding='utf-8') as f:
+                results = json.load(f)
+        else:
+            logger.info(f"Task results file does not exist, creating new data")
+            results = {}
+        
+        # 添加新任务结果
+        results[task_id] = task_data
+        logger.info(f"Added task {task_id} to results, total tasks: {len(results)}")
+        
+        # 写入文件
+        with open(TASK_RESULTS_FILE, 'w', encoding='utf-8') as f:
+            json.dump(results, f, ensure_ascii=False, indent=2)
+        
+        # 验证文件是否成功创建
+        if os.path.exists(TASK_RESULTS_FILE):
+            file_size = os.path.getsize(TASK_RESULTS_FILE)
+            logger.info(f"Successfully saved task result {task_id} to {TASK_RESULTS_FILE} (size: {file_size} bytes)")
+        else:
+            logger.error(f"File {TASK_RESULTS_FILE} was not created!")
+            return False
+        
+        return True
+    except Exception as e:
+        logger.error(f"Failed to save task result {task_id}: {e}")
+        import traceback
+        logger.error(f"Full traceback: {traceback.format_exc()}")
+        return False
+
+async def get_task_result(task_id: str) -> Optional[Dict[str, Any]]:
+    """从本地JSON文件获取任务结果"""
+    try:
+        if not os.path.exists(TASK_RESULTS_FILE):
+            return None
+        
+        with open(TASK_RESULTS_FILE, 'r', encoding='utf-8') as f:
+            results = json.load(f)
+        
+        return results.get(task_id)
+    except Exception as e:
+        logger.error(f"Failed to get task result {task_id}: {e}")
+        return None
+
+def parse_message_to_template_data(message: str, user_identifier: str = "用户", task_name: Optional[str] = None) -> Dict[str, Dict[str, str]]:
     """
-    智能解析文字消息，转换为微信模板数据格式
+    生成微信模板消息数据格式
     微信模板字段（工单完成通知）：
-    - thing3: 项目名称
+    - thing3: 任务名称
     - time11: 完成时间  
-    - phrase15: 处理结果
+    - phrase15: 处理结果（固定为"处理完成"）
     """
     
-    # 默认模板数据（使用实际的微信模板字段名）
+    # 确定任务名称
+    display_task_name = "AI任务"  # 默认名称
+    
+    if task_name:
+        # 优先使用传入的task_name
+        display_task_name = task_name[:30]  # thing字段限制30字符
+    else:
+        # 尝试从消息中智能提取项目名称（仅用于未提供task_name的情况）
+        project_patterns = [
+            r"项目[:：]?\s*([^\n\r，,。.！!]+)",
+            r"(?:完成|处理|执行)了?\s*([^\n\r，,。.！!]+)",
+            r"^([^\n\r，,。.！!]{1,20})\s*(?:任务|项目|工作)",
+        ]
+        
+        for pattern in project_patterns:
+            match = re.search(pattern, message, re.IGNORECASE)
+            if match:
+                project_name = match.group(1).strip()
+                if project_name and len(project_name) <= 30:
+                    display_task_name = project_name
+                    break
+    
+    # 模板数据（固定格式，确保微信验证通过）
     template_data = {
         "thing3": {
-            "value": "Claude Co-Desk",
+            "value": display_task_name,
             "color": "#173177"
         },
         "time11": {
@@ -88,61 +217,11 @@ def parse_message_to_template_data(message: str, user_identifier: str = "用户"
         },
         "phrase15": {
             "value": "处理完成",
-            "color": "#173177"
+            "color": "#07C160"  # 绿色表示成功状态
         }
     }
     
-    # 尝试从消息中提取项目名称
-    project_patterns = [
-        r"项目[:：]?\s*([^\n\r，,。.！!]+)",
-        r"(?:完成|处理|执行)了?\s*([^\n\r，,。.！!]+)",
-        r"^([^\n\r，,。.！!]{1,20})\s*(?:任务|项目|工作)",
-    ]
-    
-    for pattern in project_patterns:
-        match = re.search(pattern, message, re.IGNORECASE)
-        if match:
-            project_name = match.group(1).strip()
-            if project_name and len(project_name) <= 30:  # thing字段限制长度
-                template_data["thing3"]["value"] = project_name
-                break
-    
-    # 尝试提取时间信息
-    time_patterns = [
-        r"(?:时间|于|在)\s*(\d{4}[-年]\d{1,2}[-月]\d{1,2}[日]?\s*\d{1,2}:\d{1,2})",
-        r"(\d{1,2}:\d{1,2})\s*(?:完成|结束|处理)",
-        r"(?:今天|昨天|前天)\s*(\d{1,2}:\d{1,2})",
-    ]
-    
-    for pattern in time_patterns:
-        match = re.search(pattern, message)
-        if match:
-            time_str = match.group(1)
-            # 将提取的时间转换为微信要求的格式
-            if ":" in time_str and len(time_str) == 5:  # HH:MM 格式
-                today = datetime.now()
-                time_str = f"{today.year}年{today.month:02d}月{today.day:02d}日 {time_str}"
-            template_data["time11"]["value"] = time_str
-            break
-    
-    # 尝试提取处理结果
-    result_patterns = [
-        r"(?:结果|状态)[:：]?\s*([成功失败完成错误异常正常]+)",
-        r"(?:已|成功|失败|完成|错误)\s*([^\n\r，,。.！!]{1,10})",
-    ]
-    
-    for pattern in result_patterns:
-        match = re.search(pattern, message)
-        if match:
-            result_str = match.group(1).strip()
-            if result_str and len(result_str) <= 20:  # phrase字段限制20字符
-                # 设置颜色：成功相关为绿色，失败相关为红色
-                color = "#07C160" if any(word in result_str for word in ["成功", "完成", "正常"]) else "#FA5151"
-                template_data["phrase15"]["value"] = result_str
-                template_data["phrase15"]["color"] = color
-                break
-    
-    logger.info(f"Parsed message template data: {template_data}")
+    logger.info(f"Generated template data: {template_data}")
     return template_data
 
 # 挂载静态文件服务
@@ -150,10 +229,23 @@ from pathlib import Path
 static_dir = Path(__file__).parent
 app.mount("/test", StaticFiles(directory=str(static_dir), html=True), name="static")
 
+# 专门为logo添加路由
+from fastapi.responses import FileResponse
+
+@app.get("/wechat/logo.png")
+async def get_logo():
+    """提供logo.png文件"""
+    logo_path = Path(__file__).parent / "logo.png"
+    if logo_path.exists():
+        return FileResponse(logo_path, media_type="image/png")
+    else:
+        raise HTTPException(status_code=404, detail="Logo not found")
+
 # Request/Response Models
 class SendMessageRequest(BaseModel):
     message: str = Field(..., description="消息内容")
     user_identifier: str = Field(..., description="用户标识符")
+    task_name: Optional[str] = Field(None, description="任务名称/摘要")
     message_type: str = Field(default="text", description="消息类型")
     template_data: Optional[Dict[str, Any]] = Field(default=None, description="模板数据")
     message_id: Optional[str] = Field(default=None, description="消息ID")
@@ -180,6 +272,15 @@ class GenerateQRResponse(BaseModel):
     expires_at: str
     error: Optional[str] = None
 
+class UserRegisterRequest(BaseModel):
+    user_identifier: str = Field(..., description="用户标识符")
+
+class UserRegisterResponse(BaseModel):
+    success: bool
+    api_key: str
+    message: str
+    error: Optional[str] = None
+
 class HealthResponse(BaseModel):
     status: str
     timestamp: str
@@ -191,14 +292,28 @@ async def verify_api_key(credentials: HTTPAuthorizationCredentials = Security(se
     """验证API密钥"""
     token = credentials.credentials
     
-    # 简单的API密钥验证
+    # 检查原有的API密钥
     valid_api_keys = [settings.api_keys] if isinstance(settings.api_keys, str) else settings.api_keys
-    if token not in valid_api_keys:
-        logger.warning(f"Invalid API key attempt: {token[:8]}...")
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid API key"
-        )
+    if token in valid_api_keys:
+        return token
+    
+    # 检查动态注册的API密钥
+    try:
+        if os.path.exists(REGISTERED_USERS_FILE):
+            with open(REGISTERED_USERS_FILE, 'r', encoding='utf-8') as f:
+                users = json.load(f)
+            
+            for user_data in users.values():
+                if user_data.get("api_key") == token:
+                    return token
+    except Exception as e:
+        logger.error(f"Error checking registered users: {e}")
+    
+    logger.warning(f"Invalid API key attempt: {token[:8]}...")
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Invalid API key"
+    )
     
     return token
 
@@ -272,6 +387,48 @@ async def health_check():
         services=services_status
     )
 
+# Task result endpoints
+@app.get("/wechat/task-result/{task_id}", response_class=HTMLResponse)
+async def get_task_result_page(task_id: str):
+    """获取任务结果展示页面"""
+    try:
+        with open("task_result_mobile.html", "r", encoding="utf-8") as f:
+            html_content = f.read()
+        return HTMLResponse(content=html_content)
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="Task result page not found")
+
+@app.get("/wechat/api/task-result/{task_id}")
+async def get_task_result_data(task_id: str):
+    """获取任务结果数据API"""
+    task_data = await get_task_result(task_id)
+    
+    if not task_data:
+        raise HTTPException(status_code=404, detail="Task result not found")
+    
+    return task_data
+
+# User registration endpoint
+@app.post("/wechat/register", response_model=UserRegisterResponse)
+async def register_user_endpoint(request: UserRegisterRequest):
+    """用户注册端点，无需API密钥验证"""
+    try:
+        api_key = await register_user(request.user_identifier)
+        
+        return UserRegisterResponse(
+            success=True,
+            api_key=api_key,
+            message="Registration successful"
+        )
+    except Exception as e:
+        logger.error(f"Registration failed: {e}")
+        return UserRegisterResponse(
+            success=False,
+            api_key="",
+            message="Registration failed",
+            error=str(e)
+        )
+
 @app.get("/wechat/test", response_class=HTMLResponse)
 async def test_page():
     """测试页面"""
@@ -318,14 +475,36 @@ async def send_wechat_message(
                 error="INVALID_BINDING"
             )
         
-        # 解析消息内容为模板数据
-        template_data = parse_message_to_template_data(request.message, request.user_identifier)
+        # 生成任务ID和保存任务结果
+        task_id = f"task_{int(datetime.now().timestamp())}_{message_id[:8]}"
+        logger.info(f"Generated task_id: {task_id}")
         
-        # 发送模板消息（完全替代文字消息）
+        task_data = {
+            "task_id": task_id,
+            "task_name": request.task_name or "AI任务",
+            "message": request.message,
+            "user_identifier": request.user_identifier,
+            "created_at": datetime.now().isoformat(),
+            "message_id": message_id
+        }
+        
+        logger.info(f"About to save task result for task_id: {task_id}")
+        # 保存任务结果
+        save_result = await save_task_result(task_id, task_data)
+        logger.info(f"Task result save result: {save_result}")
+        
+        # 解析消息内容为模板数据
+        template_data = parse_message_to_template_data(request.message, request.user_identifier, request.task_name)
+        
+        # 构建跳转URL
+        result_url = f"https://www.heliki.com/wechat/task-result/{task_id}"
+        
+        # 发送模板消息（添加URL跳转）
         result = await wechat_api.send_template_message(
             openid=openid,
             template_id=WECHAT_TEMPLATE_ID,
-            data=template_data
+            data=template_data,
+            url=result_url
         )
         
         if result.get("errcode", 0) == 0:

@@ -85,15 +85,23 @@
         
         <div class="step">
             <h3>步骤3: 发送测试消息</h3>
+            <label for="taskName" style="display: inline-block; width: 80px;">任务名称:</label>
+            <input type="text" id="taskName" placeholder="输入任务名称（可选）" value="代码优化任务" style="width: 300px; padding: 8px; margin-bottom: 10px;">
+            <br>
+            
+            <label for="messageType" style="display: inline-block; width: 80px;">消息类型:</label>
             <select id="messageType" onchange="updateMessage()" style="padding: 8px; margin-right: 10px;">
                 <option value="chinese">中文测试</option>
                 <option value="english">English Test</option>
                 <option value="mixed">中英文混合 Mixed</option>
+                <option value="markdown">Markdown长文档</option>
                 <option value="emoji">表情符号测试 🎉</option>
                 <option value="custom">自定义消息</option>
             </select>
             <br><br>
-            <input type="text" id="message" placeholder="输入消息内容" value="测试消息：来自Claude Co-Desk的微信通知" style="width: 400px; padding: 8px;">
+            
+            <label for="message" style="display: inline-block; width: 80px; vertical-align: top;">消息内容:</label>
+            <textarea id="message" placeholder="输入消息内容（支持多行MD格式）" rows="6" style="width: 500px; padding: 8px; font-family: monospace; resize: vertical;">测试消息：来自Claude Co-Desk的微信通知</textarea>
             <br><br>
             <button onclick="sendMessage()">发送消息</button>
             <button onclick="sendBatchTest()" style="background: #ff9500;">批量编码测试</button>
@@ -192,6 +200,7 @@
         async function sendMessage() {
             const userId = document.getElementById('userId').value;
             const message = document.getElementById('message').value;
+            const taskName = document.getElementById('taskName').value;
             
             if (!userId || !message) {
                 alert('请输入用户ID和消息内容');
@@ -199,20 +208,29 @@
             }
             
             try {
+                const requestBody = {
+                    message: message,
+                    user_identifier: userId,
+                    message_type: 'text'
+                };
+                
+                // 如果有任务名称，添加到请求中
+                if (taskName && taskName.trim()) {
+                    requestBody.task_name = taskName.trim();
+                }
+                
                 const result = await apiRequest('/send_message', {
                     method: 'POST',
-                    body: JSON.stringify({
-                        message: message,
-                        user_identifier: userId,
-                        message_type: 'text'
-                    })
+                    body: JSON.stringify(requestBody)
                 });
                 
                 const resultDiv = document.getElementById('messageResult');
                 
                 if (result.success) {
                     resultDiv.innerHTML = `<span class="success">✓ 消息发送成功</span><br>
-                        消息ID: ${result.message_id}`;
+                        消息ID: ${result.message_id}<br>
+                        任务名称: ${taskName || '智能提取'}<br>
+                        <small>用户可点击微信模板消息跳转查看完整结果</small>`;
                 } else {
                     resultDiv.innerHTML = `<span class="error">✗ 发送失败: ${result.error}</span>`;
                 }
@@ -232,6 +250,36 @@
                 'chinese': '测试消息：来自Claude Co-Desk的微信通知',
                 'english': 'Test Message: WeChat notification from Claude Co-Desk',
                 'mixed': '测试 Test 消息 Message：中英文混合内容 Mixed Content',
+                'markdown': `# 项目分析报告
+
+## 项目概述
+- **项目名称**: Claude Co-Desk AI分析系统
+- **项目状态**: 开发完成
+- **完成时间**: 2025年8月30日
+
+## 主要功能
+### 1. 智能分析
+- 数据收集和预处理
+- AI模型分析和预测
+- 结果生成和格式化
+
+### 2. 报告生成
+- 自动化报告生成
+- 多格式输出支持
+- 实时数据更新
+
+## 技术栈
+\`\`\`
+- Backend: Python + FastAPI
+- Frontend: HTML + CSS + JS
+- AI: Claude API
+- Storage: JSON + File System
+\`\`\`
+
+## 项目总结
+本次项目成功实现了预期目标，所有功能模块均已完成测试并上线运行。
+
+> 这是一个测试长文档的示例内容，用于验证Markdown格式的处理能力。`,
                 'emoji': '🎉 恭喜！测试成功 ✅ Congratulations! Test Success 🚀',
                 'custom': ''
             };
