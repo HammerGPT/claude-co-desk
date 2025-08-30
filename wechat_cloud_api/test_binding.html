@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>微信绑定测试页面</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        .step {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        button {
+            background: #1aad19;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 10px 5px;
+        }
+        button:hover {
+            background: #179b16;
+        }
+        .qr-container {
+            text-align: center;
+            margin: 20px 0;
+        }
+        #qrcode {
+            max-width: 200px;
+            border: 1px solid #ddd;
+        }
+        .result {
+            background: #f0f0f0;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            word-break: break-all;
+        }
+        .success {
+            color: #1aad19;
+        }
+        .error {
+            color: #e64340;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>微信公众号绑定测试</h1>
+        
+        <div class="step">
+            <h3>步骤1: 生成绑定二维码</h3>
+            <input type="text" id="userId" placeholder="输入用户ID (如: test_user_123)" value="test_user_claude" style="width: 200px; padding: 8px;">
+            <button onclick="generateQR()">生成二维码</button>
+            <div id="qrResult" class="result" style="display:none;"></div>
+            <div class="qr-container">
+                <img id="qrcode" style="display:none;" />
+            </div>
+        </div>
+        
+        <div class="step">
+            <h3>步骤2: 检查绑定状态</h3>
+            <button onclick="checkBinding()">检查绑定状态</button>
+            <div id="bindingResult" class="result" style="display:none;"></div>
+        </div>
+        
+        <div class="step">
+            <h3>步骤3: 发送测试消息</h3>
+            <select id="messageType" onchange="updateMessage()" style="padding: 8px; margin-right: 10px;">
+                <option value="chinese">中文测试</option>
+                <option value="english">English Test</option>
+                <option value="mixed">中英文混合 Mixed</option>
+                <option value="emoji">表情符号测试 🎉</option>
+                <option value="custom">自定义消息</option>
+            </select>
+            <br><br>
+            <input type="text" id="message" placeholder="输入消息内容" value="测试消息：来自Claude Co-Desk的微信通知" style="width: 400px; padding: 8px;">
+            <br><br>
+            <button onclick="sendMessage()">发送消息</button>
+            <button onclick="sendBatchTest()" style="background: #ff9500;">批量编码测试</button>
+            <div id="messageResult" class="result" style="display:none;"></div>
+        </div>
+        
+        <div class="step">
+            <h3>使用说明</h3>
+            <ol>
+                <li>点击"生成二维码"生成绑定二维码</li>
+                <li>用微信扫描二维码，关注公众号并完成绑定</li>
+                <li>点击"检查绑定状态"确认绑定成功</li>
+                <li>点击"发送消息"测试微信通知功能</li>
+            </ol>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'https://www.heliki.com/wechat';
+        const API_KEY = 'db5dbd041173c56bef87a19f41f8c2e3';
+        
+        async function apiRequest(endpoint, options = {}) {
+            const response = await fetch(`${API_BASE}${endpoint}`, {
+                headers: {
+                    'Authorization': `Bearer ${API_KEY}`,
+                    'Content-Type': 'application/json',
+                    ...options.headers
+                },
+                ...options
+            });
+            return response.json();
+        }
+        
+        async function generateQR() {
+            const userId = document.getElementById('userId').value;
+            if (!userId) {
+                alert('请输入用户ID');
+                return;
+            }
+            
+            try {
+                const result = await apiRequest('/generate_qr', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        user_identifier: userId,
+                        action: 'bind'
+                    })
+                });
+                
+                const resultDiv = document.getElementById('qrResult');
+                const qrImg = document.getElementById('qrcode');
+                
+                if (result.success) {
+                    resultDiv.innerHTML = `<span class="success">✓ 二维码生成成功</span><br>
+                        绑定Token: ${result.bind_token}<br>
+                        过期时间: ${result.expires_at}`;
+                    qrImg.src = result.qr_code_url;
+                    qrImg.style.display = 'block';
+                } else {
+                    resultDiv.innerHTML = `<span class="error">✗ 生成失败: ${result.error}</span>`;
+                }
+                
+                resultDiv.style.display = 'block';
+            } catch (error) {
+                document.getElementById('qrResult').innerHTML = `<span class="error">✗ 请求失败: ${error.message}</span>`;
+                document.getElementById('qrResult').style.display = 'block';
+            }
+        }
+        
+        async function checkBinding() {
+            const userId = document.getElementById('userId').value;
+            if (!userId) {
+                alert('请输入用户ID');
+                return;
+            }
+            
+            try {
+                const result = await apiRequest(`/binding_status?user_identifier=${userId}`);
+                const resultDiv = document.getElementById('bindingResult');
+                
+                if (result.bound) {
+                    resultDiv.innerHTML = `<span class="success">✓ 用户已绑定</span><br>
+                        绑定时间: ${result.binding_info.bind_time}<br>
+                        微信昵称: ${result.binding_info.nickname}`;
+                } else {
+                    resultDiv.innerHTML = `<span class="error">✗ 用户未绑定微信</span>`;
+                }
+                
+                resultDiv.style.display = 'block';
+            } catch (error) {
+                document.getElementById('bindingResult').innerHTML = `<span class="error">✗ 请求失败: ${error.message}</span>`;
+                document.getElementById('bindingResult').style.display = 'block';
+            }
+        }
+        
+        async function sendMessage() {
+            const userId = document.getElementById('userId').value;
+            const message = document.getElementById('message').value;
+            
+            if (!userId || !message) {
+                alert('请输入用户ID和消息内容');
+                return;
+            }
+            
+            try {
+                const result = await apiRequest('/send_message', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        message: message,
+                        user_identifier: userId,
+                        message_type: 'text'
+                    })
+                });
+                
+                const resultDiv = document.getElementById('messageResult');
+                
+                if (result.success) {
+                    resultDiv.innerHTML = `<span class="success">✓ 消息发送成功</span><br>
+                        消息ID: ${result.message_id}`;
+                } else {
+                    resultDiv.innerHTML = `<span class="error">✗ 发送失败: ${result.error}</span>`;
+                }
+                
+                resultDiv.style.display = 'block';
+            } catch (error) {
+                document.getElementById('messageResult').innerHTML = `<span class="error">✗ 请求失败: ${error.message}</span>`;
+                document.getElementById('messageResult').style.display = 'block';
+            }
+        }
+        
+        function updateMessage() {
+            const messageType = document.getElementById('messageType').value;
+            const messageInput = document.getElementById('message');
+            
+            const messages = {
+                'chinese': '测试消息：来自Claude Co-Desk的微信通知',
+                'english': 'Test Message: WeChat notification from Claude Co-Desk',
+                'mixed': '测试 Test 消息 Message：中英文混合内容 Mixed Content',
+                'emoji': '🎉 恭喜！测试成功 ✅ Congratulations! Test Success 🚀',
+                'custom': ''
+            };
+            
+            if (messages[messageType] !== undefined) {
+                messageInput.value = messages[messageType];
+            }
+        }
+        
+        async function sendBatchTest() {
+            const userId = document.getElementById('userId').value;
+            if (!userId) {
+                alert('请输入用户ID');
+                return;
+            }
+            
+            const testMessages = [
+                '纯中文测试消息',
+                'Pure English Test Message', 
+                '中英文混合 Mixed Content Test',
+                '🎉 表情符号测试 Emoji Test ✨',
+                '特殊字符测试：！@#￥%……&*（）',
+                'UTF-8编码测试：你好世界 Hello World 🌍'
+            ];
+            
+            const resultDiv = document.getElementById('messageResult');
+            resultDiv.innerHTML = '<span style="color: blue;">开始批量编码测试...</span>';
+            resultDiv.style.display = 'block';
+            
+            let results = [];
+            
+            for (let i = 0; i < testMessages.length; i++) {
+                const message = testMessages[i];
+                try {
+                    const result = await apiRequest('/send_message', {
+                        method: 'POST',
+                        body: JSON.stringify({
+                            message: message,
+                            user_identifier: userId,
+                            message_type: 'text'
+                        })
+                    });
+                    
+                    const status = result.success ? '✓' : '✗';
+                    results.push(`${status} 测试 ${i+1}: ${result.success ? '成功' : result.error}`);
+                    
+                    // 每条消息间隔1秒
+                    if (i < testMessages.length - 1) {
+                        await new Promise(resolve => setTimeout(resolve, 1000));
+                    }
+                    
+                } catch (error) {
+                    results.push(`✗ 测试 ${i+1}: 请求失败 - ${error.message}`);
+                }
+            }
+            
+            resultDiv.innerHTML = `<strong>批量编码测试结果：</strong><br>${results.join('<br>')}`;
+        }
+    </script>
+</body>
+</html>

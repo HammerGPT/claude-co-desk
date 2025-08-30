@@ -1,0 +1,54 @@
+version: '3.8'
+
+services:
+  wechat-api:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      # 微信公众号配置
+      - WECHAT_APP_ID=wx245aa02d3bbdcbeb
+      - WECHAT_APP_SECRET=${WECHAT_APP_SECRET}
+      - WECHAT_TOKEN=${WECHAT_TOKEN:-heliki_wechat_token}
+      - WECHAT_AES_KEY=${WECHAT_AES_KEY:-}
+      
+      # API配置
+      - WECHAT_API_KEYS=["${WECHAT_API_KEY:-db5dbd041173c56bef87a19f41f8c2e3}"]
+      - WECHAT_SECRET_KEY=${WECHAT_SECRET_KEY:-heliki-secret}
+      
+      # 服务器配置
+      - WECHAT_HOST=0.0.0.0
+      - WECHAT_PORT=8000
+      - WECHAT_DEBUG=false
+      - WECHAT_WORKERS=2
+      
+      # 数据配置
+      - WECHAT_DATA_DIR=/app/data
+      - WECHAT_USER_BINDINGS_FILE=/app/data/user_bindings.json
+      - WECHAT_LOG_FILE=/app/logs/wechat_api.log
+      
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    
+  # 可选：添加Redis缓存
+  # redis:
+  #   image: redis:7-alpine
+  #   ports:
+  #     - "6379:6379"
+  #   command: redis-server --appendonly yes
+  #   volumes:
+  #     - redis_data:/data
+  #   restart: unless-stopped
+
+volumes:
+  # redis_data:
+  wechat_data:
+  wechat_logs:
