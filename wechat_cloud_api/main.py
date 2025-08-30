@@ -544,33 +544,7 @@ async def wechat_webhook(request: Request):
         if msg_type == "event" and event_type == "subscribe":
             openid = from_user
             
-            # 发送欢迎模板消息
-            welcome_template_data = {
-                "thing3": {
-                    "value": "微信通知服务",
-                    "color": "#173177"  
-                },
-                "time11": {
-                    "value": datetime.now().strftime("%Y年%m月%d日 %H:%M"),
-                    "color": "#173177"
-                },
-                "phrase15": {
-                    "value": "激活成功",
-                    "color": "#07C160"
-                }
-            }
-            
-            try:
-                await wechat_api.send_template_message(
-                    openid=openid,
-                    template_id=WECHAT_TEMPLATE_ID,
-                    data=welcome_template_data
-                )
-                logger.info(f"Welcome message sent to new follower: {openid}")
-            except Exception as e:
-                logger.error(f"Failed to send welcome message to {openid}: {e}")
-            
-            # 如果关注时携带场景值（扫码关注），也处理绑定
+            # 如果关注时携带场景值（扫码关注），处理绑定
             if event_key and event_key.startswith("qrscene_bind_"):
                 scene_str = event_key.replace("qrscene_", "")
                 bind_token = scene_str
@@ -593,29 +567,26 @@ async def wechat_webhook(request: Request):
                         # 更新token状态
                         await user_manager.update_bind_token(bind_token, {"status": "completed"})
                         
-                        # 发送绑定成功消息
-                        bind_success_template_data = {
-                            "thing3": {
-                                "value": f"用户 {user_identifier}",
-                                "color": "#173177"
-                            },
-                            "time11": {
-                                "value": datetime.now().strftime("%Y年%m月%d日 %H:%M"),
-                                "color": "#173177"
-                            },
-                            "phrase15": {
-                                "value": "绑定完成",
-                                "color": "#07C160"
-                            }
-                        }
+                        # 发送绑定成功中英文消息
+                        bind_success_message = "感谢关注暴躁哐哐，已完成Claude Co-Desk系统通知注册。AI任务完成会自动收到通知信息。\n\nThank you for following BaoZao-KuangKuang. Claude Co-Desk system notification registration completed. You will automatically receive notifications when AI tasks are completed."
                         
-                        await wechat_api.send_template_message(
-                            openid=openid,
-                            template_id=WECHAT_TEMPLATE_ID,
-                            data=bind_success_template_data
-                        )
+                        await wechat_api.send_text_message(openid, bind_success_message)
                         
                         logger.info(f"User {user_identifier} bound successfully with openid {openid} on subscribe")
+                    else:
+                        # 用户已绑定，发送重复绑定提示
+                        duplicate_message = "已注册Claude Co-Desk系统通知。\n\nAlready registered for Claude Co-Desk system notifications."
+                        await wechat_api.send_text_message(openid, duplicate_message)
+                        logger.info(f"OpenID {openid} already bound, sent duplicate binding message")
+            else:
+                # 普通关注，发送欢迎消息
+                welcome_message = "感谢关注暴躁哐哐，已完成Claude Co-Desk系统通知注册。AI任务完成会自动收到通知信息。\n\nThank you for following BaoZao-KuangKuang. Claude Co-Desk system notification registration completed. You will automatically receive notifications when AI tasks are completed."
+                
+                try:
+                    await wechat_api.send_text_message(openid, welcome_message)
+                    logger.info(f"Welcome message sent to new follower: {openid}")
+                except Exception as e:
+                    logger.error(f"Failed to send welcome message to {openid}: {e}")
         
         elif msg_type == "event" and event_type == "SCAN":
             # 处理扫码事件
@@ -635,27 +606,10 @@ async def wechat_webhook(request: Request):
                     # 检查该OpenID是否已经绑定过
                     existing_binding = await user_manager.get_user_binding_by_openid(openid)
                     if existing_binding:
-                        # 用户已绑定，发送提示模板消息
-                        duplicate_template_data = {
-                            "thing3": {
-                                "value": "Claude Co-Desk",
-                                "color": "#173177"
-                            },
-                            "time11": {
-                                "value": datetime.now().strftime("%Y年%m月%d日 %H:%M"),
-                                "color": "#173177"
-                            },
-                            "phrase15": {
-                                "value": "已绑定",
-                                "color": "#FF9500"
-                            }
-                        }
+                        # 用户已绑定，发送重复绑定文字消息
+                        duplicate_message = "已注册Claude Co-Desk系统通知。\n\nAlready registered for Claude Co-Desk system notifications."
                         
-                        await wechat_api.send_template_message(
-                            openid=openid,
-                            template_id=WECHAT_TEMPLATE_ID,
-                            data=duplicate_template_data
-                        )
+                        await wechat_api.send_text_message(openid, duplicate_message)
                         
                         # 更新token状态为已完成（避免pending状态堆积）
                         await user_manager.update_bind_token(bind_token, {"status": "completed"})
@@ -672,27 +626,10 @@ async def wechat_webhook(request: Request):
                         # 更新token状态
                         await user_manager.update_bind_token(bind_token, {"status": "completed"})
                         
-                        # 发送绑定成功模板消息
-                        bind_success_template_data = {
-                            "thing3": {
-                                "value": f"用户 {user_identifier}",
-                                "color": "#173177"
-                            },
-                            "time11": {
-                                "value": datetime.now().strftime("%Y年%m月%d日 %H:%M"),
-                                "color": "#173177"
-                            },
-                            "phrase15": {
-                                "value": "绑定完成",
-                                "color": "#07C160"
-                            }
-                        }
+                        # 发送绑定成功中英文消息
+                        bind_success_message = "感谢关注暴躁哐哐，已完成Claude Co-Desk系统通知注册。AI任务完成会自动收到通知信息。\n\nThank you for following BaoZao-KuangKuang. Claude Co-Desk system notification registration completed. You will automatically receive notifications when AI tasks are completed."
                         
-                        await wechat_api.send_template_message(
-                            openid=openid,
-                            template_id=WECHAT_TEMPLATE_ID,
-                            data=bind_success_template_data
-                        )
+                        await wechat_api.send_text_message(openid, bind_success_message)
                         
                         logger.info(f"User {user_identifier} bound successfully with openid {openid}")
         

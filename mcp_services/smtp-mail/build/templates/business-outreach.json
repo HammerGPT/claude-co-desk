@@ -1,0 +1,7 @@
+{
+  "id": "business-outreach",
+  "name": "Business Outreach",
+  "subject": "Partnership Opportunity - {{company}}",
+  "body": "Dear {{name}},\n\nI hope this email finds you well. I'm reaching out to explore potential collaboration opportunities between our organizations.\n\nWe've been following {{company}}'s achievements and believe there could be synergies worth exploring.\n\nWould you be available for a brief call to discuss this further? I'd love to learn more about your current initiatives.\n\nBest regards,\n{{sender_name}}\n{{sender_email}}",
+  "isDefault": false
+}

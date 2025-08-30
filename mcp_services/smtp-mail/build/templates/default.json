@@ -1,0 +1,7 @@
+{
+  "id": "default",
+  "name": "Default Template",
+  "subject": "Default Subject",
+  "body": "Hello {{name}},\n\nThis is a default email template.\n\nBest regards,\nThe Team",
+  "isDefault": true
+}

@@ -1,0 +1,16 @@
+# WeChat Notification MCP Service Dependencies
+# Core MCP dependencies
+mcp>=1.0.0
+
+# HTTP client for API communication  
+aiohttp>=3.8.0
+
+# Async file operations
+aiofiles>=23.0.0
+
+# JSON and data handling (built-in modules)
+# json, uuid, datetime, logging, asyncio are built-in
+
+# Optional: for enhanced HTTP client features
+certifi>=2023.0.0
+charset-normalizer>=3.0.0

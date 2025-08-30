@@ -1,0 +1,7 @@
+{
+  "id": "newsletter",
+  "name": "Monthly Newsletter",
+  "subject": "{{month}} Newsletter - {{company}}",
+  "body": "Dear {{name}},\n\nWelcome to our {{month}} newsletter! \n\n{{main_content}}\n\nWe hope you found this update valuable. If you have any questions, please don't hesitate to contact us.\n\nBest regards,\nThe {{company}} Team\n{{contact_email}}",
+  "isDefault": false
+}

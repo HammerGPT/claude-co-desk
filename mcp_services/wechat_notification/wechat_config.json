@@ -1,0 +1,8 @@
+{
+  "api_base": "https://www.heliki.com/wechat",
+  "api_key": "db5dbd041173c56bef87a19f41f8c2e3",
+  "service_name": "Claude Co-Desk WeChat Notification (Test)",
+  "version": "1.0.0",
+  "timeout": 30,
+  "retry_attempts": 3
+}
