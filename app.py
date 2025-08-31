@@ -55,6 +55,92 @@ import aiofiles
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# WeChat MCP Service initialization
+async def init_wechat_mcp_service():
+    """Initialize WeChat notification MCP service configuration"""
+    from pathlib import Path
+    import json
+    from user_config import get_user_config
+    
+    try:
+        # 确保微信MCP服务目录存在
+        mcp_services_path = Path(__file__).parent / "mcp_services" / "wechat_notification"
+        mcp_services_path.mkdir(parents=True, exist_ok=True)
+        
+        # 获取用户配置
+        user_config = await get_user_config()
+        user_identifier = user_config.get("user_identifier")
+        api_key = user_config.get("api_key")
+        
+        if not user_identifier or not api_key:
+            logger.warning("User not registered, skipping WeChat MCP service initialization")
+            return
+        
+        # 创建或更新微信MCP服务配置文件
+        config_path = mcp_services_path / "wechat_config.json"
+        
+        # 检查现有配置
+        existing_config = {}
+        if config_path.exists():
+            try:
+                with open(config_path, 'r', encoding='utf-8') as f:
+                    existing_config = json.load(f)
+            except Exception as e:
+                logger.warning(f"Failed to read existing WeChat MCP config: {e}")
+        
+        # 更新配置
+        config_data = {
+            "service_name": "wechat_notification",
+            "description": "WeChat notification service via cloud API",
+            "api_config": {
+                "base_url": "https://www.heliki.com/wechat",
+                "user_identifier": user_identifier,
+                "api_key": api_key,
+                "timeout": 30
+            },
+            "notification_settings": {
+                "enabled": True,
+                "max_retries": 3,
+                "retry_delay": 5
+            },
+            "updated_at": datetime.now().isoformat(),
+            **existing_config.get("custom_settings", {})  # 保留用户自定义设置
+        }
+        
+        # 保存配置
+        with open(config_path, 'w', encoding='utf-8') as f:
+            json.dump(config_data, f, indent=2, ensure_ascii=False)
+        
+        logger.info(f"WeChat MCP service config updated: {config_path}")
+        
+        # 初始化用户绑定数据结构（如果不存在）
+        user_bindings_path = mcp_services_path / "user_bindings.json"
+        if not user_bindings_path.exists():
+            bindings_data = {
+                "service_info": {
+                    "name": "WeChat Notification Service",
+                    "version": "1.0.0",
+                    "initialized_at": datetime.now().isoformat()
+                },
+                "users": {},
+                "binding_stats": {
+                    "total_users": 0,
+                    "active_bindings": 0,
+                    "last_updated": datetime.now().isoformat()
+                }
+            }
+            
+            with open(user_bindings_path, 'w', encoding='utf-8') as f:
+                json.dump(bindings_data, f, indent=2, ensure_ascii=False)
+            
+            logger.info(f"WeChat user bindings data initialized: {user_bindings_path}")
+        
+        logger.info("WeChat notification MCP service initialization completed")
+        
+    except Exception as e:
+        logger.error(f"Failed to initialize WeChat MCP service: {e}")
+        raise
+
 # 定义生命周期管理器
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -72,6 +158,14 @@ async def lifespan(app: FastAPI):
     # 启动任务调度器
     logger.info("Starting task scheduler...")
     task_scheduler.start()
+    
+    # 初始化微信通知MCP服务
+    try:
+        logger.info("Initializing WeChat notification MCP service...")
+        await init_wechat_mcp_service()
+        logger.info("WeChat notification MCP service initialized successfully")
+    except Exception as e:
+        logger.warning(f"WeChat notification MCP service initialization failed (non-blocking): {e}")
     
     yield  # 应用运行期间
     
@@ -721,6 +815,14 @@ class PTYShellHandler:
                                 poll_result = self.process.poll()
                                 if poll_result is not None:
                                     logger.warning(f" 子进程已退出，退出码: {poll_result}")
+                                    
+                                    # 发送任务完成通知
+                                    if self.task_id and poll_result == 0:
+                                        asyncio.run_coroutine_threadsafe(
+                                            self._send_task_completion_notification(self.task_id, poll_result),
+                                            self.loop
+                                        )
+                                    
                                     break
                             continue
                         
@@ -776,6 +878,14 @@ class PTYShellHandler:
                         poll_result = self.process.poll()
                         if poll_result is not None:
                             logger.warning(f" 子进程在超时检查中发现已退出，退出码: {poll_result}")
+                            
+                            # 发送任务完成通知
+                            if self.task_id and poll_result == 0:
+                                asyncio.run_coroutine_threadsafe(
+                                    self._send_task_completion_notification(self.task_id, poll_result),
+                                    self.loop
+                                )
+                            
                             break
                         
         except Exception as e:
@@ -798,7 +908,16 @@ class PTYShellHandler:
                     if not line:
                         # Check if process has ended
                         if self.process.poll() is not None:
-                            logger.info(f"Windows subprocess ended with code: {self.process.poll()}")
+                            exit_code = self.process.poll()
+                            logger.info(f"Windows subprocess ended with code: {exit_code}")
+                            
+                            # 发送任务完成通知
+                            if self.task_id and exit_code == 0:
+                                asyncio.run_coroutine_threadsafe(
+                                    self._send_task_completion_notification(self.task_id, exit_code),
+                                    self.loop
+                                )
+                            
                             break
                         continue
                     
@@ -1157,6 +1276,110 @@ class PTYShellHandler:
         else:
             logger.warning(f"无效的终端大小或PTY未就绪: {cols}x{rows}, fd={self.master_fd}")
     
+    async def _send_task_completion_notification(self, task_id: str, exit_code: int):
+        """发送任务完成通知"""
+        try:
+            logger.info(f"Sending task completion notification for task: {task_id}, exit_code: {exit_code}")
+            
+            # 获取任务信息
+            task_info = None
+            if task_scheduler and hasattr(task_scheduler, 'all_tasks'):
+                task_info = task_scheduler.all_tasks.get(task_id)
+            
+            if not task_info:
+                logger.warning(f"Task info not found for task: {task_id}")
+                return
+            
+            # 构建通知消息
+            completion_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            status = "成功" if exit_code == 0 else f"失败 (退出码: {exit_code})"
+            
+            notification_message = f"""## 任务执行完成通知
+
+**任务名称**: {task_info.name}
+
+**执行状态**: {status}
+
+**完成时间**: {completion_time}
+
+**任务目标**:
+{task_info.goal}
+
+**工作目录**: {task_info.work_directory or "默认目录"}
+
+---
+*此通知由 Claude Co-Desk 自动发送*"""
+            
+            # 发送微信通知
+            await self._send_wechat_notification(task_info.name, notification_message)
+            
+        except Exception as e:
+            logger.error(f"Failed to send task completion notification: {e}")
+    
+    async def _send_wechat_notification(self, task_name: str, message: str):
+        """发送微信通知"""
+        try:
+            from user_config import get_user_config
+            import aiohttp
+            
+            # 获取用户配置
+            user_config = await get_user_config()
+            user_identifier = user_config.get("user_identifier")
+            api_key = user_config.get("api_key")
+            
+            if not user_identifier or not api_key:
+                logger.warning("User not registered, skipping WeChat notification")
+                return
+            
+            # 检查微信是否已绑定
+            from pathlib import Path
+            mcp_services_path = Path(__file__).parent / "mcp_services" / "wechat_notification"
+            user_bindings_path = mcp_services_path / "user_bindings.json"
+            
+            bound = False
+            if user_bindings_path.exists():
+                import json
+                with open(user_bindings_path, 'r', encoding='utf-8') as f:
+                    bindings_data = json.load(f)
+                users = bindings_data.get("users", {})
+                user_binding = users.get(user_identifier)
+                bound = user_binding and user_binding.get("status") == "active"
+            
+            if not bound:
+                logger.info("WeChat not bound, skipping notification")
+                return
+            
+            # 调用云端API发送通知
+            async with aiohttp.ClientSession() as session:
+                payload = {
+                    "user_identifier": user_identifier,
+                    "message": message,
+                    "task_name": task_name
+                }
+                
+                headers = {
+                    "Authorization": f"Bearer {api_key}",
+                    "Content-Type": "application/json"
+                }
+                
+                async with session.post(
+                    "https://www.heliki.com/wechat/send_message",
+                    json=payload,
+                    headers=headers,
+                    timeout=15
+                ) as response:
+                    if response.status == 200:
+                        result = await response.json()
+                        if result.get("success"):
+                            logger.info(f"WeChat notification sent successfully for task: {task_name}")
+                        else:
+                            logger.warning(f"WeChat notification failed: {result.get('error')}")
+                    else:
+                        logger.warning(f"WeChat API error: {response.status}")
+                        
+        except Exception as e:
+            logger.error(f"Failed to send WeChat notification: {e}")
+
     def cleanup(self):
         """清理PTY资源"""
         logger.info("Cleaning PTY Shell resources...")
@@ -2041,6 +2264,474 @@ This email was automatically sent by Claude Co-Desk
             status_code=500,
             content={"success": False, "error": str(e)}
         )
+
+# WeChat Notification APIs
+async def sync_binding_to_local(user_identifier: str, user_info: dict, mcp_services_path):
+    """将云端绑定信息同步到本地存储"""
+    try:
+        import json
+        from datetime import datetime
+        
+        user_bindings_path = mcp_services_path / "user_bindings.json"
+        
+        # 读取现有绑定数据
+        if user_bindings_path.exists():
+            with open(user_bindings_path, 'r', encoding='utf-8') as f:
+                bindings_data = json.load(f)
+        else:
+            bindings_data = {
+                "version": "1.0.0",
+                "last_sync": None,
+                "users": {},
+                "binding_stats": {
+                    "total_users": 0,
+                    "active_bindings": 0,
+                    "last_updated": None
+                }
+            }
+        
+        # 添加或更新用户绑定信息
+        bindings_data["users"][user_identifier] = {
+            "user_identifier": user_identifier,
+            "status": "active",
+            "cloud_binding_id": user_info.get("cloud_binding_id"),
+            "openid": user_info.get("openid"),
+            "nickname": user_info.get("nickname", "WeChat User"),
+            "bound_at": user_info.get("boundAt") or user_info.get("bound_at", datetime.now().isoformat()),
+            "last_notification": user_info.get("last_notification"),
+            "notification_count": user_info.get("notification_count", 0),
+            "notification_preferences": {
+                "enabled": True,
+                "types": ["task_completion", "system_alerts", "custom"]
+            },
+            "updated_at": datetime.now().isoformat()
+        }
+        
+        # 更新统计信息
+        active_count = sum(1 for user in bindings_data["users"].values() if user.get("status") == "active")
+        bindings_data["binding_stats"].update({
+            "total_users": len(bindings_data["users"]),
+            "active_bindings": active_count,
+            "last_updated": datetime.now().isoformat()
+        })
+        bindings_data["last_sync"] = datetime.now().isoformat()
+        
+        # 保存到文件
+        with open(user_bindings_path, 'w', encoding='utf-8') as f:
+            json.dump(bindings_data, f, ensure_ascii=False, indent=2)
+        
+        logger.info(f"Successfully synced binding for user {user_identifier} to local storage")
+        
+    except Exception as e:
+        logger.error(f"Failed to sync binding to local storage: {e}")
+        raise
+
+async def sync_unbind_to_cloud(user_identifier: str, mcp_services_path):
+    """将解绑操作同步到云端"""
+    try:
+        import json
+        import aiohttp
+        
+        # 读取微信配置
+        config_path = mcp_services_path / "wechat_config.json"
+        if not config_path.exists():
+            logger.warning("WeChat config not found, skipping cloud unbind sync")
+            return
+        
+        with open(config_path, 'r', encoding='utf-8') as f:
+            config_data = json.load(f)
+        
+        api_config = config_data.get("api_config", {})
+        base_url = api_config.get("base_url", "https://www.heliki.com/wechat")
+        api_key = api_config.get("api_key")
+        
+        if not api_key:
+            logger.warning("API key not found, skipping cloud unbind sync")
+            return
+        
+        # 调用云端解绑API
+        async with aiohttp.ClientSession() as session:
+            headers = {
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json"
+            }
+            
+            params = {"user_identifier": user_identifier}
+            
+            async with session.post(
+                f"{base_url}/unbind",
+                params=params,
+                headers=headers,
+                timeout=aiohttp.ClientTimeout(total=10)
+            ) as response:
+                if response.status == 200:
+                    result = await response.json()
+                    if result.get("success"):
+                        logger.info(f"Successfully synced unbind to cloud for user {user_identifier}")
+                    else:
+                        logger.warning(f"Cloud unbind failed: {result.get('error', 'Unknown error')}")
+                else:
+                    logger.warning(f"Cloud unbind API returned status {response.status}")
+                    
+    except Exception as e:
+        logger.error(f"Failed to sync unbind to cloud: {e}")
+        raise
+
+@app.get("/api/wechat/binding-status")
+async def get_wechat_binding_status():
+    """检查微信绑定状态"""
+    try:
+        from user_config import get_user_config
+        from pathlib import Path
+        
+        # 获取用户配置
+        user_config = await get_user_config()
+        user_identifier = user_config.get("user_identifier")
+        
+        if not user_identifier:
+            return JSONResponse(content={
+                "success": False,
+                "bound": False,
+                "error": "User not registered"
+            })
+        
+        # 首先检查云端绑定状态
+        try:
+            # 从配置文件获取云端API信息
+            mcp_services_path = Path(__file__).parent / "mcp_services" / "wechat_notification"
+            config_path = mcp_services_path / "wechat_config.json"
+            
+            if config_path.exists():
+                import json
+                import aiohttp
+                
+                with open(config_path, 'r', encoding='utf-8') as f:
+                    config_data = json.load(f)
+                
+                api_config = config_data.get("api_config", {})
+                base_url = api_config.get("base_url", "https://www.heliki.com/wechat")
+                api_key = api_config.get("api_key")
+                
+                if api_key:
+                    # 查询云端绑定状态
+                    async with aiohttp.ClientSession() as session:
+                        headers = {
+                            "Authorization": f"Bearer {api_key}",
+                            "Content-Type": "application/json"
+                        }
+                        
+                        async with session.get(
+                            f"{base_url}/user-status/{user_identifier}",
+                            headers=headers,
+                            timeout=aiohttp.ClientTimeout(total=10)
+                        ) as response:
+                            if response.status == 200:
+                                cloud_data = await response.json()
+                                if cloud_data.get("success") and cloud_data.get("bound"):
+                                    user_info = cloud_data.get("user_info", {})
+                                    
+                                    # 提取绑定时间
+                                    bound_at_value = user_info.get("boundAt") or user_info.get("bound_at")
+                                    
+                                    # 同步到本地存储
+                                    try:
+                                        await sync_binding_to_local(user_identifier, user_info, mcp_services_path)
+                                    except Exception as sync_error:
+                                        logger.warning(f"Failed to sync binding to local: {sync_error}")
+                                    
+                                    return JSONResponse(content={
+                                        "success": True,
+                                        "bound": True,
+                                        "userInfo": {
+                                            "nickname": user_info.get("nickname", "WeChat User"),
+                                            "boundAt": bound_at_value,
+                                            "lastNotification": user_info.get("lastNotification") or user_info.get("last_notification")
+                                        }
+                                    })
+                            
+        except Exception as e:
+            logger.warning(f"Failed to check cloud binding status: {e}")
+        
+        # 检查本地MCP服务的绑定状态（作为备用）
+        try:
+            user_bindings_path = mcp_services_path / "user_bindings.json"
+            
+            if user_bindings_path.exists():
+                import json
+                with open(user_bindings_path, 'r', encoding='utf-8') as f:
+                    bindings_data = json.load(f)
+                
+                users = bindings_data.get("users", {})
+                user_binding = users.get(user_identifier)
+                
+                if user_binding and user_binding.get("status") == "active":
+                    return JSONResponse(content={
+                        "success": True,
+                        "bound": True,
+                        "userInfo": {
+                            "nickname": user_binding.get("nickname", "WeChat User"),
+                            "boundAt": user_binding.get("bound_at") or user_binding.get("boundAt"),
+                            "lastNotification": user_binding.get("last_notification") or user_binding.get("lastNotification")
+                        }
+                    })
+        except Exception as e:
+            logger.warning(f"Failed to check local binding status: {e}")
+        
+        # 如果本地和云端都没有绑定信息，返回未绑定状态
+        return JSONResponse(content={
+            "success": True,
+            "bound": False
+        })
+        
+    except Exception as e:
+        logger.error(f"检查微信绑定状态失败: {e}")
+        return JSONResponse(content={
+            "success": False,
+            "bound": False,
+            "error": str(e)
+        })
+
+@app.post("/api/wechat/generate-qr")
+async def generate_wechat_qr():
+    """生成微信绑定二维码"""
+    try:
+        from user_config import get_user_config
+        import aiohttp
+        
+        # 获取用户配置
+        user_config = await get_user_config()
+        user_identifier = user_config.get("user_identifier")
+        api_key = user_config.get("api_key")
+        
+        if not user_identifier or not api_key:
+            return JSONResponse(content={
+                "success": False,
+                "error": "User not registered properly"
+            })
+        
+        # 调用云端API生成二维码
+        async with aiohttp.ClientSession() as session:
+            payload = {
+                "user_identifier": user_identifier,
+                "action": "bind"
+            }
+            
+            headers = {
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json"
+            }
+            
+            async with session.post(
+                "https://www.heliki.com/wechat/generate_qr",
+                json=payload,
+                headers=headers,
+                timeout=10
+            ) as response:
+                if response.status == 200:
+                    result = await response.json()
+                    if result.get("success"):
+                        return JSONResponse(content={
+                            "success": True,
+                            "qrCodeUrl": result.get("qr_code_url"),
+                            "expireTime": 300  # 5 minutes
+                        })
+                    else:
+                        return JSONResponse(content={
+                            "success": False,
+                            "error": result.get("error", "Failed to generate QR code")
+                        })
+                else:
+                    return JSONResponse(content={
+                        "success": False,
+                        "error": f"Server error: {response.status}"
+                    })
+                    
+    except Exception as e:
+        logger.error(f"生成微信二维码失败: {e}")
+        return JSONResponse(content={
+            "success": False,
+            "error": str(e)
+        })
+
+@app.post("/api/wechat/test-notification")
+async def test_wechat_notification(request: Request):
+    """发送微信测试通知"""
+    try:
+        from user_config import get_user_config
+        import aiohttp
+        
+        # Parse request body to get language preference
+        try:
+            body = await request.json()
+            language = body.get('language', 'zh-CN')
+        except Exception as e:
+            language = 'zh-CN'  # Default to Chinese
+        
+        # 获取用户配置
+        user_config = await get_user_config()
+        user_identifier = user_config.get("user_identifier")
+        api_key = user_config.get("api_key")
+        
+        if not user_identifier or not api_key:
+            return JSONResponse(content={
+                "success": False,
+                "error": "User not registered properly"
+            })
+        
+        # 构建多语言测试消息
+        current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        
+        if language == 'en':
+            task_name = "WeChat Test"
+            test_message = f"""## WeChat Notification Test Successful!
+
+Congratulations! Your WeChat notification configuration has been successfully set up.
+
+### Configuration Information:
+- **User Identifier**: {user_identifier}
+- **Test Time**: {current_time}
+
+The system can now send task completion notifications to you via WeChat.
+
+---
+*This message was automatically sent by Claude Co-Desk*"""
+        else:
+            task_name = "微信通知配置测试"
+            test_message = f"""## 微信通知测试成功！
+
+恭喜！您的微信通知配置已成功设置。
+
+### 配置信息：
+- **用户标识**: {user_identifier}
+- **测试时间**: {current_time}
+
+系统现在可以通过微信向您发送任务完成通知。
+
+---
+*此消息由 Claude Co-Desk 自动发送*"""
+        
+        # 调用云端API发送测试消息
+        async with aiohttp.ClientSession() as session:
+            payload = {
+                "user_identifier": user_identifier,
+                "message": test_message,
+                "task_name": task_name
+            }
+            
+            headers = {
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json"
+            }
+            
+            async with session.post(
+                "https://www.heliki.com/wechat/send_message",
+                json=payload,
+                headers=headers,
+                timeout=15
+            ) as response:
+                if response.status == 200:
+                    result = await response.json()
+                    if result.get("success"):
+                        return JSONResponse(content={
+                            "success": True,
+                            "message": "测试通知发送成功"
+                        })
+                    else:
+                        return JSONResponse(content={
+                            "success": False,
+                            "error": result.get("error", "发送测试消息失败")
+                        })
+                else:
+                    return JSONResponse(content={
+                        "success": False,
+                        "error": f"Server error: {response.status}"
+                    })
+                    
+    except Exception as e:
+        logger.error(f"发送微信测试通知失败: {e}")
+        return JSONResponse(content={
+            "success": False,
+            "error": str(e)
+        })
+
+@app.post("/api/wechat/unbind")
+async def unbind_wechat():
+    """解除微信绑定"""
+    try:
+        from user_config import get_user_config
+        from pathlib import Path
+        import json
+        
+        # 获取用户配置
+        user_config = await get_user_config()
+        user_identifier = user_config.get("user_identifier")
+        
+        if not user_identifier:
+            return JSONResponse(content={
+                "success": False,
+                "error": "User not registered"
+            })
+        
+        # 清除本地绑定信息
+        try:
+            mcp_services_path = Path(__file__).parent / "mcp_services" / "wechat_notification"
+            user_bindings_path = mcp_services_path / "user_bindings.json"
+            
+            if user_bindings_path.exists():
+                with open(user_bindings_path, 'r', encoding='utf-8') as f:
+                    bindings_data = json.load(f)
+                
+                # 移除用户绑定
+                users = bindings_data.get("users", {})
+                if user_identifier in users:
+                    del users[user_identifier]
+                    
+                    # 更新统计信息
+                    bindings_data["binding_stats"] = {
+                        "total_users": len(users),
+                        "active_bindings": len([u for u in users.values() if u.get("status") == "active"]),
+                        "last_updated": datetime.now().isoformat()
+                    }
+                    
+                    # 保存更新后的绑定数据
+                    with open(user_bindings_path, 'w', encoding='utf-8') as f:
+                        json.dump(bindings_data, f, indent=2, ensure_ascii=False)
+                    
+                    logger.info(f"解除微信绑定成功: {user_identifier}")
+                    
+                    # 同步解绑到云端
+                    try:
+                        await sync_unbind_to_cloud(user_identifier, mcp_services_path)
+                    except Exception as sync_error:
+                        logger.warning(f"云端解绑同步失败: {sync_error}")
+                    
+                    return JSONResponse(content={
+                        "success": True,
+                        "message": "微信绑定已解除"
+                    })
+        
+        except Exception as e:
+            logger.warning(f"清除本地绑定信息失败: {e}")
+        
+        # 本地清除失败时，也尝试云端解绑
+        try:
+            mcp_services_path = Path(__file__).parent / "mcp_services" / "wechat_notification"
+            await sync_unbind_to_cloud(user_identifier, mcp_services_path)
+        except Exception as sync_error:
+            logger.warning(f"云端解绑同步失败: {sync_error}")
+        
+        # 即使本地清除失败，也返回成功（因为主要绑定在云端）
+        return JSONResponse(content={
+            "success": True,
+            "message": "微信绑定已解除"
+        })
+        
+    except Exception as e:
+        logger.error(f"解除微信绑定失败: {e}")
+        return JSONResponse(content={
+            "success": False,
+            "error": str(e)
+        })
 
 @app.get("/api/environment")
 async def check_environment():

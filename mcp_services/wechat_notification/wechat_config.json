@@ -1,8 +1,16 @@
 {
-  "api_base": "https://www.heliki.com/wechat",
-  "api_key": "db5dbd041173c56bef87a19f41f8c2e3",
-  "service_name": "Claude Co-Desk WeChat Notification (Test)",
-  "version": "1.0.0",
-  "timeout": 30,
-  "retry_attempts": 3
+  "service_name": "wechat_notification",
+  "description": "WeChat notification service via cloud API",
+  "api_config": {
+    "base_url": "https://www.heliki.com/wechat",
+    "user_identifier": "user_1756570917_94251a17",
+    "api_key": "ak_7a01da17c505732994be14faab8fc044",
+    "timeout": 30
+  },
+  "notification_settings": {
+    "enabled": true,
+    "max_retries": 3,
+    "retry_delay": 5
+  },
+  "updated_at": "2025-08-31T17:07:22.832876"
 }

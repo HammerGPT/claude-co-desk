@@ -598,6 +598,104 @@ async def check_binding_status(
             error=str(e)
         )
 
+@app.get("/wechat/user-status/{user_identifier}")
+async def get_user_status(
+    user_identifier: str,
+    api_key: str = Depends(verify_api_key)
+):
+    """获取用户绑定状态 - 标准化端点"""
+    
+    if not user_manager:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Service not initialized"
+        )
+    
+    try:
+        binding = await user_manager.get_user_binding(user_identifier)
+        
+        if binding:
+            return {
+                "success": True,
+                "bound": True,
+                "user_info": {
+                    "nickname": binding.get("nickname", "WeChat User"),
+                    "boundAt": binding.get("bind_time"),
+                    "lastNotification": binding.get("last_message_time"),
+                    "openid": binding.get("openid"),
+                    "messageCount": binding.get("message_count", 0)
+                }
+            }
+        else:
+            return {
+                "success": True,
+                "bound": False,
+                "user_info": None
+            }
+            
+    except Exception as e:
+        logger.error(f"Error getting user status: {e}")
+        return {
+            "success": False,
+            "bound": False,
+            "error": str(e)
+        }
+
+@app.post("/wechat/unbind")
+async def unbind_user(
+    user_identifier: str,
+    api_key: str = Depends(verify_api_key)
+):
+    """解除用户绑定"""
+    
+    if not user_manager:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Service not initialized"
+        )
+    
+    try:
+        # 获取绑定信息用于日志
+        binding = await user_manager.get_user_binding(user_identifier)
+        if not binding:
+            return {
+                "success": False,
+                "error": "User not bound"
+            }
+        
+        # 执行解绑操作
+        result = await user_manager.delete_user_binding(user_identifier)
+        
+        if result:
+            # 记录解绑日志
+            await user_manager.log_message_activity({
+                "message_id": f"unbind_{int(datetime.now().timestamp())}",
+                "user_identifier": user_identifier,
+                "openid": binding.get("openid"),
+                "message_type": "unbind",
+                "success": True,
+                "timestamp": datetime.now().isoformat(),
+                "action": "user_unbound"
+            })
+            
+            logger.info(f"User {user_identifier} unbound successfully")
+            return {
+                "success": True,
+                "message": "User unbound successfully"
+            }
+        else:
+            return {
+                "success": False,
+                "error": "Failed to unbind user"
+            }
+            
+    except Exception as e:
+        logger.error(f"Error unbinding user {user_identifier}: {e}")
+        return {
+            "success": False,
+            "error": str(e)
+        }
+
 @app.post("/wechat/generate_qr", response_model=GenerateQRResponse)
 async def generate_binding_qr(
     request: GenerateQRRequest,

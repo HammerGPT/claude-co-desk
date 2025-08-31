@@ -81,11 +81,21 @@ class NotificationManager {
     init() {
         this.bindEvents();
         this.loadCurrentConfig();
+        
+        // Initialize WeChat notification manager if available
+        if (window.wechatNotificationManager) {
+            window.wechatNotificationManager.refresh();
+        }
     }
     
     // Public method to refresh configuration when entering the page
     refresh() {
         this.loadCurrentConfig();
+        
+        // Refresh WeChat notification manager if available
+        if (window.wechatNotificationManager) {
+            window.wechatNotificationManager.refresh();
+        }
     }
     
     bindEvents() {

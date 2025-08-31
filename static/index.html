@@ -508,6 +508,57 @@
                                     </div>
                                 </div>
                             </div>
+                            
+                            <!-- 微信通知配置 -->
+                            <div class="notification-wechat-section">
+                                <div class="section-title">
+                                    <img src="/static/assets/icons/social/wechat-color.png" width="16" height="16" alt="">
+                                    <span data-i18n="notifications.wechat">微信通知</span>
+                                    <div class="config-status" id="wechat-config-status">
+                                        <span class="status-indicator" id="wechat-status-indicator"></span>
+                                        <span class="status-text" id="wechat-status-text" data-i18n="notifications.wechatNotBound">未绑定</span>
+                                    </div>
+                                </div>
+                                
+                                <div class="wechat-config-form">
+                                    <!-- 绑定状态区域 -->
+                                    <div class="wechat-binding-status" id="wechat-binding-status">
+                                        <div class="binding-info" id="wechat-not-bound" style="display: block;">
+                                            <div class="info-content">
+                                                <div class="info-text">
+                                                    <h5 data-i18n="notifications.wechatBindingTitle">微信账号绑定</h5>
+                                                    <p data-i18n="notifications.wechatBindingDesc">绑定您的微信账号以接收任务完成通知</p>
+                                                </div>
+                                                <button type="button" class="btn btn-primary" id="bind-wechat-btn" data-i18n="notifications.bindWechat">绑定微信</button>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="binding-info" id="wechat-bound" style="display: none;">
+                                            <div class="bound-user-info">
+                                                <div class="user-avatar">
+                                                    <img src="/static/assets/icons/social/wechat-color.png" width="32" height="32" alt="WeChat">
+                                                </div>
+                                                <div class="user-details">
+                                                    <div class="user-name" id="bound-user-name">微信用户</div>
+                                                    <div class="bind-time" id="bound-time">绑定时间：--</div>
+                                                </div>
+                                                <div class="bound-actions">
+                                                    <button type="button" class="btn btn-outline-secondary btn-sm" id="test-wechat-notification" data-i18n="notifications.testWechat">发送测试</button>
+                                                    <button type="button" class="btn btn-outline-danger btn-sm" id="unbind-wechat-btn" data-i18n="notifications.unbindWechat">解除绑定</button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- 通知测试结果显示 -->
+                                    <div class="test-result" id="wechat-test-result" style="display: none;">
+                                        <div class="result-content">
+                                            <div class="result-icon" id="wechat-test-result-icon"></div>
+                                            <div class="result-message" id="wechat-test-result-message"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                         
                         <!-- MCP工具管理内容 -->
@@ -712,6 +763,75 @@
                 <div class="modal-footer">
                     <button id="standalone-cancel-task" class="btn btn-secondary" data-i18n="task.cancel">取消</button>
                     <button id="standalone-create-task" class="btn btn-primary" data-i18n="task.create">创建任务</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 微信绑定二维码弹窗 -->
+        <div id="wechat-binding-modal" class="modal-overlay hidden">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>
+                        <img src="/static/assets/icons/social/wechat-color.png" width="20" height="20" alt="">
+                        <span data-i18n="notifications.wechatBinding">微信账号绑定</span>
+                    </h3>
+                    <button id="wechat-binding-close" class="modal-close">×</button>
+                </div>
+                <div class="modal-body">
+                    <!-- 绑定步骤说明 -->
+                    <div class="binding-steps">
+                        <div class="step">
+                            <div class="step-number">1</div>
+                            <div class="step-content" data-i18n="notifications.step1">使用微信扫描下方二维码</div>
+                        </div>
+                        <div class="step">
+                            <div class="step-number">2</div>
+                            <div class="step-content" data-i18n="notifications.step2">关注公众号并发送验证码</div>
+                        </div>
+                        <div class="step">
+                            <div class="step-number">3</div>
+                            <div class="step-content" data-i18n="notifications.step3">绑定成功后即可接收通知</div>
+                        </div>
+                    </div>
+                    
+                    <!-- 二维码区域 -->
+                    <div class="qr-code-section">
+                        <div class="qr-code-container" id="wechat-qr-container">
+                            <!-- 加载状态 -->
+                            <div class="qr-loading" id="qr-loading">
+                                <div class="spinner"></div>
+                                <p data-i18n="notifications.generatingQR">正在生成二维码...</p>
+                            </div>
+                            
+                            <!-- 二维码图片 -->
+                            <div class="qr-code-display" id="qr-code-display" style="display: none;">
+                                <img id="qr-code-image" src="" alt="WeChat QR Code">
+                                <div class="qr-code-info">
+                                    <p class="qr-hint" data-i18n="notifications.qrHint">请使用微信扫一扫功能</p>
+                                    <p class="qr-expire" id="qr-expire-info" data-i18n="notifications.qrExpire">二维码5分钟内有效</p>
+                                </div>
+                            </div>
+                            
+                            <!-- 错误状态 -->
+                            <div class="qr-error" id="qr-error" style="display: none;">
+                                <div class="error-icon">⚠️</div>
+                                <p id="qr-error-message">生成二维码失败</p>
+                                <button class="btn btn-primary btn-sm" id="retry-qr-btn" data-i18n="notifications.retryQR">重新生成</button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 绑定状态检查 -->
+                    <div class="binding-status-check">
+                        <div class="status-indicator" id="binding-check-indicator">
+                            <span class="status-dot"></span>
+                            <span id="binding-status-text" data-i18n="notifications.waitingBinding">等待微信绑定...</span>
+                        </div>
+                        <button class="btn btn-outline-secondary btn-sm" id="refresh-binding-status" data-i18n="notifications.refreshStatus">刷新状态</button>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button id="wechat-binding-cancel" class="btn btn-secondary" data-i18n="common.cancel">取消</button>
                 </div>
             </div>
         </div>
@@ -1075,6 +1195,7 @@
     <script src="/static/js/employees_manager.js"></script>
     <script src="/static/js/applications_manager.js"></script>
     <script src="/static/js/notifications_manager.js"></script>
+    <script src="/static/js/wechat_notification_manager.js"></script>
     <script src="/static/js/folder_selector.js"></script>
     <script src="/static/js/sidebar_enhanced.js"></script>
     <script src="/static/js/files_drawer.js"></script>

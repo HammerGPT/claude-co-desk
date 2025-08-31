@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "last_sync": null,
+  "last_sync": "2025-08-31T16:58:04.231892",
   "users": {
     "test_user_claude": {
       "user_identifier": "test_user_claude",
@@ -39,11 +39,30 @@
         ]
       },
       "updated_at": "2025-08-29T20:47:01.869308"
+    },
+    "user_1756570917_94251a17": {
+      "user_identifier": "user_1756570917_94251a17",
+      "status": "active",
+      "cloud_binding_id": null,
+      "openid": "o1cWU6vRjBj-1jx9FayHDLKjbtS8",
+      "nickname": "WeChat User",
+      "bound_at": "2025-08-31T16:37:53.168391",
+      "last_notification": null,
+      "notification_count": 0,
+      "notification_preferences": {
+        "enabled": true,
+        "types": [
+          "task_completion",
+          "system_alerts",
+          "custom"
+        ]
+      },
+      "updated_at": "2025-08-31T16:58:04.231843"
     }
   },
   "binding_stats": {
-    "total_users": 2,
-    "active_bindings": 2,
-    "last_updated": "2025-08-29T20:47:01.869314"
+    "total_users": 3,
+    "active_bindings": 3,
+    "last_updated": "2025-08-31T16:58:04.231886"
   }
 }
