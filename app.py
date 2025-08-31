@@ -2296,10 +2296,14 @@ async def sync_binding_to_local(user_identifier: str, user_info: dict, mcp_servi
             "status": "active",
             "cloud_binding_id": user_info.get("cloud_binding_id"),
             "openid": user_info.get("openid"),
-            "nickname": user_info.get("nickname", "WeChat User"),
+            "nickname": user_info.get("nickname", "微信用户"),
             "bound_at": user_info.get("boundAt") or user_info.get("bound_at", datetime.now().isoformat()),
             "last_notification": user_info.get("last_notification"),
             "notification_count": user_info.get("notification_count", 0),
+            "avatar_url": user_info.get("avatarUrl", ""),
+            "sex": user_info.get("sex", 0),
+            "city": user_info.get("city", ""),
+            "country": user_info.get("country", ""),
             "notification_preferences": {
                 "enabled": True,
                 "types": ["task_completion", "system_alerts", "custom"]

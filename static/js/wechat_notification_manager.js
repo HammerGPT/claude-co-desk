@@ -137,6 +137,7 @@ class WeChatNotificationManager {
             // Update bound user info
             const userNameEl = document.getElementById('bound-user-name');
             const boundTimeEl = document.getElementById('bound-time');
+            const userAvatarEl = document.getElementById('bound-user-avatar');
             
             if (userNameEl) {
                 userNameEl.textContent = userInfo.nickname || this.getText('notifications.wechatUser');
@@ -146,6 +147,14 @@ class WeChatNotificationManager {
                     new Date(userInfo.boundAt).toLocaleString() : 
                     this.getText('common.unknown');
                 boundTimeEl.textContent = `${this.getText('notifications.boundTime')}${boundTime}`;
+            }
+            if (userAvatarEl && userInfo.avatar_url) {
+                // Use real user avatar if available
+                userAvatarEl.src = userInfo.avatar_url;
+                userAvatarEl.onerror = function() {
+                    // Fallback to default WeChat icon if avatar fails to load
+                    this.src = '/static/assets/icons/social/wechat-color.png';
+                };
             }
             
             // Update status indicator

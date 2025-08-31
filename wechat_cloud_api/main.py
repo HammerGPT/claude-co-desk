@@ -619,11 +619,15 @@ async def get_user_status(
                 "success": True,
                 "bound": True,
                 "user_info": {
-                    "nickname": binding.get("nickname", "WeChat User"),
+                    "nickname": binding.get("nickname", "微信用户"),
                     "boundAt": binding.get("bind_time"),
                     "lastNotification": binding.get("last_message_time"),
                     "openid": binding.get("openid"),
-                    "messageCount": binding.get("message_count", 0)
+                    "messageCount": binding.get("message_count", 0),
+                    "avatarUrl": binding.get("avatar_url", ""),
+                    "sex": binding.get("sex", 0),
+                    "city": binding.get("city", ""),
+                    "country": binding.get("country", "")
                 }
             }
         else:
@@ -833,11 +837,34 @@ async def wechat_webhook(request: Request):
                     # 检查该OpenID是否已经绑定过
                     existing_binding = await user_manager.get_user_binding_by_openid(openid)
                     if not existing_binding:
+                        # 获取真实的微信用户信息
+                        try:
+                            user_info = await wechat_api.get_user_info(openid)
+                            user_nickname = user_info.get("nickname", "微信用户")
+                            user_avatar = user_info.get("headimgurl", "")
+                            user_sex = user_info.get("sex", 0)
+                            user_city = user_info.get("city", "")
+                            user_country = user_info.get("country", "")
+                            subscribe_status = user_info.get("subscribe", 0)
+                            logger.info(f"Retrieved user info for {openid}: subscribe={subscribe_status}, nickname='{user_nickname}', avatar='{user_avatar}', city='{user_city}'")
+                            logger.info(f"Full user info response: {user_info}")
+                        except Exception as e:
+                            logger.warning(f"Failed to get user info for {openid}: {e}, using default values")
+                            user_nickname = "微信用户"
+                            user_avatar = ""
+                            user_sex = 0
+                            user_city = ""
+                            user_country = ""
+                        
                         # 创建新用户绑定
                         await user_manager.create_user_binding(user_identifier, {
                             "openid": openid,
                             "bind_time": datetime.now().isoformat(),
-                            "nickname": "WeChat User", 
+                            "nickname": user_nickname, 
+                            "avatar_url": user_avatar,
+                            "sex": user_sex,
+                            "city": user_city,
+                            "country": user_country,
                             "bind_token": bind_token
                         })
                         
@@ -892,11 +919,34 @@ async def wechat_webhook(request: Request):
                         await user_manager.update_bind_token(bind_token, {"status": "completed"})
                         logger.info(f"OpenID {openid} already bound to {existing_binding.get('user_identifier')}, skipping duplicate binding")
                     else:
+                        # 获取真实的微信用户信息
+                        try:
+                            user_info = await wechat_api.get_user_info(openid)
+                            user_nickname = user_info.get("nickname", "微信用户")
+                            user_avatar = user_info.get("headimgurl", "")
+                            user_sex = user_info.get("sex", 0)
+                            user_city = user_info.get("city", "")
+                            user_country = user_info.get("country", "")
+                            subscribe_status = user_info.get("subscribe", 0)
+                            logger.info(f"Retrieved user info for {openid}: subscribe={subscribe_status}, nickname='{user_nickname}', avatar='{user_avatar}', city='{user_city}'")
+                            logger.info(f"Full user info response: {user_info}")
+                        except Exception as e:
+                            logger.warning(f"Failed to get user info for {openid}: {e}, using default values")
+                            user_nickname = "微信用户"
+                            user_avatar = ""
+                            user_sex = 0
+                            user_city = ""
+                            user_country = ""
+                        
                         # 创建新用户绑定
                         await user_manager.create_user_binding(user_identifier, {
                             "openid": openid,
                             "bind_time": datetime.now().isoformat(),
-                            "nickname": "WeChat User",
+                            "nickname": user_nickname,
+                            "avatar_url": user_avatar,
+                            "sex": user_sex,
+                            "city": user_city,
+                            "country": user_country,
                             "bind_token": bind_token
                         })
                         

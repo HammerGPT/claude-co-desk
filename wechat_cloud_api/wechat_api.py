@@ -360,9 +360,11 @@ class WeChatPublicAPI:
                 
                 if result.get("errcode", 0) == 0 or "openid" in result:
                     logger.info(f"User info retrieved successfully for {openid}")
+                    logger.info(f"User info details: subscribe={result.get('subscribe', 'unknown')}, nickname='{result.get('nickname', '')}', headimgurl='{result.get('headimgurl', '')}'")
                 else:
                     error_msg = result.get("errmsg", "Unknown error")
                     logger.error(f"Failed to get user info for {openid}: {error_msg}")
+                    logger.error(f"Full API response: {result}")
                 
                 return result
                 

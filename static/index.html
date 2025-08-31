@@ -402,16 +402,37 @@
                                 <p class="settings-section-desc" data-i18n="notifications.description">配置系统任务完成通知方式</p>
                             </div>
                             
-                            <!-- 邮件通知配置 -->
-                            <div class="notification-email-section">
-                                <div class="section-title">
-                                    <img src="/static/assets/icons/interface/mail.png" width="16" height="16" alt="">
-                                    <span data-i18n="notifications.email">邮件通知</span>
-                                    <div class="config-status" id="email-config-status">
-                                        <span class="status-indicator" id="email-status-indicator"></span>
-                                        <span class="status-text" id="email-status-text" data-i18n="notifications.notConfigured">未配置</span>
+                            <!-- 侧边选择器+配置面板布局 -->
+                            <div class="notification-layout">
+                                <!-- 左侧：通知类型选择器 -->
+                                <div class="notification-selector">
+                                    <div class="selector-item active" data-type="email">
+                                        <img src="/static/assets/icons/interface/mail.png" width="16" height="16" alt="">
+                                        <span data-i18n="notifications.email">邮件通知</span>
+                                        <div class="status-indicator" id="email-selector-status"></div>
+                                    </div>
+                                    <div class="selector-item" data-type="wechat">
+                                        <img src="/static/assets/icons/social/wechat-color.png" width="16" height="16" alt="">
+                                        <span data-i18n="notifications.wechat">微信通知</span>
+                                        <div class="status-indicator" id="wechat-selector-status"></div>
                                     </div>
                                 </div>
+                                
+                                <!-- 右侧：配置面板 -->
+                                <div class="notification-panel">
+                                    <!-- 邮件通知配置面板 -->
+                                    <div id="email-panel" class="panel-content active">
+                                        <div class="panel-header">
+                                            <img src="/static/assets/icons/interface/mail.png" width="16" height="16" alt="">
+                                            <span data-i18n="notifications.email">邮件通知</span>
+                                            <div class="config-status" id="email-config-status">
+                                                <span class="status-indicator" id="email-status-indicator"></span>
+                                                <span class="status-text" id="email-status-text" data-i18n="notifications.notConfigured">未配置</span>
+                                            </div>
+                                        </div>
+                                        
+                                        <!-- 邮件通知配置 -->
+                                        <div class="notification-email-section">
                                 
                                 <div class="email-config-form">
                                     <div class="form-row">
@@ -507,18 +528,22 @@
                                         <!-- 动态加载帮助内容 -->
                                     </div>
                                 </div>
-                            </div>
-                            
-                            <!-- 微信通知配置 -->
-                            <div class="notification-wechat-section">
-                                <div class="section-title">
-                                    <img src="/static/assets/icons/social/wechat-color.png" width="16" height="16" alt="">
-                                    <span data-i18n="notifications.wechat">微信通知</span>
-                                    <div class="config-status" id="wechat-config-status">
-                                        <span class="status-indicator" id="wechat-status-indicator"></span>
-                                        <span class="status-text" id="wechat-status-text" data-i18n="notifications.wechatNotBound">未绑定</span>
+                                        </div>
                                     </div>
-                                </div>
+                                    
+                                    <!-- 微信通知配置面板 -->
+                                    <div id="wechat-panel" class="panel-content">
+                                        <div class="panel-header">
+                                            <img src="/static/assets/icons/social/wechat-color.png" width="16" height="16" alt="">
+                                            <span data-i18n="notifications.wechat">微信通知</span>
+                                            <div class="config-status" id="wechat-config-status">
+                                                <span class="status-indicator" id="wechat-status-indicator"></span>
+                                                <span class="status-text" id="wechat-status-text" data-i18n="notifications.wechatNotBound">未绑定</span>
+                                            </div>
+                                        </div>
+                                        
+                                        <!-- 微信通知配置 -->
+                                        <div class="notification-wechat-section">
                                 
                                 <div class="wechat-config-form">
                                     <!-- 绑定状态区域 -->
@@ -536,7 +561,7 @@
                                         <div class="binding-info" id="wechat-bound" style="display: none;">
                                             <div class="bound-user-info">
                                                 <div class="user-avatar">
-                                                    <img src="/static/assets/icons/social/wechat-color.png" width="32" height="32" alt="WeChat">
+                                                    <img id="bound-user-avatar" src="/static/assets/icons/social/wechat-color.png" width="32" height="32" alt="WeChat">
                                                 </div>
                                                 <div class="user-details">
                                                     <div class="user-name" id="bound-user-name">微信用户</div>
@@ -555,6 +580,8 @@
                                         <div class="result-content">
                                             <div class="result-icon" id="wechat-test-result-icon"></div>
                                             <div class="result-message" id="wechat-test-result-message"></div>
+                                        </div>
+                                    </div>
                                         </div>
                                     </div>
                                 </div>
@@ -1196,6 +1223,7 @@
     <script src="/static/js/applications_manager.js"></script>
     <script src="/static/js/notifications_manager.js"></script>
     <script src="/static/js/wechat_notification_manager.js"></script>
+    <script src="/static/js/notification_panel_manager.js"></script>
     <script src="/static/js/folder_selector.js"></script>
     <script src="/static/js/sidebar_enhanced.js"></script>
     <script src="/static/js/files_drawer.js"></script>
