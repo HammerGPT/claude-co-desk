@@ -1,1 +1,18 @@
-[]
+[
+  {
+    "timestamp": "2025-09-01T00:40:39.469732",
+    "message_id": "54bd3d6a-a08f-4763-a2f9-458a459d5689",
+    "user_identifier": "user_1756570917_94251a17",
+    "message_type": "text",
+    "success": false,
+    "message": "Failed to send message: WECHAT_API_ERROR"
+  },
+  {
+    "timestamp": "2025-09-01T10:04:02.867201",
+    "message_id": "4259f2ee-1f09-4618-accf-8acbd52658f5",
+    "user_identifier": "user_1756570917_94251a17",
+    "message_type": "text",
+    "success": true,
+    "message": "Message sent successfully"
+  }
+]

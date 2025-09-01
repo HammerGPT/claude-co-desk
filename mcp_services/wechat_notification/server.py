@@ -272,6 +272,11 @@ class WeChatNotificationMCP:
                                 "type": "string",
                                 "description": "The message content to send"
                             },
+                            "task_name": {
+                                "type": "string",
+                                "description": "Brief task name or title extracted from context (e.g., '天气预报', '文档处理', '任务完成'). Should be concise and descriptive, max 15 characters. Will be shown in WeChat notification title.",
+                                "maxLength": 15
+                            },
                             "user_identifier": {
                                 "type": "string",
                                 "description": "User identifier (email, username, etc.) for targeting the message",
@@ -382,9 +387,28 @@ class WeChatNotificationMCP:
     async def _handle_send_message(self, arguments: dict) -> List[types.TextContent]:
         """Handle send_wechat_message tool call"""
         message = arguments.get("message", "")
+        task_name = arguments.get("task_name", "")  # Extract task_name from arguments
         user_identifier = arguments.get("user_identifier", "default_user")
         message_type = arguments.get("message_type", "text")
         template_data = arguments.get("template_data", {})
+        
+        # If using default_user, get actual user_identifier from user_config (same as test functionality)
+        if user_identifier == "default_user":
+            try:
+                import sys
+                import os
+                parent_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+                if parent_dir not in sys.path:
+                    sys.path.append(parent_dir)
+                
+                from user_config import get_user_config
+                user_config = await get_user_config()
+                real_user_identifier = user_config.get("user_identifier")
+                if real_user_identifier:
+                    user_identifier = real_user_identifier
+                    logger.info(f"Using real user_identifier from user_config: {user_identifier}")
+            except Exception as e:
+                logger.warning(f"Could not get user_identifier from user_config: {e}")
         
         if not message:
             return [types.TextContent(
@@ -406,7 +430,8 @@ class WeChatNotificationMCP:
                 user_identifier=user_identifier,
                 message_type=message_type,
                 template_data=template_data,
-                message_id=message_id
+                message_id=message_id,
+                task_name=task_name  # Pass the extracted task_name
             )
             
             if response.get("success", False):

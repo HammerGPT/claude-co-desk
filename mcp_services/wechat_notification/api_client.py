@@ -109,23 +109,50 @@ class WeChatAPIClient:
         user_identifier: str,
         message_type: str = "text",
         template_data: Optional[Dict[str, Any]] = None,
-        message_id: Optional[str] = None
+        message_id: Optional[str] = None,
+        task_name: Optional[str] = None
     ) -> Dict[str, Any]:
-        """Send WeChat message via cloud API"""
+        """Send WeChat message via cloud API - using same format as test functionality"""
         
+        # Determine task name with priority: direct parameter > template_data > intelligent fallback
+        final_task_name = "AI任务"  # Default fallback
+        
+        if task_name and task_name.strip():
+            # Use directly passed task_name (highest priority)
+            final_task_name = task_name.strip()[:15]  # Limit to 15 characters
+        elif template_data and template_data.get("task_name"):
+            # Use task_name from template_data (medium priority)
+            final_task_name = str(template_data["task_name"]).strip()[:15]
+        else:
+            # Smart fallback based on message content (lowest priority)
+            message_lower = message.lower()
+            if any(keyword in message_lower for keyword in ["天气", "weather", "预报", "气温"]):
+                final_task_name = "天气预报"
+            elif any(keyword in message_lower for keyword in ["文档", "document", "文件", "file"]):
+                final_task_name = "文档处理"
+            elif any(keyword in message_lower for keyword in ["分析", "analysis", "报告", "report"]):
+                final_task_name = "数据分析"
+            elif any(keyword in message_lower for keyword in ["搜索", "search", "查询", "query"]):
+                final_task_name = "信息搜索"
+        
+        # Use same payload format as working test functionality (app.py:2631-2635)
         payload = {
-            "message": message,
             "user_identifier": user_identifier,
-            "message_type": message_type,
-            "message_id": message_id
+            "message": message,
+            "task_name": final_task_name
         }
         
-        if template_data:
-            payload["template_data"] = template_data
+        # Add optional fields for compatibility
+        if message_id:
+            payload["message_id"] = message_id
+        if message_type != "text":
+            payload["message_type"] = message_type
+        if template_data and "template_data" in template_data:
+            payload["template_data"] = template_data["template_data"]
         
-        logger.info(f"Sending message to user {user_identifier} via cloud API")
+        logger.info(f"Sending message to user {user_identifier} via cloud API (same format as test)")
         
-        return await self._make_request("POST", "/wechat/send_message", payload)
+        return await self._make_request("POST", "/send_message", payload)
     
     async def check_binding_status(self, user_identifier: str) -> Dict[str, Any]:
         """Check if user is bound to WeChat"""
@@ -134,7 +161,7 @@ class WeChatAPIClient:
         
         logger.info(f"Checking binding status for user {user_identifier}")
         
-        return await self._make_request("GET", "/wechat/binding_status", params)
+        return await self._make_request("GET", "/binding_status", params)
     
     async def generate_binding_qr(self, user_identifier: str) -> Dict[str, Any]:
         """Generate binding QR code for user"""
@@ -146,7 +173,7 @@ class WeChatAPIClient:
         
         logger.info(f"Generating binding QR code for user {user_identifier}")
         
-        return await self._make_request("POST", "/wechat/generate_qr", payload)
+        return await self._make_request("POST", "/generate_qr", payload)
     
     async def get_api_status(self) -> Dict[str, Any]:
         """Check API service status"""

@@ -130,16 +130,57 @@ def get_config() -> Config:
 # API Configuration Functions
 
 async def get_api_config() -> Dict[str, Any]:
-    """Get API configuration"""
+    """Get API configuration - use same config as working test functionality"""
     config = get_config()
     
-    # Try to get from environment variables first (similar to smtp-mail pattern)
+    # Try to get from environment variables first
     env_config = _get_env_api_config()
     if env_config:
         return env_config
     
-    # Fallback to config file
-    return config._read_json_file(config.config_file)
+    # Use user_config.py (same as test functionality) instead of wechat_config.json
+    try:
+        # Import user_config from parent directory
+        import sys
+        import os
+        parent_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+        if parent_dir not in sys.path:
+            sys.path.append(parent_dir)
+        
+        from user_config import get_user_config
+        user_config = await get_user_config()
+        
+        api_key = user_config.get("api_key")
+        if api_key:
+            logger.info("Using API configuration from user_config.py (same as test functionality)")
+            return {
+                "api_base": "https://www.heliki.com/wechat",  # Fixed cloud API URL
+                "api_key": api_key,
+                "service_name": "Claude Co-Desk WeChat Notification (User Config)",
+                "version": "1.0.0",
+                "timeout": 30,
+                "retry_attempts": 3
+            }
+    except Exception as e:
+        logger.warning(f"Could not load user_config, falling back to local config: {e}")
+    
+    # Fallback to local config file with compatibility handling
+    local_config = config._read_json_file(config.config_file)
+    
+    # Handle nested api_config structure from wechat_config.json
+    if "api_config" in local_config:
+        api_config = local_config["api_config"]
+        return {
+            "api_base": api_config.get("base_url", api_config.get("api_base", "https://www.heliki.com/wechat")),
+            "api_key": api_config.get("api_key", ""),
+            "service_name": "Claude Co-Desk WeChat Notification (Local Config)",
+            "version": "1.0.0", 
+            "timeout": api_config.get("timeout", 30),
+            "retry_attempts": 3
+        }
+    
+    # Handle flat structure (default format)
+    return local_config
 
 def _get_env_api_config() -> Optional[Dict[str, Any]]:
     """Get API configuration from environment variables"""
