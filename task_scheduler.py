@@ -18,6 +18,27 @@ from mission_manager import MissionManager
 
 logger = logging.getLogger(__name__)
 
+# Time context generation function
+def get_current_time_context():
+    """Generate unified time context information for Claude commands"""
+    try:
+        import pytz
+        from datetime import datetime
+        
+        # Get local time (Asia/Shanghai timezone) and UTC time
+        local_tz = pytz.timezone('Asia/Shanghai')
+        now_local = datetime.now(local_tz)
+        now_utc = datetime.now(pytz.UTC)
+        
+        time_context = f"[Current Time Context] Local time: {now_local.strftime('%Y-%m-%d %H:%M:%S %Z')}, UTC time: {now_utc.strftime('%Y-%m-%d %H:%M:%S %Z')}"
+        return time_context
+    except Exception as e:
+        logger.warning(f"Failed to generate time context: {e}")
+        # Fallback to basic datetime if pytz is not available
+        from datetime import datetime
+        now = datetime.now()
+        return f"[Current Time Context] Local time: {now.strftime('%Y-%m-%d %H:%M:%S')}"
+
 @dataclass
 class ScheduledTask:
     """定时任务数据结构"""
@@ -439,13 +460,14 @@ class TaskScheduler:
             task.last_run = datetime.now().isoformat()
             self._save_tasks_to_storage()  # 保存更新时间
             
-            # 获取任务目标作为基础命令，添加工作目录提示
+            # 获取任务目标作为基础命令，添加时间上下文和工作目录提示
             command = task.goal
+            time_context = get_current_time_context()
+            enhanced_command = f"{command} {time_context}"
+            
             if task.work_directory:
                 work_dir_instruction = f" [特别要求]本地任务你新建的任何资料/代码/文档以后收集的信息都存入{task.work_directory}，如果是智能体产生的结果，文件名携带智能体名称前缀"
-                enhanced_command = f"{command} {work_dir_instruction}"
-            else:
-                enhanced_command = command
+                enhanced_command = f"{enhanced_command} {work_dir_instruction}"
             
             # Add notification instructions if enabled
             if task.notification_settings:
@@ -460,7 +482,7 @@ class TaskScheduler:
                             notification_types.append('WeChat notification')
                         
                         if notification_types:
-                            notification_command = f" After task completion, send the results to me using {' and '.join(notification_types)} tools. For email notifications, format the content as clean HTML with proper structure, headers, and readable formatting instead of raw Markdown."
+                            notification_command = f" After task completion, send the complete detailed results and all generated content to me using {' and '.join(notification_types)} tools. Include all detailed analysis, findings, data, and generated materials directly in the notification content itself - do not just send a summary that requires me to check local files. The notification should contain the full content so I don't need to access any local files. For email notifications, format the content as clean HTML with proper structure, headers, and readable formatting instead of raw Markdown. For WeChat notifications, provide the full detailed content in a well-structured readable format."
                             enhanced_command = f"{enhanced_command}{notification_command}"
             
             # 通过WebSocket通知前端创建新页签执行任务

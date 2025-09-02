@@ -14,5 +14,61 @@
     "message_type": "text",
     "success": true,
     "message": "Message sent successfully"
+  },
+  {
+    "timestamp": "2025-09-01T21:06:32.448573",
+    "message_id": "6b7bd8e4-d44b-4765-a99f-d580b530c1d1",
+    "user_identifier": "user_1756570917_94251a17",
+    "message_type": "text",
+    "success": true,
+    "message": "Message sent successfully"
+  },
+  {
+    "timestamp": "2025-09-01T21:07:36.689445",
+    "message_id": "ab203213-4779-4e4f-8e19-43b799b2f21c",
+    "user_identifier": "user_1756570917_94251a17",
+    "message_type": "text",
+    "success": true,
+    "message": "Message sent successfully"
+  },
+  {
+    "timestamp": "2025-09-02T11:42:34.426866",
+    "message_id": "4bb67f79-5890-4059-8668-db97c17f448d",
+    "user_identifier": "user_1756570917_94251a17",
+    "message_type": "text",
+    "success": true,
+    "message": "Message sent successfully"
+  },
+  {
+    "timestamp": "2025-09-02T11:42:41.469290",
+    "message_id": "9e092c74-ec4e-46f1-8027-ab284b33de29",
+    "user_identifier": "user_1756570917_94251a17",
+    "message_type": "text",
+    "success": true,
+    "message": "Message sent successfully"
+  },
+  {
+    "timestamp": "2025-09-02T11:59:16.373376",
+    "message_id": "1215287f-e085-48ca-b3aa-96e80e2a9d72",
+    "user_identifier": "user_1756570917_94251a17",
+    "message_type": "text",
+    "success": true,
+    "message": "Message sent successfully"
+  },
+  {
+    "timestamp": "2025-09-02T12:19:45.464397",
+    "message_id": "f61302fc-9125-4f4b-a6df-257a2499c7a9",
+    "user_identifier": "user_1756570917_94251a17",
+    "message_type": "text",
+    "success": true,
+    "message": "Message sent successfully"
+  },
+  {
+    "timestamp": "2025-09-02T16:09:20.515196",
+    "message_id": "b372fe8b-be5a-41d3-afc0-902a9a542285",
+    "user_identifier": "user_1756570917_94251a17",
+    "message_type": "text",
+    "success": true,
+    "message": "Message sent successfully"
   }
 ]

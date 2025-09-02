@@ -205,6 +205,8 @@ class WebSocketManager {
                 if (data.taskId && data.taskName && window.enhancedSidebar) {
                     console.log(' 恢复会话:', data.resumeSession);
                     console.log(' 会话ID:', data.sessionId);
+                    console.log('🔔 Received initialCommand from backend:', data.initialCommand);
+                    console.log('🔔 initialCommand length:', data.initialCommand ? data.initialCommand.length : 0);
                     
                     // 传递所有必要参数给createTaskTab
                     window.enhancedSidebar.createTaskTab(
