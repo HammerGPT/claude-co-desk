@@ -72,10 +72,15 @@ class TaskManager {
                 const result = await response.json();
                 if (result.success) {
                     this.notificationStatus = result.status;
+                    console.log('Notification status loaded:', this.notificationStatus);
+                    return true;
                 }
             }
+            console.warn('Failed to load notification status: invalid response');
+            return false;
         } catch (error) {
             console.error('加载通知配置状态失败:', error);
+            return false;
         }
     }
 
@@ -2339,7 +2344,7 @@ class TaskManager {
             <div class="notification-option">
                 <label>
                     <input type="radio" name="${formPrefix}-notification-type" value="none" checked>
-                    <span data-i18n="task.noNotifications">不通知</span>
+                    <span data-i18n="task.noNotifications">${this.getText('task.noNotifications')}</span>
                 </label>
             </div>
         `);
@@ -2350,8 +2355,8 @@ class TaskManager {
                 <label>
                     <input type="radio" name="${formPrefix}-notification-type" value="email">
                     <img src="/static/assets/icons/interface/email_notification.png" width="16" height="16" alt="">
-                    <span data-i18n="notifications.email">邮件通知</span>
-                    <span class="status-text" data-i18n="common.loading">Loading...</span>
+                    <span data-i18n="notifications.email">${this.getText('notifications.email')}</span>
+                    <span class="status-text" data-i18n="common.loading">${this.getText('common.loading')}</span>
                 </label>
             </div>
         `);
@@ -2362,8 +2367,8 @@ class TaskManager {
                 <label>
                     <input type="radio" name="${formPrefix}-notification-type" value="wechat">
                     <img src="/static/assets/icons/social/wechat-color.png" width="16" height="16" alt="">
-                    <span data-i18n="notifications.wechat">微信通知</span>
-                    <span class="status-text" data-i18n="common.loading">Loading...</span>
+                    <span data-i18n="notifications.wechat">${this.getText('notifications.wechat')}</span>
+                    <span class="status-text" data-i18n="common.loading">${this.getText('common.loading')}</span>
                 </label>
             </div>
         `);
@@ -2378,47 +2383,85 @@ class TaskManager {
      * 更新通知选项状态
      */
     async updateNotificationOptionsStatus(formPrefix) {
-        if (!this.notificationStatus) {
-            await this.loadNotificationStatus();
-        }
-
         const emailOption = document.getElementById(`${formPrefix}-email-option`);
         const wechatOption = document.getElementById(`${formPrefix}-wechat-option`);
         
         if (!emailOption || !wechatOption) return;
 
+        const emailStatus = emailOption.querySelector('.status-text');
+        const wechatStatus = wechatOption.querySelector('.status-text');
+        
+        // Show loading state while fetching status
+        if (emailStatus) {
+            emailStatus.textContent = this.getText('common.loading');
+            emailStatus.className = 'status-text status-loading';
+        }
+        if (wechatStatus) {
+            wechatStatus.textContent = this.getText('common.loading');
+            wechatStatus.className = 'status-text status-loading';
+        }
+
+        // Always load fresh status to ensure accuracy
+        const statusLoaded = await this.loadNotificationStatus();
+        
+        if (!statusLoaded || !this.notificationStatus) {
+            // Status loading failed, show default state
+            console.warn('Failed to load notification status, showing default state');
+            if (emailStatus) {
+                emailStatus.textContent = this.getText('notifications.statusUnknown');
+                emailStatus.className = 'status-text status-unknown';
+                emailStatus.removeAttribute('data-i18n');
+            }
+            if (wechatStatus) {
+                wechatStatus.textContent = this.getText('notifications.statusUnknown');
+                wechatStatus.className = 'status-text status-unknown';
+                wechatStatus.removeAttribute('data-i18n');
+            }
+            return;
+        }
+
         // 更新邮件选项状态
         const emailConfigured = this.notificationStatus?.email?.configured;
         const emailRadio = emailOption.querySelector('input[type="radio"]');
-        const emailStatus = emailOption.querySelector('.status-text');
         
         if (emailConfigured) {
-            emailRadio.disabled = false;
+            if (emailRadio) emailRadio.disabled = false;
             emailOption.classList.remove('disabled');
-            emailStatus.textContent = this.getText('notifications.configured');
-            emailStatus.className = 'status-text status-ok';
+            if (emailStatus) {
+                emailStatus.textContent = this.getText('notifications.configured');
+                emailStatus.className = 'status-text status-ok';
+                emailStatus.removeAttribute('data-i18n');
+            }
         } else {
-            emailRadio.disabled = true;
+            if (emailRadio) emailRadio.disabled = true;
             emailOption.classList.add('disabled');
-            emailStatus.textContent = this.getText('notifications.needConfigInSettings');
-            emailStatus.className = 'status-text status-need-config';
+            if (emailStatus) {
+                emailStatus.textContent = this.getText('notifications.needConfigInSettings');
+                emailStatus.className = 'status-text status-need-config';
+                emailStatus.removeAttribute('data-i18n');
+            }
         }
 
         // 更新微信选项状态
         const wechatBound = this.notificationStatus?.wechat?.bound;
         const wechatRadio = wechatOption.querySelector('input[type="radio"]');
-        const wechatStatus = wechatOption.querySelector('.status-text');
         
         if (wechatBound) {
-            wechatRadio.disabled = false;
+            if (wechatRadio) wechatRadio.disabled = false;
             wechatOption.classList.remove('disabled');
-            wechatStatus.textContent = this.getText('notifications.bound');
-            wechatStatus.className = 'status-text status-ok';
+            if (wechatStatus) {
+                wechatStatus.textContent = this.getText('notifications.bound');
+                wechatStatus.className = 'status-text status-ok';
+                wechatStatus.removeAttribute('data-i18n');
+            }
         } else {
-            wechatRadio.disabled = true;
+            if (wechatRadio) wechatRadio.disabled = true;
             wechatOption.classList.add('disabled');
-            wechatStatus.textContent = this.getText('notifications.needBindInSettings');
-            wechatStatus.className = 'status-text status-need-config';
+            if (wechatStatus) {
+                wechatStatus.textContent = this.getText('notifications.needBindInSettings');
+                wechatStatus.className = 'status-text status-need-config';
+                wechatStatus.removeAttribute('data-i18n');
+            }
         }
     }
 

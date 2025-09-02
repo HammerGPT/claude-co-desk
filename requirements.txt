@@ -20,3 +20,6 @@ watchdog>=3.0.0
 
 # MCP Protocol Support
 mcp>=1.13.0
+
+# Timezone Support
+pytz>=2025.2

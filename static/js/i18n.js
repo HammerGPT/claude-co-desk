@@ -342,6 +342,7 @@ const TEXTS = {
         'notifications.needBind': 'Need Binding',
         'notifications.needConfigInSettings': 'Go to Settings to configure',
         'notifications.needBindInSettings': 'Go to Settings to bind',
+        'notifications.statusUnknown': 'Status Unknown',
         'common.sending': 'Sending...',
         'common.loading': 'Loading...',
         
@@ -803,6 +804,7 @@ const TEXTS = {
         'notifications.needBind': '需要绑定',
         'notifications.needConfigInSettings': '去设置中配置',
         'notifications.needBindInSettings': '去设置中绑定',
+        'notifications.statusUnknown': '状态未知',
         'common.sending': '发送中...',
         'common.loading': '加载中...',
         
@@ -1040,6 +1042,18 @@ class I18n {
                 console.error(`Component ${name} language refresh failed:`, error);
             }
         });
+        
+        // 刷新通知状态以保持数据一致性
+        setTimeout(() => {
+            if (window.enhancedSidebar && typeof window.enhancedSidebar.refreshNotificationStatus === 'function') {
+                try {
+                    window.enhancedSidebar.refreshNotificationStatus();
+                    console.log('Notification status refreshed after language change');
+                } catch (error) {
+                    console.error('Failed to refresh notification status after language change:', error);
+                }
+            }
+        }, 500);
         
         // 最后通知观察者（保持向后兼容）
         this.observers.forEach(callback => {

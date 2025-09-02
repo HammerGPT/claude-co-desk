@@ -295,7 +295,7 @@ class SessionTerminal {
                 const isTaskExecution = sessionId && sessionId.startsWith('task_');
                 const taskId = isTaskExecution ? sessionId : null;
                 
-                ws.send(JSON.stringify({
+                const initMessage = {
                     type: 'init',
                     projectPath: project.path || project.fullPath,
                     sessionId: originalSession?.id || sessionId, // 使用原始会话ID或当前sessionId
@@ -304,7 +304,13 @@ class SessionTerminal {
                     taskId: taskId, // 传递任务ID用于session_id捕获
                     cols: fixedCols,
                     rows: fixedRows
-                }));
+                };
+                
+                console.log('🔔 Sending init message to PTY Shell:', initMessage);
+                console.log('🔔 Final initialCommand being sent:', initialCommand);
+                console.log('🔔 initialCommand length:', initialCommand ? initialCommand.length : 0);
+                
+                ws.send(JSON.stringify(initMessage));
                 
                 // 连接成功后清除欢迎信息，无论新会话还是已有会话
                 terminalData.terminal.clear();
