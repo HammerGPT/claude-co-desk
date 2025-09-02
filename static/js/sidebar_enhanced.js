@@ -248,46 +248,83 @@ class EnhancedSidebar {
      */
     async loadProjectSessions(projectName, limit = 5, offset = 0) {
         if (this.loadingSessions.has(projectName)) {
+            console.warn(`Already loading sessions for project: ${projectName}`);
             return;
         }
 
+        console.log(`Loading sessions for project: ${projectName}, limit: ${limit}, offset: ${offset}`);
         this.loadingSessions.add(projectName);
         
         try {
             const response = await fetch(`/api/projects/${projectName}/sessions?limit=${limit}&offset=${offset}`);
-            if (response.ok) {
-                const data = await response.json();
-                
-                if (offset === 0) {
-                    // 首次加载，直接设置
-                    const project = this.projects.find(p => p.name === projectName);
-                    if (project) {
-                        project.sessions = data.sessions;
-                        project.sessionMeta = {
-                            hasMore: data.hasMore,
-                            total: data.total
-                        };
-                    }
-                } else {
-                    // 分页加载，追加到额外会话
-                    if (!this.additionalSessions[projectName]) {
-                        this.additionalSessions[projectName] = [];
-                    }
-                    this.additionalSessions[projectName].push(...data.sessions);
-                    
-                    // 更新项目元数据
-                    const project = this.projects.find(p => p.name === projectName);
-                    if (project && project.sessionMeta) {
-                        project.sessionMeta.hasMore = data.hasMore;
-                    }
+            
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`HTTP ${response.status}: ${response.statusText}. ${errorText}`);
+            }
+
+            const data = await response.json();
+            console.log(`Loaded ${data.sessions?.length || 0} sessions for project: ${projectName}`);
+            
+            if (offset === 0) {
+                // 首次加载，直接设置
+                const project = this.projects.find(p => p.name === projectName);
+                if (project) {
+                    project.sessions = data.sessions || [];
+                    project.sessionMeta = {
+                        hasMore: data.hasMore || false,
+                        total: data.total || 0
+                    };
+                    console.log(`Updated project ${projectName} with ${project.sessions.length} sessions, hasMore: ${project.sessionMeta.hasMore}`);
+                }
+            } else {
+                // 分页加载，追加到额外会话
+                if (!this.additionalSessions[projectName]) {
+                    this.additionalSessions[projectName] = [];
                 }
                 
-                this.renderProjects();
+                const newSessions = data.sessions || [];
+                this.additionalSessions[projectName].push(...newSessions);
+                
+                // 更新项目元数据
+                const project = this.projects.find(p => p.name === projectName);
+                if (project && project.sessionMeta) {
+                    project.sessionMeta.hasMore = data.hasMore || false;
+                    console.log(`Added ${newSessions.length} additional sessions for project ${projectName}, total additional: ${this.additionalSessions[projectName].length}, hasMore: ${project.sessionMeta.hasMore}`);
+                }
             }
+            
+            this.renderProjects();
+            
         } catch (error) {
-            console.error(`加载项目 ${projectName} 会话错误:`, error);
+            console.error(`Failed to load sessions for project ${projectName}:`, error);
+            
+            // 显示用户友好的错误信息
+            const errorMessage = error.message.includes('HTTP') 
+                ? `Failed to load sessions: ${error.message}`
+                : 'Network error while loading sessions. Please try again.';
+            
+            this.showError(errorMessage);
+            
+            // 如果是首次加载失败，确保项目仍然可以展开
+            if (offset === 0) {
+                const project = this.projects.find(p => p.name === projectName);
+                if (project && !project.sessions) {
+                    project.sessions = [];
+                    project.sessionMeta = {
+                        hasMore: false,
+                        total: 0
+                    };
+                }
+            }
+            
         } finally {
+            // 确保无论什么情况都清除加载状态
             this.loadingSessions.delete(projectName);
+            console.log(`Cleared loading state for project: ${projectName}`);
+            
+            // 重新渲染以更新UI状态
+            this.renderProjects();
         }
     }
 
@@ -523,17 +560,36 @@ class EnhancedSidebar {
             `;
         });
 
-        // 加载更多按钮
-        if (hasMore && allSessions.length > 0) {
+        // 加载中状态显示
+        if (isLoading) {
             sessionsHtml += `
-                <button class="load-more-btn ${isLoading ? 'loading' : ''}" 
+                <div class="loading-sessions">
+                    <div class="spinner"></div>
+                    <span>Loading more sessions...</span>
+                </div>
+            `;
+        }
+
+        // 加载更多按钮
+        if (hasMore && allSessions.length > 0 && !isLoading) {
+            sessionsHtml += `
+                <button class="load-more-btn" 
                         onclick="enhancedSidebar.loadMoreSessions('${project.name}')"
-                        ${isLoading ? 'disabled' : ''}>
-                    ${isLoading ? 
-                        `<div class="spinner"></div> ${t('common.loading')}` : 
-                        `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6,9 12,15 18,9"></polyline></svg> ${t('session.loadMore')}`
-                    }
+                        title="Load 5 more sessions">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="6,9 12,15 18,9"></polyline>
+                    </svg> 
+                    Load More Sessions
                 </button>
+            `;
+        }
+
+        // 如果没有更多会话了，显示提示
+        if (!hasMore && allSessions.length > 5) {
+            sessionsHtml += `
+                <div class="no-more-sessions">
+                    <span>All sessions loaded (${allSessions.length} total)</span>
+                </div>
             `;
         }
 
@@ -1121,6 +1177,9 @@ class EnhancedSidebar {
         
         // 初始化设置界面
         this.initializeSettingsModal();
+        
+        // 刷新通知状态
+        this.refreshNotificationStatus();
         
         // 如果指定了活动标签，切换到该标签
         if (activeTab) {
@@ -2425,11 +2484,36 @@ class EnhancedSidebar {
      * 加载更多会话
      */
     async loadMoreSessions(projectName) {
+        console.log(`Load more sessions requested for project: ${projectName}`);
+        
         const project = this.projects.find(p => p.name === projectName);
-        if (!project) return;
+        if (!project) {
+            console.error(`Project not found: ${projectName}`);
+            this.showError(`Project "${projectName}" not found`);
+            return;
+        }
+
+        // 检查是否还有更多会话可以加载
+        if (project.sessionMeta && !project.sessionMeta.hasMore) {
+            console.log(`No more sessions to load for project: ${projectName}`);
+            return;
+        }
+
+        // 检查是否已经在加载中
+        if (this.loadingSessions.has(projectName)) {
+            console.log(`Already loading sessions for project: ${projectName}, skipping duplicate request`);
+            return;
+        }
 
         const currentSessionCount = this.getAllSessions(project).length;
-        await this.loadProjectSessions(projectName, 5, currentSessionCount);
+        console.log(`Current session count for project ${projectName}: ${currentSessionCount}`);
+
+        try {
+            await this.loadProjectSessions(projectName, 5, currentSessionCount);
+        } catch (error) {
+            console.error(`Failed to load more sessions for project ${projectName}:`, error);
+            this.showError(`Failed to load more sessions. Please try again.`);
+        }
     }
     
     /**
@@ -2597,6 +2681,41 @@ class EnhancedSidebar {
         }, 200);
     }
 
+    /**
+     * Refresh notification status when entering settings
+     */
+    refreshNotificationStatus() {
+        // Refresh WeChat notification status
+        if (window.wechatNotificationManager) {
+            try {
+                window.wechatNotificationManager.refresh();
+                console.log('WeChat notification status refreshed');
+            } catch (error) {
+                console.error('Failed to refresh WeChat notification status:', error);
+            }
+        }
+        
+        // Refresh email configuration status
+        if (window.notificationManager) {
+            try {
+                window.notificationManager.refresh();
+                console.log('Email notification status refreshed');
+            } catch (error) {
+                console.error('Failed to refresh email notification status:', error);
+            }
+        }
+        
+        // Also refresh notification status in task manager to ensure consistency
+        if (window.taskManager) {
+            try {
+                window.taskManager.loadNotificationStatus();
+                console.log('Task manager notification status refreshed');
+            } catch (error) {
+                console.error('Failed to refresh task manager notification status:', error);
+            }
+        }
+    }
+    
     /**
      * 工具函数
      */
