@@ -124,6 +124,11 @@ const TEXTS = {
         'task.reExecutingTask': 'Re-executing task: ',
         'task.continueTask': 'Continue Task',
         'task.continueTaskTitle': 'Resume previous Claude CLI session to continue this task',
+        'task.notificationSettings': 'Notification Settings',
+        'task.enableNotifications': 'Enable task completion notifications',
+        'task.enableNotificationsDescription': 'Send notifications when task completes',
+        'task.notificationMethodsTitle': 'Notification Methods',
+        'task.noNotifications': 'No notifications',
         
         // 项目管理
         'project.loading': 'Loading projects...',
@@ -332,7 +337,13 @@ const TEXTS = {
         'notifications.unbindFailed': 'Failed to unbind WeChat account',
         'notifications.wechatUser': 'WeChat User',
         'notifications.boundTime': 'Bound at: ',
+        'notifications.bound': 'Bound',
+        'notifications.needConfig': 'Need Setup',
+        'notifications.needBind': 'Need Binding',
+        'notifications.needConfigInSettings': 'Go to Settings to configure',
+        'notifications.needBindInSettings': 'Go to Settings to bind',
         'common.sending': 'Sending...',
+        'common.loading': 'Loading...',
         
         // Email provider names
         'providers.qq': 'QQ Mail',
@@ -574,6 +585,11 @@ const TEXTS = {
         'task.reExecutingTask': '重新执行任务: ',
         'task.continueTask': '继续任务',
         'task.continueTaskTitle': '恢复之前的Claude CLI会话继续此任务',
+        'task.notificationSettings': '通知设置',
+        'task.enableNotifications': '启用任务完成通知',
+        'task.enableNotificationsDescription': '任务完成后发送通知提醒',
+        'task.notificationMethodsTitle': '通知方式',
+        'task.noNotifications': '不通知',
         
         // 项目管理
         'project.loading': '正在加载项目...',
@@ -782,7 +798,13 @@ const TEXTS = {
         'notifications.unbindFailed': '解除微信绑定失败',
         'notifications.wechatUser': '微信用户',
         'notifications.boundTime': '绑定时间：',
+        'notifications.bound': '已绑定',
+        'notifications.needConfig': '需要配置',
+        'notifications.needBind': '需要绑定',
+        'notifications.needConfigInSettings': '去设置中配置',
+        'notifications.needBindInSettings': '去设置中绑定',
         'common.sending': '发送中...',
+        'common.loading': '加载中...',
         
         // 邮箱提供商名称
         'providers.qq': 'QQ邮箱',

@@ -317,8 +317,8 @@
                             <button class="settings-menu-item" data-section="applications" data-icon-inactive="apps.png" data-icon-active="app_active.png">
                                 <img src="/static/assets/icons/interface/apps.png" width="16" height="16" alt=""> <span data-i18n="apps.management">Application Management</span>
                             </button>
-                            <button class="settings-menu-item" data-section="notifications">
-                                <img src="/static/assets/icons/interface/mail.png" width="16" height="16" alt=""> <span data-i18n="notifications.settings">通知配置</span>
+                            <button class="settings-menu-item" data-section="notifications" data-icon-inactive="notification.png" data-icon-active="notification_active.png">
+                                <img src="/static/assets/icons/interface/notification.png" width="16" height="16" alt=""> <span data-i18n="notifications.settings">通知配置</span>
                             </button>
                             <button class="settings-menu-item" data-section="mcp-tools">
                                 <img src="/static/assets/icons/interface/tools.png" width="16" height="16" alt=""> <span data-i18n="mcp.tools">MCP工具</span>
@@ -407,7 +407,7 @@
                                 <!-- 左侧：通知类型选择器 -->
                                 <div class="notification-selector">
                                     <div class="selector-item active" data-type="email">
-                                        <img src="/static/assets/icons/interface/mail.png" width="16" height="16" alt="">
+                                        <img src="/static/assets/icons/interface/email_notification.png" width="16" height="16" alt="">
                                         <span data-i18n="notifications.email">邮件通知</span>
                                         <div class="status-indicator" id="email-selector-status"></div>
                                     </div>
@@ -424,7 +424,7 @@
                                     <div id="email-panel" class="panel-content active">
                                         <div class="panel-header">
                                             <div>
-                                                <img src="/static/assets/icons/interface/mail.png" width="16" height="16" alt="">
+                                                <img src="/static/assets/icons/interface/email_notification.png" width="16" height="16" alt="">
                                                 <span data-i18n="notifications.email">邮件通知</span>
                                             </div>
                                             <div class="config-status" id="email-config-status">
@@ -697,7 +697,7 @@
         <div id="standalone-add-task-modal" class="modal-overlay hidden">
             <div class="modal-content large-modal">
                 <div class="modal-header">
-                    <h3>新建任务</h3>
+                    <h3 data-i18n="task.create">Create Task</h3>
                     <button id="standalone-add-task-close" class="modal-close">×</button>
                 </div>
                 <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
@@ -780,6 +780,13 @@
                                         <option value="weekly" data-i18n="task.scheduleWeekly">每周</option>
                                     </select>
                                     <input type="time" id="standalone-schedule-time" class="form-control" value="09:00">
+                                </div>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label data-i18n="task.notificationSettings">通知设置</label>
+                                <div id="standalone-notification-options" class="notification-options">
+                                    <!-- 动态渲染通知选项 -->
                                 </div>
                             </div>
                     </form>
@@ -976,6 +983,13 @@
                                         <option value="weekly" data-i18n="task.scheduleWeekly">每周</option>
                                     </select>
                                     <input type="time" id="standalone-edit-schedule-time" class="form-control" value="09:00">
+                                </div>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label data-i18n="task.notificationSettings">通知设置</label>
+                                <div id="standalone-edit-notification-options" class="notification-options">
+                                    <!-- 动态渲染通知选项 -->
                                 </div>
                             </div>
                     </form>

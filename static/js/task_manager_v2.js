@@ -11,6 +11,7 @@ class TaskManager {
         this.resources = [];
         this.currentEditingTask = null;
         this.systemConfig = null; // 存储系统配置
+        this.notificationStatus = null; // 存储通知配置状态
         
         this.initElements();
         this.initEventListeners();
@@ -39,6 +40,7 @@ class TaskManager {
     async init() {
         try {
             await this.loadConfig();
+            await this.loadNotificationStatus();
             this.loadTasks();
         } catch (error) {
             console.error('TaskManager初始化失败:', error);
@@ -57,6 +59,23 @@ class TaskManager {
             }
         } catch (error) {
             console.error('加载系统配置失败:', error);
+        }
+    }
+
+    /**
+     * 加载通知配置状态
+     */
+    async loadNotificationStatus() {
+        try {
+            const response = await fetch('/api/notifications/status');
+            if (response.ok) {
+                const result = await response.json();
+                if (result.success) {
+                    this.notificationStatus = result.status;
+                }
+            }
+        } catch (error) {
+            console.error('加载通知配置状态失败:', error);
         }
     }
 
@@ -319,6 +338,12 @@ class TaskManager {
                 this.addStandaloneManualPath();
             });
         }
+
+        // 延迟初始化通知选项，确保在加载完成后执行
+        setTimeout(() => {
+            this.renderNotificationOptions('standalone');
+            this.renderNotificationOptions('standalone-edit');
+        }, 500);
 
     }
 
@@ -1239,6 +1264,7 @@ class TaskManager {
             };
             
             console.log('📡 发送任务执行请求:', sessionData);
+            console.log('🔔 WebSocket发送的完整命令:', sessionData.command);
             window.websocketManager.sendMessage(sessionData);
             
             // 显示执行反馈
@@ -1275,7 +1301,9 @@ class TaskManager {
         // 3. 添加任务目标描述
         parts.push(task.goal);
         
-        return parts.join(' ');
+        
+        const finalCommand = parts.join(' ');
+        return finalCommand;
     }
     
     /**
@@ -1543,6 +1571,20 @@ class TaskManager {
         // 设置资源文件
         this.standaloneEditResources = [...safeTask.resources];
         this.renderStandaloneEditResourceList();
+        
+        // 设置通知配置
+        const notificationSettings = task.notificationSettings || { enabled: false, methods: [] };
+        setTimeout(() => {
+            let selectedType = 'none';
+            if (notificationSettings.enabled && notificationSettings.methods.length > 0) {
+                selectedType = notificationSettings.methods[0]; // 取第一个方法
+            }
+            
+            const radio = document.querySelector(`input[name="standalone-edit-notification-type"][value="${selectedType}"]`);
+            if (radio && !radio.disabled) {
+                radio.checked = true;
+            }
+        }, 200);
     }
 
     /**
@@ -1770,6 +1812,20 @@ class TaskManager {
         const verboseLogs = verboseInput?.checked || false;
         const isImmediate = immediateRadio?.checked || false;
         
+        // 收集通知设置
+        const notificationTypeRadio = document.querySelector('input[name="standalone-notification-type"]:checked');
+        const notificationType = notificationTypeRadio?.value || 'none';
+        const notificationEnabled = notificationType !== 'none';
+        const notificationMethods = notificationEnabled ? [notificationType] : [];
+        
+        // Debug logging
+        console.log('🔔 Notification data collection:', {
+            notificationTypeRadio,
+            notificationType,
+            notificationEnabled,
+            notificationMethods
+        });
+        
         return {
             name: name,
             goal: goal,
@@ -1779,7 +1835,11 @@ class TaskManager {
             scheduleFrequency: isImmediate ? 'immediate' : (frequencySelect?.value || 'daily'),
             scheduleTime: isImmediate ? '' : (timeInput?.value || '09:00'),
             executionMode: isImmediate ? 'immediate' : 'scheduled',
-            enabled: true
+            enabled: true,
+            notificationSettings: {
+                enabled: notificationEnabled,
+                methods: notificationMethods
+            }
         };
     }
 
@@ -1808,6 +1868,20 @@ class TaskManager {
         const verboseLogs = verboseInput?.checked || false;
         const isImmediate = immediateRadio?.checked || false;
         
+        // 收集通知设置
+        const notificationTypeRadio = document.querySelector('input[name="standalone-edit-notification-type"]:checked');
+        const notificationType = notificationTypeRadio?.value || 'none';
+        const notificationEnabled = notificationType !== 'none';
+        const notificationMethods = notificationEnabled ? [notificationType] : [];
+        
+        // Debug logging
+        console.log('🔔 Edit notification data collection:', {
+            notificationTypeRadio,
+            notificationType,
+            notificationEnabled,
+            notificationMethods
+        });
+        
         return {
             name: name,
             goal: goal,
@@ -1817,7 +1891,11 @@ class TaskManager {
             scheduleFrequency: isImmediate ? 'immediate' : (frequencySelect?.value || 'daily'),
             scheduleTime: isImmediate ? '' : (timeInput?.value || '09:00'),
             executionMode: isImmediate ? 'immediate' : 'scheduled',
-            enabled: true
+            enabled: true,
+            notificationSettings: {
+                enabled: notificationEnabled,
+                methods: notificationMethods
+            }
         };
     }
 
@@ -1884,6 +1962,7 @@ class TaskManager {
             }
             
             console.log('📡 发送任务执行请求:', sessionData);
+            console.log('🔔 WebSocket发送的完整命令(重新执行):', sessionData.command);
             window.websocketManager.sendMessage(sessionData);
             
             // 延迟刷新任务数据，以便获取更新后的session_id
@@ -2242,6 +2321,130 @@ class TaskManager {
                 }
             };
             new PathInputEnhancer(standaloneEditPathInput, getWorkingDirectory, onPathSelected);
+        }
+    }
+
+    /**
+     * 渲染通知选项（单选框模式）
+     */
+    renderNotificationOptions(formPrefix) {
+        const container = document.getElementById(`${formPrefix}-notification-options`);
+        if (!container) return;
+
+        // 使用默认状态渲染，后续异步更新
+        const options = [];
+        
+        // 不通知选项
+        options.push(`
+            <div class="notification-option">
+                <label>
+                    <input type="radio" name="${formPrefix}-notification-type" value="none" checked>
+                    <span data-i18n="task.noNotifications">不通知</span>
+                </label>
+            </div>
+        `);
+
+        // 邮件通知选项
+        options.push(`
+            <div class="notification-option" id="${formPrefix}-email-option">
+                <label>
+                    <input type="radio" name="${formPrefix}-notification-type" value="email">
+                    <img src="/static/assets/icons/interface/email_notification.png" width="16" height="16" alt="">
+                    <span data-i18n="notifications.email">邮件通知</span>
+                    <span class="status-text" data-i18n="common.loading">Loading...</span>
+                </label>
+            </div>
+        `);
+
+        // 微信通知选项
+        options.push(`
+            <div class="notification-option" id="${formPrefix}-wechat-option">
+                <label>
+                    <input type="radio" name="${formPrefix}-notification-type" value="wechat">
+                    <img src="/static/assets/icons/social/wechat-color.png" width="16" height="16" alt="">
+                    <span data-i18n="notifications.wechat">微信通知</span>
+                    <span class="status-text" data-i18n="common.loading">Loading...</span>
+                </label>
+            </div>
+        `);
+
+        container.innerHTML = options.join('');
+
+        // 异步更新状态
+        this.updateNotificationOptionsStatus(formPrefix);
+    }
+
+    /**
+     * 更新通知选项状态
+     */
+    async updateNotificationOptionsStatus(formPrefix) {
+        if (!this.notificationStatus) {
+            await this.loadNotificationStatus();
+        }
+
+        const emailOption = document.getElementById(`${formPrefix}-email-option`);
+        const wechatOption = document.getElementById(`${formPrefix}-wechat-option`);
+        
+        if (!emailOption || !wechatOption) return;
+
+        // 更新邮件选项状态
+        const emailConfigured = this.notificationStatus?.email?.configured;
+        const emailRadio = emailOption.querySelector('input[type="radio"]');
+        const emailStatus = emailOption.querySelector('.status-text');
+        
+        if (emailConfigured) {
+            emailRadio.disabled = false;
+            emailOption.classList.remove('disabled');
+            emailStatus.textContent = this.getText('notifications.configured');
+            emailStatus.className = 'status-text status-ok';
+        } else {
+            emailRadio.disabled = true;
+            emailOption.classList.add('disabled');
+            emailStatus.textContent = this.getText('notifications.needConfigInSettings');
+            emailStatus.className = 'status-text status-need-config';
+        }
+
+        // 更新微信选项状态
+        const wechatBound = this.notificationStatus?.wechat?.bound;
+        const wechatRadio = wechatOption.querySelector('input[type="radio"]');
+        const wechatStatus = wechatOption.querySelector('.status-text');
+        
+        if (wechatBound) {
+            wechatRadio.disabled = false;
+            wechatOption.classList.remove('disabled');
+            wechatStatus.textContent = this.getText('notifications.bound');
+            wechatStatus.className = 'status-text status-ok';
+        } else {
+            wechatRadio.disabled = true;
+            wechatOption.classList.add('disabled');
+            wechatStatus.textContent = this.getText('notifications.needBindInSettings');
+            wechatStatus.className = 'status-text status-need-config';
+        }
+    }
+
+    /**
+     * 获取国际化文本
+     */
+    getText(key) {
+        return window.i18n ? window.i18n.t(key) : key;
+    }
+
+    /**
+     * 打开设置页面到通知配置
+     */
+    openSettingsToNotifications(event) {
+        event.preventDefault();
+        // 触发设置按钮点击，打开设置弹窗
+        const settingsBtn = document.getElementById('settings-btn');
+        if (settingsBtn) {
+            settingsBtn.click();
+            // 切换到通知配置页面
+            setTimeout(() => {
+                const notificationsTab = document.querySelector('.settings-menu-item[data-section="notifications"]');
+                if (notificationsTab) {
+                    notificationsTab.click();
+                }
+            }, 100);
         }
     }
 

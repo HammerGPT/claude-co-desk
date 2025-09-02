@@ -5591,3 +5591,105 @@ body.modal-open {
     width: 100%;
   }
 }
+
+/* 任务表单通知设置样式 */
+.notification-options {
+    margin-top: 12px;
+    padding: 16px;
+    background: hsl(var(--card));
+    border: 1px solid hsl(var(--border));
+    border-radius: var(--radius);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.notification-option {
+    display: flex;
+    align-items: center;
+    padding: 12px;
+    border: 1px solid hsl(var(--border));
+    border-radius: var(--radius);
+    transition: all 0.2s ease;
+    background: hsl(var(--card));
+}
+
+.notification-option:hover {
+    border-color: hsl(var(--primary));
+    box-shadow: 0 0 0 2px hsl(var(--primary) / 0.1);
+}
+
+.notification-option.disabled {
+    opacity: 0.6;
+    background: hsl(var(--muted));
+}
+
+.notification-option.disabled:hover {
+    border-color: hsl(var(--border));
+    box-shadow: none;
+}
+
+.notification-option label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    width: 100%;
+    font-weight: 500;
+}
+
+.notification-option.disabled label {
+    cursor: not-allowed;
+}
+
+.notification-option input[type="radio"] {
+    margin: 0;
+    margin-right: 8px;
+}
+
+.notification-option input[type="radio"]:disabled {
+    cursor: not-allowed;
+}
+
+.notification-option img {
+    flex-shrink: 0;
+}
+
+.notification-option .status-text {
+    font-size: 12px;
+    margin-left: auto;
+    font-weight: 600;
+}
+
+.notification-option .status-text.status-ok {
+    color: hsl(var(--success));
+}
+
+.notification-option .status-text.status-need-config {
+    color: hsl(var(--destructive));
+}
+
+/* 通知开关样式增强 */
+.toggle-switch {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 8px;
+}
+
+.toggle-switch .switch-container {
+    position: relative;
+    flex-shrink: 0;
+}
+
+.toggle-switch .switch-label {
+    font-weight: 600;
+    color: hsl(var(--foreground));
+    margin: 0;
+}
+
+.toggle-switch .switch-description {
+    font-size: 14px;
+    color: hsl(var(--muted-foreground));
+    margin-top: 4px;
+}

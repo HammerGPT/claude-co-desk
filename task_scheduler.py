@@ -35,6 +35,7 @@ class ScheduledTask:
     work_directory: str = ""  # 任务工作目录
     deleted: bool = False     # 软删除标记
     session_id: Optional[str] = None  # Claude CLI会话ID，用于恢复会话
+    notification_settings: Optional[Dict[str, Any]] = None  # 通知设置
 
 class TaskScheduler:
     """定时任务调度器"""
@@ -124,7 +125,8 @@ class TaskScheduler:
                 created_at=task_data.get('createdAt', datetime.now().isoformat()),
                 work_directory=work_directory,
                 deleted=task_data.get('deleted', False),
-                session_id=task_data.get('sessionId', None)
+                session_id=task_data.get('sessionId', None),
+                notification_settings=task_data.get('notificationSettings')
             )
             
             # 保存所有任务到all_tasks
@@ -444,6 +446,22 @@ class TaskScheduler:
                 enhanced_command = f"{command} {work_dir_instruction}"
             else:
                 enhanced_command = command
+            
+            # Add notification instructions if enabled
+            if task.notification_settings:
+                notification_settings = task.notification_settings
+                if notification_settings.get('enabled') and notification_settings.get('methods'):
+                    methods = notification_settings['methods']
+                    if methods:
+                        notification_types = []
+                        if 'email' in methods:
+                            notification_types.append('email notification')
+                        if 'wechat' in methods:
+                            notification_types.append('WeChat notification')
+                        
+                        if notification_types:
+                            notification_command = f" After task completion, send the results to me using {' and '.join(notification_types)} tools. For email notifications, format the content as clean HTML with proper structure, headers, and readable formatting instead of raw Markdown."
+                            enhanced_command = f"{enhanced_command}{notification_command}"
             
             # 通过WebSocket通知前端创建新页签执行任务
             # 完全复用手动任务的命令构建和消息格式
