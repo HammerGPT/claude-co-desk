@@ -1855,7 +1855,7 @@ async def search_files_in_directory(
                         # 添加到结果
                         result_item = {
                             "name": entry.name,
-                            "path": relative_path_str,
+                            "path": str(entry.resolve()),  # Return absolute path instead of relative
                             "type": "directory" if is_directory else "file",
                             "isDirectory": is_directory
                         }
@@ -3664,10 +3664,14 @@ async def create_task(request: Request):
                         task_command_parts.append('--verbose')
                         logger.info(f"Batch execution added --verbose parameter to command")
                     
-                    # 添加资源文件引用
+                    # 添加资源文件引用（使用 @ 语法）
                     if task_data.get('resources'):
+                        resource_refs = []
                         for resource in task_data['resources']:
-                            task_command_parts.extend(['--add-dir', resource])
+                            resource_refs.append(f"@{resource}")
+                        # 将资源引用添加到命令内容末尾
+                        if resource_refs:
+                            task_command_parts.extend(resource_refs)
                     
                     # 拼接完整命令
                     full_task_command = ' '.join(task_command_parts)
@@ -4466,10 +4470,14 @@ async def chat_websocket_endpoint(websocket: WebSocket):
                     task_command_parts.append('--verbose')
                     logger.info(f"Added --verbose parameter to command")
                 
-                # 添加资源目录
+                # 添加资源文件引用（使用 @ 语法）
                 if resources:
+                    resource_refs = []
                     for resource in resources:
-                        task_command_parts.extend(['--add-dir', resource])
+                        resource_refs.append(f"@{resource}")
+                    # 将资源引用添加到命令内容末尾
+                    if resource_refs:
+                        task_command_parts.extend(resource_refs)
                 
                 # 拼接完整命令
                 full_task_command = ' '.join(task_command_parts)

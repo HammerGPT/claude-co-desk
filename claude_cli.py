@@ -55,9 +55,27 @@ class ClaudeCLIIntegration:
         # 构建Claude CLI命令参数 - 使用claude命令而非绝对路径
         args = ['claude']
         
-        # 先添加查询内容（如果有）
-        if command and command.strip():
-            args.append(f'"{command}"')
+        # 构建包含资源文件引用的完整命令
+        enhanced_command = command.strip() if command and command.strip() else ""
+        
+        # 添加资源文件引用到命令中（使用 @ 语法）
+        if resources:
+            resource_refs = []
+            for resource in resources:
+                # 直接使用资源路径，无需检查是否存在，让 Claude Code 处理
+                resource_refs.append(f"@{resource}")
+                logger.info(f"Adding resource reference: @{resource}")
+            
+            # 将资源引用添加到命令末尾
+            if resource_refs:
+                if enhanced_command:
+                    enhanced_command = f"{enhanced_command} {' '.join(resource_refs)}"
+                else:
+                    enhanced_command = ' '.join(resource_refs)
+        
+        # 添加完整的增强命令
+        if enhanced_command:
+            args.append(f'"{enhanced_command}"')
         
         # 使用Claude CLI默认工作目录（用户主目录）
         working_dir = Config.get_default_working_directory()
@@ -83,20 +101,6 @@ class ClaudeCLIIntegration:
         elif permission_mode and permission_mode != 'default':
             args.extend(['--permission-mode', permission_mode])
             logger.info(f"Using permission mode: {permission_mode}")
-        
-        # 添加资源目录
-        if resources:
-            for resource in resources:
-                # 检查资源是否为目录
-                resource_path = os.path.abspath(os.path.join(working_dir, resource))
-                if os.path.isdir(resource_path):
-                    args.extend(['--add-dir', resource_path])
-                    logger.info(f"Adding resource directory: {resource_path}")
-                elif os.path.isfile(resource_path):
-                    # 对于单个文件，我们让@语法在命令中处理
-                    logger.info(f"Resource file will be referenced via @ syntax: {resource}")
-                else:
-                    logger.warning(f"Resource file does not exist: {resource_path}")
         
         # 添加工具设置
         self._add_tools_settings(args, tools_settings, permission_mode)

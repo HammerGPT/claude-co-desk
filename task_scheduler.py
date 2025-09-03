@@ -503,10 +503,14 @@ class TaskScheduler:
                     base_command_parts.append('--verbose')
                     logger.info(f"Scheduled task added --verbose parameter to command")
                 
-                # 添加资源文件引用
+                # 添加资源文件引用（使用 @ 语法）
                 if task.resources:
+                    resource_refs = []
                     for resource in task.resources:
-                        base_command_parts.extend(['--add-dir', resource])
+                        resource_refs.append(f"@{resource}")
+                    # 将资源引用添加到命令内容末尾
+                    if resource_refs:
+                        base_command_parts.extend(resource_refs)
                 
                 # 拼接基础命令
                 full_command_content = ' '.join(base_command_parts)
