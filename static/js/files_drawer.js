@@ -711,6 +711,9 @@ class FilesDrawer {
         const fileIcon = window.syntaxHighlighter ? 
             window.syntaxHighlighter.getFileTypeIcon(filename) : '';
 
+        // Check if this is a Markdown file
+        const isMarkdown = filename.toLowerCase().match(/\.(md|markdown)$/);
+
         // 创建编辑器模态框
         const modal = document.createElement('div');
         modal.className = 'file-editor-modal';
@@ -726,12 +729,14 @@ class FilesDrawer {
                         <span class="file-path">${this.escapeHtml(filePath)}</span>
                     </div>
                     <div class="file-editor-actions">
+                        ${isMarkdown ? '<button class="btn btn-sm btn-secondary markdown-mode-toggle" onclick="filesDrawer.toggleMarkdownMode()">预览模式</button>' : ''}
                         <button class="btn btn-sm btn-primary" onclick="filesDrawer.saveFile()">保存</button>
                         <button class="btn btn-sm btn-secondary" onclick="filesDrawer.closeFileEditor()">关闭</button>
                     </div>
                 </div>
                 <div class="file-editor-content">
-                    <textarea class="file-editor-textarea" placeholder="文件内容..." data-language="${language}">${this.escapeHtml(fileData.content)}</textarea>
+                    <textarea class="file-editor-textarea" placeholder="文件内容..." ${isMarkdown ? '' : `data-language="${language}"`}>${this.escapeHtml(fileData.content)}</textarea>
+                    ${isMarkdown ? '<div class="markdown-preview" style="display:none; height:100%; overflow:hidden;"><div class="markdown-body" id="markdown-preview-content" style="height:100%; overflow:auto;"></div></div>' : ''}
                 </div>
             </div>
         `;
@@ -743,14 +748,29 @@ class FilesDrawer {
         // 获取编辑器元素
         const textarea = modal.querySelector('.file-editor-textarea');
         
-        // 应用语法高亮
-        if (window.syntaxHighlighter && language !== 'text') {
+        // 应用语法高亮 - 但是跳过Markdown文件避免Prism冲突
+        if (window.syntaxHighlighter && language !== 'text' && !isMarkdown) {
             // 给容器添加语法高亮类
             const content = modal.querySelector('.file-editor-content');
             content.classList.add('syntax-highlighted');
             
             // 为textarea添加语法高亮增强
             this.syntaxHighlightInstance = window.syntaxHighlighter.enhanceTextarea(textarea, filename);
+        } else if (isMarkdown) {
+            // For Markdown files, disable Prism processing completely
+            textarea.removeAttribute('data-language');
+            textarea.className = 'file-editor-textarea'; // Remove any Prism classes
+            
+            // Add attributes to prevent Prism from processing this element
+            textarea.setAttribute('data-prism-ignore', 'true');
+            textarea.classList.add('no-highlight');
+            
+            // Temporarily disable Prism auto-highlighting for this element
+            if (window.Prism && window.Prism.highlightAllUnder) {
+                // Mark this element to be ignored by Prism
+                const content = modal.querySelector('.file-editor-content');
+                content.setAttribute('data-prism-ignore', 'true');
+            }
         }
         
         // 聚焦到编辑器
@@ -797,6 +817,116 @@ class FilesDrawer {
         } catch (error) {
             console.error('保存文件错误:', error);
             this.showError(t('files.networkErrorSave'));
+        }
+    }
+
+    /**
+     * Toggle Markdown mode between source and preview
+     */
+    toggleMarkdownMode() {
+        const modal = document.querySelector('.file-editor-modal');
+        if (!modal) return;
+
+        const textarea = modal.querySelector('.file-editor-textarea');
+        const preview = modal.querySelector('.markdown-preview');
+        const toggleBtn = modal.querySelector('.markdown-mode-toggle');
+        
+        if (!textarea || !preview || !toggleBtn) return;
+
+        const isPreviewMode = preview.style.display !== 'none';
+
+        if (isPreviewMode) {
+            // Switch to source mode
+            preview.style.display = 'none';
+            textarea.style.display = 'block';
+            toggleBtn.textContent = '预览模式';
+        } else {
+            // Switch to preview mode
+            this.ensureMarkdownDependencies(() => {
+                this.renderMarkdownPreview(textarea.value, modal);
+                textarea.style.display = 'none';
+                preview.style.display = 'block';
+                toggleBtn.textContent = '源码模式';
+            });
+        }
+    }
+
+    /**
+     * Render Markdown content in isolated environment
+     */
+    renderMarkdownPreview(content, modal) {
+        const previewContent = modal.querySelector('#markdown-preview-content');
+        if (!previewContent) return;
+
+        try {
+            // Create isolated iframe to avoid Prism conflicts
+            const iframe = document.createElement('iframe');
+            iframe.style.width = '100%';
+            iframe.style.height = '100%';
+            iframe.style.border = 'none';
+            iframe.style.background = 'white';
+            iframe.style.display = 'block';
+            
+            // Clear existing content
+            previewContent.innerHTML = '';
+            previewContent.appendChild(iframe);
+            
+            // Write HTML content to iframe
+            const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+            const htmlContent = `
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <meta charset="UTF-8">
+                    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/github-markdown-css@5.2.0/github-markdown-light.css">
+                    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+                    <style>
+                        body { 
+                            margin: 16px; 
+                            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+                        }
+                        .markdown-body { 
+                            box-sizing: border-box;
+                            min-width: 200px;
+                            max-width: 100%;
+                            margin: 0;
+                        }
+                    </style>
+                </head>
+                <body>
+                    <div class="markdown-body" id="content"></div>
+                    <script>
+                        try {
+                            document.getElementById('content').innerHTML = marked.parse(${JSON.stringify(content)});
+                        } catch (error) {
+                            document.getElementById('content').textContent = 'Markdown rendering error: ' + error.message;
+                        }
+                    </script>
+                </body>
+                </html>
+            `;
+            
+            iframeDoc.open();
+            iframeDoc.write(htmlContent);
+            iframeDoc.close();
+            
+        } catch (error) {
+            console.error('Markdown preview error:', error);
+            // Fallback to plain text
+            previewContent.innerHTML = `<pre style="white-space: pre-wrap; font-family: monospace; padding: 16px;">${this.escapeHtml(content)}</pre>`;
+        }
+    }
+
+    /**
+     * Ensure Markdown dependencies are loaded (simplified for iframe approach)
+     */
+    ensureMarkdownDependencies(callback) {
+        // Since we're using iframe, we don't need to load dependencies in main page
+        // Just call the callback immediately
+        try {
+            callback();
+        } catch (error) {
+            console.error('Markdown dependencies callback error:', error);
         }
     }
 
