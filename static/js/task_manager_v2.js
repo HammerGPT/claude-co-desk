@@ -3,6 +3,90 @@
  * 负责每日任务的创建、管理和执行
  */
 
+/**
+ * 任务字段统一配置 - 驱动新建、详情、编辑的字段一致性
+ * 新增字段只需在此添加，自动应用到三个界面
+ */
+const TASK_FIELD_CONFIG = {
+    name: {
+        type: 'text',
+        label: '任务名称',
+        required: true,
+        order: 1,
+        backendKey: 'name',
+        showInDetail: true
+    },
+    goal: {
+        type: 'textarea', 
+        label: '任务描述',
+        required: true,
+        order: 2,
+        backendKey: 'goal',
+        showInDetail: true
+    },
+    role: {
+        type: 'select',
+        label: '选择角色',
+        required: false,
+        order: 3,
+        backendKey: 'role',
+        showInDetail: true,
+        options: ['info-collector', 'fullstack-engineer', 'ai-product-manager', 'document-manager', 'finance-assistant', 'work-assistant']
+    },
+    skipPermissions: {
+        type: 'checkbox',
+        label: '跳过权限检查',
+        required: false,
+        order: 4,
+        backendKey: 'skipPermissions',
+        showInDetail: true,
+        default: false
+    },
+    verboseLogs: {
+        type: 'checkbox',
+        label: '详细日志',
+        required: false,
+        order: 5,
+        backendKey: 'verboseLogs',
+        showInDetail: true,
+        default: false
+    },
+    scheduleFrequency: {
+        type: 'radio-group',
+        label: '执行方式',
+        required: true,
+        order: 6,
+        backendKey: 'scheduleFrequency',
+        showInDetail: true,
+        options: [
+            { value: 'immediate', label: '立即执行' },
+            { value: 'daily', label: '每日定时' },
+            { value: 'weekly', label: '每周定时' }
+        ],
+        default: 'immediate'
+    },
+    scheduleTime: {
+        type: 'time',
+        label: '定时时间',
+        required: false,
+        order: 7,
+        backendKey: 'scheduleTime',
+        showInDetail: true,
+        default: '09:00',
+        dependsOn: 'scheduleFrequency',
+        dependsOnValue: ['daily', 'weekly']
+    },
+    resources: {
+        type: 'file-list',
+        label: '资源文件',
+        required: false,
+        order: 8,
+        backendKey: 'resources',
+        showInDetail: true,
+        default: []
+    }
+};
+
 class TaskManager {
     constructor() {
         this.tasks = [];
@@ -20,6 +104,9 @@ class TaskManager {
         document.addEventListener('taskCreated', (event) => {
             this.loadTasks(); // 重新加载任务列表
         });
+        
+        // Add language change observer
+        this.initializeI18nObserver();
         
         // 监听任务更新事件（来自SimpleTaskManager）
         document.addEventListener('taskUpdated', (event) => {
@@ -132,7 +219,7 @@ class TaskManager {
         
         // 表单字段
         this.taskNameInput = document.getElementById('task-name');
-        this.taskGoalInput = document.getElementById('task-goal');
+        this.taskDescriptionInput = document.getElementById('task-description');
         this.skipPermissionsCheckbox = document.getElementById('skip-permissions');
         this.verboseLogsCheckbox = document.getElementById('verbose-logs');
         this.resourceList = document.getElementById('resource-list');
@@ -161,14 +248,7 @@ class TaskManager {
             });
         }
         
-        // 点击模态框背景关闭
-        if (this.modal) {
-            this.modal.addEventListener('click', (e) => {
-                if (e.target === this.modal) {
-                    this.closeModal();
-                }
-            });
-        }
+        // Modal overlay click to close removed for better UX - only close button closes modal
         
         // 新增任务按钮
         if (this.addTaskBtn) {
@@ -259,6 +339,14 @@ class TaskManager {
                 }));
             });
         }
+
+        // Daily task role selection event listener
+        const dailyRoleSelect = document.getElementById('daily-role-select');
+        if (dailyRoleSelect) {
+            dailyRoleSelect.addEventListener('change', (e) => {
+                this.handleRoleChange(e.target.value, 'daily');
+            });
+        }
     }
 
     /**
@@ -284,12 +372,7 @@ class TaskManager {
         // 点击外部区域关闭弹窗
         const modal = document.getElementById('standalone-add-task-modal');
         if (modal) {
-            modal.addEventListener('click', (event) => {
-                // 只有点击modal-overlay本身时才关闭，点击modal-content内部不关闭
-                if (event.target === modal) {
-                    this.handleStandaloneAddModalClose();
-                }
-            });
+            // Modal overlay click to close removed for better UX - only close button closes modal
         }
 
         // 创建按钮
@@ -350,6 +433,14 @@ class TaskManager {
             this.renderNotificationOptions('standalone-edit');
         }, 500);
 
+        // Role selection event listener
+        const roleSelect = document.getElementById('standalone-role-select');
+        if (roleSelect) {
+            roleSelect.addEventListener('change', (e) => {
+                this.handleRoleChange(e.target.value, 'standalone');
+            });
+        }
+
     }
 
     /**
@@ -367,12 +458,7 @@ class TaskManager {
         // 点击外部区域关闭弹窗
         const modal = document.getElementById('standalone-task-detail-modal');
         if (modal) {
-            modal.addEventListener('click', (event) => {
-                // 只有点击modal-overlay本身时才关闭，点击modal-content内部不关闭
-                if (event.target === modal) {
-                    this.handleStandaloneDetailModalClose();
-                }
-            });
+            // Modal overlay click to close removed for better UX - only close button closes modal
         }
 
         // 详情视图的编辑按钮
@@ -811,20 +897,20 @@ class TaskManager {
         this.currentView = 'detail';
         this.updateViewVisibility();
         
-        // 确保任务对象有完整的属性，适配后端驼峰命名
-        const safeTask = {
-            name: task.name || '未命名任务',
-            goal: task.goal || t('task.noDescription'),
-            schedule_frequency: task.scheduleFrequency || 'immediate',        // 后端返回驼峰命名
-            schedule_time: task.scheduleTime || '09:00',                      // 后端返回驼峰命名
-            resources: Array.isArray(task.resources) ? task.resources : [],
-            enabled: task.enabled !== false,
-            skip_permissions: task.skipPermissions || false,                  // 后端返回驼峰命名
-            verbose_logs: task.verboseLogs || false                           // 新增verbose字段
-        };
+        // 使用标准化方法确保数据一致性
+        const safeTask = this.normalizeTaskData(task);
+        safeTask.name = safeTask.name || '未命名任务';
+        safeTask.goal = safeTask.goal || t('task.noDescription');
         
         if (this.detailTaskName) this.detailTaskName.textContent = safeTask.name;
+        if (this.detailTaskRole) this.detailTaskRole.textContent = safeTask.role || t('task.noRole', '无角色');
         if (this.detailTaskGoal) this.detailTaskGoal.textContent = safeTask.goal;
+        
+        // 添加目标设定显示
+        const detailGoalConfig = document.getElementById('detail-goal-config');
+        if (detailGoalConfig) {
+            detailGoalConfig.textContent = safeTask.goal_config || t('task.noGoalConfig', '未设置专业目标');
+        }
         if (this.detailExecutionMode) {
             this.detailExecutionMode.textContent = safeTask.schedule_frequency === 'immediate' 
                 ? t('task.immediate') 
@@ -838,6 +924,122 @@ class TaskManager {
         if (this.detailStatus) {
             this.detailStatus.innerHTML = this.buildStatusInfo(safeTask);
         }
+    }
+
+    /**
+     * 构建任务状态信息 - 基于字段配置动态生成
+     * 新增方法，修复缺失的buildStatusInfo调用
+     */
+    buildStatusInfo(task) {
+        const statusItems = [];
+        
+        // 角色信息
+        const roleDisplay = this.getRoleDisplayName(task.role);
+        statusItems.push(`<div class="status-item"><strong>${t('task.roleLabel', '选择角色')}:</strong> ${roleDisplay}</div>`);
+        
+        // 执行模式
+        let executionText = task.schedule_frequency === 'immediate' 
+            ? t('task.immediate', '立即执行')
+            : `${t('task.scheduledExecution', '定时执行')} ${task.schedule_time}`;
+        statusItems.push(`<div class="status-item"><strong>${t('task.executionModeLabel', '执行方式')}:</strong> ${executionText}</div>`);
+        
+        // 权限设置
+        const skipPermText = task.skip_permissions ? t('common.yes', '是') : t('common.no', '否');
+        statusItems.push(`<div class="status-item"><strong>${t('task.skipPermissionsLabel', '跳过权限检查')}:</strong> ${skipPermText}</div>`);
+        
+        // 日志设置
+        const verboseText = task.verbose_logs ? t('common.enabled', '启用') : t('common.disabled', '关闭');
+        statusItems.push(`<div class="status-item"><strong>${t('task.verboseLogsLabel', '详细日志')}:</strong> ${verboseText}</div>`);
+        
+        // 任务状态
+        const enabledText = task.enabled !== false ? t('common.enabled', '启用') : t('common.disabled', '禁用');
+        statusItems.push(`<div class="status-item"><strong>${t('task.statusLabel', '任务状态')}:</strong> ${enabledText}</div>`);
+        
+        return statusItems.join('');
+    }
+
+    /**
+     * 获取角色显示名称
+     * 将角色ID映射为对应的本地化名称
+     */
+    getRoleDisplayName(roleId) {
+        if (!roleId) return t('task.noRole', '无角色');
+        
+        // 角色ID到国际化键的映射
+        const roleI18nKeyMap = {
+            'info-collector': 'roles.infoCollector',
+            'sales-specialist': 'roles.salesSpecialist',
+            'content-operations': 'roles.contentOperations',
+            'customer-service': 'roles.customerService',
+            'market-researcher': 'roles.marketResearcher',
+            'data-analyst': 'roles.dataAnalyst',
+            'ai-product-manager': 'roles.productManager',
+            'finance-assistant': 'roles.financeAssistant',
+            'work-assistant': 'roles.workAssistant',
+            'fullstack-engineer': 'roles.fullstackEngineer',
+            'document-manager': 'roles.documentManager',
+            'mcp-manager': 'roles.mcpManager',
+            'work-verifier': 'roles.workVerifier'
+        };
+        
+        const i18nKey = roleI18nKeyMap[roleId];
+        return i18nKey ? t(i18nKey, roleId) : roleId;
+    }
+
+    /**
+     * 数据标准化方法 - 统一字段命名约定
+     * 将后端驼峰命名转换为前端处理需要的格式
+     */
+    normalizeTaskData(task) {
+        if (!task) return {};
+        
+        return {
+            // 保持原有字段名
+            id: task.id,
+            name: task.name || '',
+            goal: task.goal || '',
+            role: task.role || '',
+            goal_config: task.goal_config || '',
+            enabled: task.enabled !== false,
+            createdAt: task.createdAt,
+            lastRun: task.lastRun,
+            workDirectory: task.workDirectory,
+            sessionId: task.sessionId,
+            
+            // 标准化驼峰命名字段
+            skipPermissions: task.skipPermissions || false,
+            verboseLogs: task.verboseLogs || false,
+            scheduleFrequency: task.scheduleFrequency || 'immediate',
+            scheduleTime: task.scheduleTime || '09:00',
+            executionMode: task.executionMode || 'immediate',
+            resources: Array.isArray(task.resources) ? task.resources : [],
+            
+            // 同时保留下划线命名以兼容现有代码
+            skip_permissions: task.skipPermissions || false,
+            verbose_logs: task.verboseLogs || false,
+            schedule_frequency: task.scheduleFrequency || 'immediate',
+            schedule_time: task.scheduleTime || '09:00'
+        };
+    }
+
+    /**
+     * 将前端表单数据转换为后端API期望的格式
+     * 确保发送给后端的数据使用正确的驼峰命名
+     */
+    normalizeForBackend(formData) {
+        return {
+            name: formData.name,
+            goal: formData.goal,
+            role: formData.role || '',
+            goal_config: formData.goal_config || '',
+            skipPermissions: formData.skipPermissions || false,          // 后端期望驼峰命名
+            verboseLogs: formData.verboseLogs || false,                  // 后端期望驼峰命名
+            scheduleFrequency: formData.scheduleFrequency || 'immediate', // 后端期望驼峰命名
+            scheduleTime: formData.scheduleTime || '09:00',              // 后端期望驼峰命名
+            executionMode: formData.executionMode || 'immediate',
+            resources: formData.resources || [],
+            enabled: formData.enabled !== false
+        };
     }
 
     /**
@@ -919,19 +1121,24 @@ class TaskManager {
      * 用任务数据填充表单
      */
     fillFormWithTask(task) {
-        // 确保任务对象有完整的属性，适配后端驼峰命名
-        const safeTask = {
-            name: task.name || '',
-            goal: task.goal || '',
-            skip_permissions: task.skipPermissions || false,                 // 后端返回驼峰命名
-            verbose_logs: task.verboseLogs || false,                         // 新增verbose字段
-            schedule_frequency: task.scheduleFrequency || 'immediate',       // 后端返回驼峰命名
-            schedule_time: task.scheduleTime || '09:00',                     // 后端返回驼峰命名
-            resources: Array.isArray(task.resources) ? task.resources : []
-        };
+        // 使用标准化方法确保数据一致性
+        const safeTask = this.normalizeTaskData(task);
         
         if (this.taskNameInput) this.taskNameInput.value = safeTask.name;
-        if (this.taskGoalInput) this.taskGoalInput.value = safeTask.goal;
+        if (this.taskDescriptionInput) this.taskDescriptionInput.value = safeTask.goal;
+        
+        // 设置角色选择
+        const roleSelect = document.getElementById('daily-role-select');
+        if (roleSelect && safeTask.role) {
+            roleSelect.value = safeTask.role;
+        }
+        
+        // 设置目标配置
+        const goalConfigTextarea = document.getElementById('daily-goal-config');
+        if (goalConfigTextarea) {
+            goalConfigTextarea.value = safeTask.goal_config || '';
+        }
+        
         if (this.skipPermissionsCheckbox) this.skipPermissionsCheckbox.checked = safeTask.skip_permissions;
         if (this.verboseLogsCheckbox) this.verboseLogsCheckbox.checked = safeTask.verbose_logs || false;
         
@@ -1188,9 +1395,9 @@ class TaskManager {
      */
     collectTaskData() {
         const name = this.taskNameInput?.value?.trim();
-        const goal = this.taskGoalInput?.value?.trim();
+        const description = this.taskDescriptionInput?.value?.trim();
         
-        if (!name || !goal) {
+        if (!name || !description) {
             alert(t('task.fillNameAndGoal'));
             return null;
         }
@@ -1199,10 +1406,18 @@ class TaskManager {
         const verboseLogs = this.verboseLogsCheckbox?.checked || false;
         const isImmediate = this.executeImmediateRadio?.checked || false;
         
+        // Collect role and goal configuration
+        const roleSelect = document.getElementById('daily-role-select');
+        const goalConfigTextarea = document.getElementById('daily-goal-config');
+        const selectedRole = roleSelect?.value || '';
+        const goalConfig = goalConfigTextarea?.value?.trim() || '';
+        
         // 使用后端期望的驼峰命名格式
         return {
             name: name,
-            goal: goal,
+            goal: description,
+            role: selectedRole,
+            goal_config: goalConfig,
             skipPermissions: skipPermissions,                    // 改为驼峰命名
             verboseLogs: verboseLogs,                           // 新增verbose字段
             resources: [...this.resources],
@@ -1265,6 +1480,8 @@ class TaskManager {
                 command: command,
                 skipPermissions: task.skip_permissions,
                 verboseLogs: task.verbose_logs,
+                role: task.role || '',
+                goal_config: task.goal_config || '',
                 resources: task.resources
             };
             
@@ -1460,23 +1677,37 @@ class TaskManager {
         const safeTask = {
             name: task.name || '未命名任务',
             goal: task.goal || t('task.noDescription'),
-            schedule_frequency: task.scheduleFrequency || 'immediate',
-            schedule_time: task.scheduleTime || '09:00',
+            role: task.role || '',
+            goal_config: task.goal_config || task.goalConfig || '',
+            schedule_frequency: task.scheduleFrequency || task.schedule_frequency || 'immediate',
+            schedule_time: task.scheduleTime || task.schedule_time || '09:00',
             resources: Array.isArray(task.resources) ? task.resources : [],
             enabled: task.enabled !== false,
-            skip_permissions: task.skipPermissions || false,
-            verbose_logs: task.verboseLogs || false,
-            session_id: task.sessionId || null  // 添加session_id信息
+            skip_permissions: task.skipPermissions || task.skip_permissions || false,
+            verbose_logs: task.verboseLogs || task.verbose_logs || false,
+            session_id: task.sessionId || task.session_id || null
         };
         
         const nameEl = document.getElementById('standalone-detail-task-name');
         const goalEl = document.getElementById('standalone-detail-task-goal');
+        const roleEl = document.getElementById('standalone-detail-task-role');
+        const goalConfigEl = document.getElementById('standalone-detail-goal-config');
         const modeEl = document.getElementById('standalone-detail-execution-mode');
         const resourcesEl = document.getElementById('standalone-detail-resources');
         const statusEl = document.getElementById('standalone-detail-status');
         
+        // Debug logging to check data values
+        console.log('Task data for standalone detail:', {
+            originalTask: task,
+            safeTask: safeTask,
+            roleValue: task.role,
+            goalConfigValue: task.goal_config
+        });
+        
         if (nameEl) nameEl.textContent = safeTask.name;
         if (goalEl) goalEl.textContent = safeTask.goal;
+        if (roleEl) roleEl.textContent = this.getRoleDisplayName(task.role);
+        if (goalConfigEl) goalConfigEl.textContent = task.goal_config || '未设置专业目标';
         if (modeEl) {
             modeEl.textContent = safeTask.schedule_frequency === 'immediate' 
                 ? t('task.immediate') 
@@ -1541,15 +1772,19 @@ class TaskManager {
         const safeTask = {
             name: task.name || '',
             goal: task.goal || '',
-            skip_permissions: task.skipPermissions || false,
-            verbose_logs: task.verboseLogs || false,
-            schedule_frequency: task.scheduleFrequency || 'immediate',
-            schedule_time: task.scheduleTime || '09:00',
+            role: task.role || '',
+            goal_config: task.goal_config || task.goalConfig || '',
+            skip_permissions: task.skipPermissions || task.skip_permissions || false,
+            verbose_logs: task.verboseLogs || task.verbose_logs || false,
+            schedule_frequency: task.scheduleFrequency || task.schedule_frequency || 'immediate',
+            schedule_time: task.scheduleTime || task.schedule_time || '09:00',
             resources: Array.isArray(task.resources) ? task.resources : []
         };
         
         const nameInput = document.getElementById('standalone-edit-task-name');
         const goalInput = document.getElementById('standalone-edit-task-goal');
+        const roleSelect = document.getElementById('standalone-edit-role-select');
+        const goalConfigInput = document.getElementById('standalone-edit-goal-config');
         const skipInput = document.getElementById('standalone-edit-skip-permissions');
         const verboseInput = document.getElementById('standalone-edit-verbose-logs');
         const immediateRadio = document.getElementById('standalone-edit-execute-immediate');
@@ -1557,8 +1792,17 @@ class TaskManager {
         const frequencySelect = document.getElementById('standalone-edit-schedule-frequency');
         const timeInput = document.getElementById('standalone-edit-schedule-time');
         
+        // Debug logging for edit form
+        console.log('Task data for edit form:', {
+            originalTask: task,
+            roleValue: task.role,
+            goalConfigValue: task.goal_config
+        });
+        
         if (nameInput) nameInput.value = safeTask.name;
         if (goalInput) goalInput.value = safeTask.goal;
+        if (roleSelect) roleSelect.value = task.role || '';
+        if (goalConfigInput) goalConfigInput.value = task.goal_config || '';
         if (skipInput) skipInput.checked = safeTask.skip_permissions;
         if (verboseInput) verboseInput.checked = safeTask.verbose_logs || false;
         
@@ -1797,12 +2041,12 @@ class TaskManager {
      */
     collectStandaloneTaskData() {
         const nameInput = document.getElementById('standalone-task-name');
-        const goalInput = document.getElementById('standalone-task-goal');
+        const descriptionInput = document.getElementById('standalone-task-description');
         
         const name = nameInput?.value?.trim();
-        const goal = goalInput?.value?.trim();
+        const description = descriptionInput?.value?.trim();
         
-        if (!name || !goal) {
+        if (!name || !description) {
             alert(t('task.fillNameAndGoal'));
             return null;
         }
@@ -1817,23 +2061,36 @@ class TaskManager {
         const verboseLogs = verboseInput?.checked || false;
         const isImmediate = immediateRadio?.checked || false;
         
+        // Collect role and goal configuration
+        const roleSelect = document.getElementById('standalone-role-select');
+        const goalConfigTextarea = document.getElementById('standalone-goal-config');
+        const selectedRole = roleSelect?.value || '';
+        const goalConfig = goalConfigTextarea?.value?.trim() || '';
+        
         // 收集通知设置
         const notificationTypeRadio = document.querySelector('input[name="standalone-notification-type"]:checked');
         const notificationType = notificationTypeRadio?.value || 'none';
         const notificationEnabled = notificationType !== 'none';
         const notificationMethods = notificationEnabled ? [notificationType] : [];
         
-        // Debug logging
-        console.log('🔔 Notification data collection:', {
-            notificationTypeRadio,
-            notificationType,
-            notificationEnabled,
-            notificationMethods
+        // Debug logging for role and goal_config collection
+        console.log('🔍 Task data collection debug:', {
+            name: name,
+            description: description,
+            selectedRole: selectedRole,
+            goalConfig: goalConfig,
+            roleSelectElement: roleSelect,
+            goalConfigElement: goalConfigTextarea,
+            notificationType: notificationType,
+            notificationEnabled: notificationEnabled,
+            notificationMethods: notificationMethods
         });
         
         return {
             name: name,
-            goal: goal,
+            goal: description,
+            role: selectedRole,
+            goal_config: goalConfig,
             skipPermissions: skipPermissions,
             verboseLogs: verboseLogs,
             resources: this.standaloneResources || [],
@@ -1873,6 +2130,12 @@ class TaskManager {
         const verboseLogs = verboseInput?.checked || false;
         const isImmediate = immediateRadio?.checked || false;
         
+        // Collect role and goal configuration for edit form
+        const roleSelect = document.getElementById('standalone-edit-role-select');
+        const goalConfigTextarea = document.getElementById('standalone-edit-goal-config');
+        const selectedRole = roleSelect?.value || '';
+        const goalConfig = goalConfigTextarea?.value?.trim() || '';
+        
         // 收集通知设置
         const notificationTypeRadio = document.querySelector('input[name="standalone-edit-notification-type"]:checked');
         const notificationType = notificationTypeRadio?.value || 'none';
@@ -1890,6 +2153,8 @@ class TaskManager {
         return {
             name: name,
             goal: goal,
+            role: selectedRole,
+            goal_config: goalConfig,
             skipPermissions: skipPermissions,
             verboseLogs: verboseLogs,
             resources: this.standaloneEditResources || [],
@@ -1961,6 +2226,8 @@ class TaskManager {
                     command: command,
                     skipPermissions: task.skip_permissions,
                     verboseLogs: task.verbose_logs,
+                    role: task.role || '',
+                    goal_config: task.goal_config || '',
                     resources: task.resources
                 };
                 this.showExecutionFeedback(t('task.reExecutingTask') + task.name);
@@ -2498,6 +2765,691 @@ class TaskManager {
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
+    }
+
+    /**
+     * Handle role selection change
+     */
+    handleRoleChange(selectedRole, formType) {
+        const goalSettingsId = formType === 'standalone' ? 'standalone-goal-settings' : 'goal-settings';
+        const goalSettingsContainer = document.getElementById(goalSettingsId);
+        
+        if (!goalSettingsContainer) {
+            console.warn(`Goal settings container not found: ${goalSettingsId}`);
+            return;
+        }
+
+        if (selectedRole && selectedRole !== '') {
+            // Show goal settings area
+            goalSettingsContainer.style.display = 'block';
+            
+            // Populate role-specific goal templates
+            this.populateRoleGoalTemplate(selectedRole, formType);
+        } else {
+            // Hide goal settings area when no role is selected
+            goalSettingsContainer.style.display = 'none';
+        }
+    }
+
+    /**
+     * Populate role-specific goal templates and friendly examples
+     */
+    populateRoleGoalTemplate(role, formType) {
+        const goalTextareaId = formType === 'standalone' ? 'standalone-goal-config' : 'daily-goal-config';
+        const goalExampleId = formType === 'standalone' ? 'standalone-goal-example' : 'daily-goal-example';
+        const goalTextarea = document.getElementById(goalTextareaId);
+        const goalExampleContainer = document.getElementById(goalExampleId);
+        
+        if (!goalTextarea) {
+            console.warn(`Goal textarea not found: ${goalTextareaId}`);
+            return;
+        }
+
+        // Role-specific goal templates for textarea
+        const roleTemplates = {
+            'finance-assistant': 'Goal: Complete financial analysis and expense tracking\nKPIs: Accuracy rate, Processing speed, Cost optimization recommendations\nDeliverables: Financial reports, Budget analysis, Risk assessment',
+            'work-assistant': 'Goal: Optimize work processes and task coordination\nKPIs: Task completion rate, Communication efficiency, Time saved\nDeliverables: Work plans, Status reports, Process improvements',
+            'ai-product-manager': 'Goal: Analyze product requirements and create implementation roadmap\nKPIs: Feature specification accuracy, Market fit assessment, Development timeline\nDeliverables: Product requirements document, User stories, Technical specifications',
+            'document-manager': 'Goal: Organize and manage document workflow\nKPIs: Organization efficiency, Document accessibility, Version control accuracy\nDeliverables: Document structure, File organization system, Access management',
+            'info-collector': 'Goal: Research and compile comprehensive information\nKPIs: Information accuracy, Coverage completeness, Source reliability\nDeliverables: Research reports, Data analysis, Competitive intelligence',
+            'fullstack-engineer': 'Goal: Develop and implement technical solutions\nKPIs: Code quality, Performance optimization, Bug resolution rate\nDeliverables: Working code, Technical documentation, Test coverage',
+            'mcp-manager': 'Goal: Manage MCP services and integrations\nKPIs: Service uptime, Integration efficiency, Configuration accuracy\nDeliverables: Service configurations, Integration reports, Performance metrics',
+            'sales-specialist': 'Goal: Drive revenue growth through effective sales strategies\nKPIs: Conversion rate, Average deal size, Sales cycle length, Customer satisfaction\nDeliverables: Sales strategy report, Prospect database, Performance analytics',
+            'content-operations': 'Goal: Create and optimize content for audience engagement\nKPIs: Content engagement rate, SEO performance, Content production efficiency\nDeliverables: Content calendar, Published content, Performance dashboard',
+            'customer-service': 'Goal: Provide exceptional customer support and satisfaction\nKPIs: Response time, Resolution rate, Customer satisfaction score, Issue escalation rate\nDeliverables: Service report, Resolution documentation, Customer feedback analysis',
+            'market-researcher': 'Goal: Provide data-driven market insights and competitive intelligence\nKPIs: Research accuracy, Insight actionability, Report timeliness, Stakeholder satisfaction\nDeliverables: Market research report, Competitive analysis, Strategic recommendations',
+            'data-analyst': 'Goal: Transform data into actionable business insights\nKPIs: Analysis accuracy, Model performance, Report clarity, Business impact\nDeliverables: Analytics report, Data visualizations, Statistical models',
+            'work-verifier': 'Goal: Ensure work quality and compliance with professional standards\nKPIs: Quality score, Compliance rate, Verification accuracy, Process improvement suggestions\nDeliverables: Verification report, Quality certificate, Improvement recommendations'
+        };
+
+        // Friendly examples for each role to guide users
+        const roleExamples = {
+            'finance-assistant': `
+                <div class="goal-example">
+                    <h6>Professional Goal Examples:</h6>
+                    <div class="example-item bad">
+                        <strong>Instead of:</strong> "Help me analyze financial data"
+                    </div>
+                    <div class="example-item good">
+                        <strong>Professional Goal:</strong> "Analyze Q3 expense data to identify cost-saving opportunities with 15% reduction target and detailed vendor analysis"
+                    </div>
+                    <div class="example-item good">
+                        <strong>With KPIs:</strong> "Process 500+ transactions with 99%+ accuracy, identify top 5 cost optimization areas, complete analysis within 24 hours"
+                    </div>
+                </div>`,
+            'sales-specialist': `
+                <div class="goal-example">
+                    <h6>Professional Goal Examples:</h6>
+                    <div class="example-item bad">
+                        <strong>Instead of:</strong> "Help me with sales strategy"
+                    </div>
+                    <div class="example-item good">
+                        <strong>Professional Goal:</strong> "Develop Q4 sales strategy to achieve 25% revenue growth targeting enterprise clients in fintech sector"
+                    </div>
+                    <div class="example-item good">
+                        <strong>With Metrics:</strong> "Generate 50+ qualified leads, achieve 20% conversion rate, reduce sales cycle to 45 days average"
+                    </div>
+                </div>`,
+            'data-analyst': `
+                <div class="goal-example">
+                    <h6>Professional Goal Examples:</h6>
+                    <div class="example-item bad">
+                        <strong>Instead of:</strong> "Help me analyze some data"
+                    </div>
+                    <div class="example-item good">
+                        <strong>Professional Goal:</strong> "Analyze user behavior data to identify conversion bottlenecks and recommend 3 actionable improvements"
+                    </div>
+                    <div class="example-item good">
+                        <strong>With Deliverables:</strong> "Statistical analysis with 95% confidence level, interactive dashboard, A/B testing recommendations"
+                    </div>
+                </div>`,
+            'market-researcher': `
+                <div class="goal-example">
+                    <h6>Professional Goal Examples:</h6>
+                    <div class="example-item bad">
+                        <strong>Instead of:</strong> "Research the market for me"
+                    </div>
+                    <div class="example-item good">
+                        <strong>Professional Goal:</strong> "Research AI productivity tools market to identify top 3 competitors and market entry opportunities"
+                    </div>
+                    <div class="example-item good">
+                        <strong>With Analysis:</strong> "Market size estimation, competitive positioning analysis, SWOT assessment, go-to-market recommendations"
+                    </div>
+                </div>`,
+            'content-operations': `
+                <div class="goal-example">
+                    <h6>Professional Goal Examples:</h6>
+                    <div class="example-item bad">
+                        <strong>Instead of:</strong> "Write some content"
+                    </div>
+                    <div class="example-item good">
+                        <strong>Professional Goal:</strong> "Create 4-week content calendar for LinkedIn targeting SaaS executives with engagement rate target of 5%+"
+                    </div>
+                    <div class="example-item good">
+                        <strong>With Strategy:</strong> "16 posts optimized for LinkedIn algorithm, SEO keywords research, engagement tracking setup"
+                    </div>
+                </div>`,
+            'customer-service': `
+                <div class="goal-example">
+                    <h6>Professional Goal Examples:</h6>
+                    <div class="example-item bad">
+                        <strong>Instead of:</strong> "Help with customer support"
+                    </div>
+                    <div class="example-item good">
+                        <strong>Professional Goal:</strong> "Design customer support workflow to achieve <2hr response time and 95% satisfaction score"
+                    </div>
+                    <div class="example-item good">
+                        <strong>With System:</strong> "Support ticket classification, escalation procedures, customer feedback analysis, team training materials"
+                    </div>
+                </div>`,
+            'ai-product-manager': `
+                <div class="goal-example">
+                    <h6>Professional Goal Examples:</h6>
+                    <div class="example-item bad">
+                        <strong>Instead of:</strong> "Help me plan a product"
+                    </div>
+                    <div class="example-item good">
+                        <strong>Professional Goal:</strong> "Create product roadmap for AI chatbot feature targeting 40% user adoption in 6 months"
+                    </div>
+                    <div class="example-item good">
+                        <strong>With Specifications:</strong> "User stories, technical requirements, MVP scope, competitive analysis, success metrics framework"
+                    </div>
+                </div>`,
+            'work-assistant': `
+                <div class="goal-example">
+                    <h6>Professional Goal Examples:</h6>
+                    <div class="example-item bad">
+                        <strong>Instead of:</strong> "Help me organize work"
+                    </div>
+                    <div class="example-item good">
+                        <strong>Professional Goal:</strong> "Optimize team workflow to reduce project delivery time by 30% and improve task completion rate to 95%"
+                    </div>
+                    <div class="example-item good">
+                        <strong>With System:</strong> "Process documentation, task templates, progress tracking system, team collaboration guidelines"
+                    </div>
+                </div>`,
+            'fullstack-engineer': `
+                <div class="goal-example">
+                    <h6>Professional Goal Examples:</h6>
+                    <div class="example-item bad">
+                        <strong>Instead of:</strong> "Build me an app"
+                    </div>
+                    <div class="example-item good">
+                        <strong>Professional Goal:</strong> "Develop MVP web application with user authentication and dashboard, supporting 1000+ concurrent users"
+                    </div>
+                    <div class="example-item good">
+                        <strong>With Technical Specs:</strong> "React frontend, Node.js backend, PostgreSQL database, 99% uptime, <200ms response time"
+                    </div>
+                </div>`,
+            'document-manager': `
+                <div class="goal-example">
+                    <h6>Professional Goal Examples:</h6>
+                    <div class="example-item bad">
+                        <strong>Instead of:</strong> "Organize my documents"
+                    </div>
+                    <div class="example-item good">
+                        <strong>Professional Goal:</strong> "Create document management system reducing file search time by 80% and ensuring 100% version control"
+                    </div>
+                    <div class="example-item good">
+                        <strong>With Structure:</strong> "Folder hierarchy, naming conventions, access permissions, backup procedures, search optimization"
+                    </div>
+                </div>`,
+            'info-collector': `
+                <div class="goal-example">
+                    <h6>Professional Goal Examples:</h6>
+                    <div class="example-item bad">
+                        <strong>Instead of:</strong> "Research information for me"
+                    </div>
+                    <div class="example-item good">
+                        <strong>Professional Goal:</strong> "Gather comprehensive intelligence on fintech regulations across 5 major markets with compliance timeline"
+                    </div>
+                    <div class="example-item good">
+                        <strong>With Sources:</strong> "Government publications, industry reports, expert interviews, regulatory databases, compliance checklists"
+                    </div>
+                </div>`,
+            'finance-assistant': `
+                <div class="goal-example">
+                    <h6>Professional Goal Examples:</h6>
+                    <div class="example-item bad">
+                        <strong>Instead of:</strong> "Help me with finances"
+                    </div>
+                    <div class="example-item good">
+                        <strong>Professional Goal:</strong> "Analyze monthly expenses to identify 20% cost reduction opportunities and create automated budgeting system"
+                    </div>
+                    <div class="example-item good">
+                        <strong>With Metrics:</strong> "Expense categorization, variance analysis, cash flow projections, ROI calculations, budget alerts"
+                    </div>
+                </div>`,
+            'work-verifier': `
+                <div class="goal-example">
+                    <h6>Professional Goal Examples:</h6>
+                    <div class="example-item bad">
+                        <strong>Instead of:</strong> "Check my work quality"
+                    </div>
+                    <div class="example-item good">
+                        <strong>Professional Goal:</strong> "Conduct comprehensive quality audit of project deliverables against ISO standards with 95% accuracy"
+                    </div>
+                    <div class="example-item good">
+                        <strong>With Framework:</strong> "Quality checklist, compliance verification, risk assessment, improvement recommendations, certification report"
+                    </div>
+                </div>`
+        };
+
+        // Clear any existing value when switching roles
+        goalTextarea.value = '';
+
+        // Show friendly examples with internationalization support
+        if (goalExampleContainer) {
+            if (roleExamples[role]) {
+                goalExampleContainer.innerHTML = this.getLocalizedRoleExample(role);
+                goalExampleContainer.style.display = 'block';
+            } else {
+                goalExampleContainer.innerHTML = this.getDefaultGoalExample();
+                goalExampleContainer.style.display = 'block';
+            }
+        }
+    }
+
+    /**
+     * Get localized role example based on current language
+     */
+    getLocalizedRoleExample(role) {
+        const currentLang = window.CURRENT_LANGUAGE || 'zh';
+        
+        if (currentLang === 'zh') {
+            return this.getChineseRoleExamples()[role] || this.getDefaultGoalExample();
+        } else {
+            return this.getEnglishRoleExamples()[role] || this.getDefaultGoalExample();
+        }
+    }
+
+    /**
+     * Get Chinese role examples
+     */
+    getChineseRoleExamples() {
+        return {
+            'finance-assistant': `
+                <div class="goal-example">
+                    <h6>专业目标示例：</h6>
+                    <div class="example-item bad">
+                        <strong>避免模糊表述：</strong> "帮我分析财务数据"
+                    </div>
+                    <div class="example-item good">
+                        <strong>专业目标：</strong> "分析Q3费用数据，识别15%成本节约机会，包含供应商详细分析"
+                    </div>
+                    <div class="example-item good">
+                        <strong>关键指标：</strong> "处理500+交易记录，99%+准确率，识别前5大成本优化领域，24小时内完成分析"
+                    </div>
+                </div>`,
+            'sales-specialist': `
+                <div class="goal-example">
+                    <h6>专业目标示例：</h6>
+                    <div class="example-item bad">
+                        <strong>避免模糊表述：</strong> "帮我制定销售策略"
+                    </div>
+                    <div class="example-item good">
+                        <strong>专业目标：</strong> "制定Q4销售策略，针对金融科技企业客户实现25%收入增长"
+                    </div>
+                    <div class="example-item good">
+                        <strong>关键指标：</strong> "生成50+优质潜在客户，20%转化率，平均销售周期45天"
+                    </div>
+                </div>`,
+            'data-analyst': `
+                <div class="goal-example">
+                    <h6>专业目标示例：</h6>
+                    <div class="example-item bad">
+                        <strong>避免模糊表述：</strong> "帮我分析一些数据"
+                    </div>
+                    <div class="example-item good">
+                        <strong>专业目标：</strong> "分析用户行为数据识别转化瓶颈，提供3个可操作改进建议"
+                    </div>
+                    <div class="example-item good">
+                        <strong>关键交付：</strong> "95%置信水平统计分析，交互式数据看板，A/B测试建议"
+                    </div>
+                </div>`,
+            'market-researcher': `
+                <div class="goal-example">
+                    <h6>专业目标示例：</h6>
+                    <div class="example-item bad">
+                        <strong>避免模糊表述：</strong> "帮我调研市场"
+                    </div>
+                    <div class="example-item good">
+                        <strong>专业目标：</strong> "调研AI生产力工具市场，识别前3大竞争对手和市场机会"
+                    </div>
+                    <div class="example-item good">
+                        <strong>分析内容：</strong> "市场规模估算，竞争定位分析，SWOT评估，进入市场策略建议"
+                    </div>
+                </div>`,
+            'content-operations': `
+                <div class="goal-example">
+                    <h6>专业目标示例：</h6>
+                    <div class="example-item bad">
+                        <strong>避免模糊表述：</strong> "写一些内容"
+                    </div>
+                    <div class="example-item good">
+                        <strong>专业目标：</strong> "制作4周LinkedIn内容日历，针对SaaS高管，目标5%+互动率"
+                    </div>
+                    <div class="example-item good">
+                        <strong>具体策略：</strong> "16篇LinkedIn算法优化内容，SEO关键词研究，互动跟踪设置"
+                    </div>
+                </div>`,
+            'customer-service': `
+                <div class="goal-example">
+                    <h6>专业目标示例：</h6>
+                    <div class="example-item bad">
+                        <strong>避免模糊表述：</strong> "帮忙处理客服"
+                    </div>
+                    <div class="example-item good">
+                        <strong>专业目标：</strong> "设计客服工作流程，实现<2小时响应时间，95%满意度评分"
+                    </div>
+                    <div class="example-item good">
+                        <strong>系统建设：</strong> "工单分类系统，升级流程，客户反馈分析，团队培训材料"
+                    </div>
+                </div>`,
+            'ai-product-manager': `
+                <div class="goal-example">
+                    <h6>专业目标示例：</h6>
+                    <div class="example-item bad">
+                        <strong>避免模糊表述：</strong> "帮我规划产品"
+                    </div>
+                    <div class="example-item good">
+                        <strong>专业目标：</strong> "创建AI聊天机器人功能产品路线图，6个月内达到40%用户采用率"
+                    </div>
+                    <div class="example-item good">
+                        <strong>具体规范：</strong> "用户故事，技术需求，MVP范围，竞争分析，成功指标框架"
+                    </div>
+                </div>`,
+            'work-assistant': `
+                <div class="goal-example">
+                    <h6>专业目标示例：</h6>
+                    <div class="example-item bad">
+                        <strong>避免模糊表述：</strong> "帮我组织工作"
+                    </div>
+                    <div class="example-item good">
+                        <strong>专业目标：</strong> "优化团队工作流程，减少30%项目交付时间，95%任务完成率"
+                    </div>
+                    <div class="example-item good">
+                        <strong>系统建设：</strong> "流程文档，任务模板，进度跟踪系统，团队协作指南"
+                    </div>
+                </div>`,
+            'fullstack-engineer': `
+                <div class="goal-example">
+                    <h6>专业目标示例：</h6>
+                    <div class="example-item bad">
+                        <strong>避免模糊表述：</strong> "帮我开发应用"
+                    </div>
+                    <div class="example-item good">
+                        <strong>专业目标：</strong> "开发MVP网页应用，用户认证+仪表板，支持1000+并发用户"
+                    </div>
+                    <div class="example-item good">
+                        <strong>技术规范：</strong> "React前端，Node.js后端，PostgreSQL数据库，99%正常运行时间，<200ms响应"
+                    </div>
+                </div>`,
+            'document-manager': `
+                <div class="goal-example">
+                    <h6>专业目标示例：</h6>
+                    <div class="example-item bad">
+                        <strong>避免模糊表述：</strong> "整理我的文档"
+                    </div>
+                    <div class="example-item good">
+                        <strong>专业目标：</strong> "创建文档管理系统，减少80%文件搜索时间，确保100%版本控制"
+                    </div>
+                    <div class="example-item good">
+                        <strong>系统架构：</strong> "文件夹层次，命名规范，访问权限，备份程序，搜索优化"
+                    </div>
+                </div>`,
+            'info-collector': `
+                <div class="goal-example">
+                    <h6>专业目标示例：</h6>
+                    <div class="example-item bad">
+                        <strong>避免模糊表述：</strong> "帮我收集信息"
+                    </div>
+                    <div class="example-item good">
+                        <strong>专业目标：</strong> "收集5个主要市场的金融科技法规情报，包含合规时间线"
+                    </div>
+                    <div class="example-item good">
+                        <strong>信息来源：</strong> "政府出版物，行业报告，专家访谈，监管数据库，合规检查清单"
+                    </div>
+                </div>`,
+            'mcp-manager': `
+                <div class="goal-example">
+                    <h6>专业目标示例：</h6>
+                    <div class="example-item bad">
+                        <strong>避免模糊表述：</strong> "帮我管理MCP"
+                    </div>
+                    <div class="example-item good">
+                        <strong>专业目标：</strong> "配置MCP服务集群，实现99.9%正常运行时间和自动故障转移"
+                    </div>
+                    <div class="example-item good">
+                        <strong>系统指标：</strong> "服务监控，性能优化，配置管理，集成测试，运维文档"
+                    </div>
+                </div>`,
+            'work-verifier': `
+                <div class="goal-example">
+                    <h6>专业目标示例：</h6>
+                    <div class="example-item bad">
+                        <strong>避免模糊表述：</strong> "检查我的工作质量"
+                    </div>
+                    <div class="example-item good">
+                        <strong>专业目标：</strong> "按ISO标准全面审计项目交付物，95%准确率质量认证"
+                    </div>
+                    <div class="example-item good">
+                        <strong>验证框架：</strong> "质量检查清单，合规验证，风险评估，改进建议，认证报告"
+                    </div>
+                </div>`
+        };
+    }
+
+    /**
+     * Get English role examples  
+     */
+    getEnglishRoleExamples() {
+        return {
+            'finance-assistant': `
+                <div class="goal-example">
+                    <h6>Professional Goal Examples:</h6>
+                    <div class="example-item bad">
+                        <strong>Instead of:</strong> "Help me analyze financial data"
+                    </div>
+                    <div class="example-item good">
+                        <strong>Professional Goal:</strong> "Analyze Q3 expense data to identify cost-saving opportunities with 15% reduction target and detailed vendor analysis"
+                    </div>
+                    <div class="example-item good">
+                        <strong>With KPIs:</strong> "Process 500+ transactions with 99%+ accuracy, identify top 5 cost optimization areas, complete analysis within 24 hours"
+                    </div>
+                </div>`,
+            'sales-specialist': `
+                <div class="goal-example">
+                    <h6>Professional Goal Examples:</h6>
+                    <div class="example-item bad">
+                        <strong>Instead of:</strong> "Help me with sales strategy"
+                    </div>
+                    <div class="example-item good">
+                        <strong>Professional Goal:</strong> "Develop Q4 sales strategy to achieve 25% revenue growth targeting enterprise clients in fintech sector"
+                    </div>
+                    <div class="example-item good">
+                        <strong>With Metrics:</strong> "Generate 50+ qualified leads, achieve 20% conversion rate, reduce sales cycle to 45 days average"
+                    </div>
+                </div>`,
+            'data-analyst': `
+                <div class="goal-example">
+                    <h6>Professional Goal Examples:</h6>
+                    <div class="example-item bad">
+                        <strong>Instead of:</strong> "Help me analyze some data"
+                    </div>
+                    <div class="example-item good">
+                        <strong>Professional Goal:</strong> "Analyze user behavior data to identify conversion bottlenecks and recommend 3 actionable improvements"
+                    </div>
+                    <div class="example-item good">
+                        <strong>With Deliverables:</strong> "Statistical analysis with 95% confidence level, interactive dashboard, A/B testing recommendations"
+                    </div>
+                </div>`,
+            'market-researcher': `
+                <div class="goal-example">
+                    <h6>Professional Goal Examples:</h6>
+                    <div class="example-item bad">
+                        <strong>Instead of:</strong> "Research the market for me"
+                    </div>
+                    <div class="example-item good">
+                        <strong>Professional Goal:</strong> "Research AI productivity tools market to identify top 3 competitors and market entry opportunities"
+                    </div>
+                    <div class="example-item good">
+                        <strong>With Analysis:</strong> "Market size estimation, competitive positioning analysis, SWOT assessment, go-to-market recommendations"
+                    </div>
+                </div>`,
+            'content-operations': `
+                <div class="goal-example">
+                    <h6>Professional Goal Examples:</h6>
+                    <div class="example-item bad">
+                        <strong>Instead of:</strong> "Write some content"
+                    </div>
+                    <div class="example-item good">
+                        <strong>Professional Goal:</strong> "Create 4-week content calendar for LinkedIn targeting SaaS executives with engagement rate target of 5%+"
+                    </div>
+                    <div class="example-item good">
+                        <strong>With Strategy:</strong> "16 posts optimized for LinkedIn algorithm, SEO keywords research, engagement tracking setup"
+                    </div>
+                </div>`,
+            'customer-service': `
+                <div class="goal-example">
+                    <h6>Professional Goal Examples:</h6>
+                    <div class="example-item bad">
+                        <strong>Instead of:</strong> "Help with customer support"
+                    </div>
+                    <div class="example-item good">
+                        <strong>Professional Goal:</strong> "Design customer support workflow to achieve <2hr response time and 95% satisfaction score"
+                    </div>
+                    <div class="example-item good">
+                        <strong>With System:</strong> "Support ticket classification, escalation procedures, customer feedback analysis, team training materials"
+                    </div>
+                </div>`,
+            'ai-product-manager': `
+                <div class="goal-example">
+                    <h6>Professional Goal Examples:</h6>
+                    <div class="example-item bad">
+                        <strong>Instead of:</strong> "Help me plan a product"
+                    </div>
+                    <div class="example-item good">
+                        <strong>Professional Goal:</strong> "Create product roadmap for AI chatbot feature targeting 40% user adoption in 6 months"
+                    </div>
+                    <div class="example-item good">
+                        <strong>With Specifications:</strong> "User stories, technical requirements, MVP scope, competitive analysis, success metrics framework"
+                    </div>
+                </div>`,
+            'work-assistant': `
+                <div class="goal-example">
+                    <h6>Professional Goal Examples:</h6>
+                    <div class="example-item bad">
+                        <strong>Instead of:</strong> "Help me organize work"
+                    </div>
+                    <div class="example-item good">
+                        <strong>Professional Goal:</strong> "Optimize team workflow to reduce project delivery time by 30% and improve task completion rate to 95%"
+                    </div>
+                    <div class="example-item good">
+                        <strong>With System:</strong> "Process documentation, task templates, progress tracking system, team collaboration guidelines"
+                    </div>
+                </div>`,
+            'fullstack-engineer': `
+                <div class="goal-example">
+                    <h6>Professional Goal Examples:</h6>
+                    <div class="example-item bad">
+                        <strong>Instead of:</strong> "Build me an app"
+                    </div>
+                    <div class="example-item good">
+                        <strong>Professional Goal:</strong> "Develop MVP web application with user authentication and dashboard, supporting 1000+ concurrent users"
+                    </div>
+                    <div class="example-item good">
+                        <strong>With Technical Specs:</strong> "React frontend, Node.js backend, PostgreSQL database, 99% uptime, <200ms response time"
+                    </div>
+                </div>`,
+            'document-manager': `
+                <div class="goal-example">
+                    <h6>Professional Goal Examples:</h6>
+                    <div class="example-item bad">
+                        <strong>Instead of:</strong> "Organize my documents"
+                    </div>
+                    <div class="example-item good">
+                        <strong>Professional Goal:</strong> "Create document management system reducing file search time by 80% and ensuring 100% version control"
+                    </div>
+                    <div class="example-item good">
+                        <strong>With Structure:</strong> "Folder hierarchy, naming conventions, access permissions, backup procedures, search optimization"
+                    </div>
+                </div>`,
+            'info-collector': `
+                <div class="goal-example">
+                    <h6>Professional Goal Examples:</h6>
+                    <div class="example-item bad">
+                        <strong>Instead of:</strong> "Research information for me"
+                    </div>
+                    <div class="example-item good">
+                        <strong>Professional Goal:</strong> "Gather comprehensive intelligence on fintech regulations across 5 major markets with compliance timeline"
+                    </div>
+                    <div class="example-item good">
+                        <strong>With Sources:</strong> "Government publications, industry reports, expert interviews, regulatory databases, compliance checklists"
+                    </div>
+                </div>`
+        };
+    }
+
+    /**
+     * Get default goal example
+     */
+    getDefaultGoalExample() {
+        const currentLang = window.CURRENT_LANGUAGE || 'zh';
+        
+        if (currentLang === 'zh') {
+            return `
+                <div class="goal-example">
+                    <h6>专业目标指南：</h6>
+                    <div class="example-item bad">
+                        <strong>避免模糊请求如：</strong> "帮我分析一些东西" 或 "做一些调研"
+                    </div>
+                    <div class="example-item good">
+                        <strong>提供具体目标：</strong> 明确目标，可量化的KPI，以及预期交付成果
+                    </div>
+                    <div class="example-item good">
+                        <strong>示例格式：</strong> "通过[具体指标]实现[特定结果]，交付[具体成果]"
+                    </div>
+                </div>`;
+        } else {
+            return `
+                <div class="goal-example">
+                    <h6>Professional Goal Guidelines:</h6>
+                    <div class="example-item bad">
+                        <strong>Instead of vague requests like:</strong> "Help me analyze something" or "Do some research"
+                    </div>
+                    <div class="example-item good">
+                        <strong>Provide specific objectives:</strong> Clear goals, measurable KPIs, and expected deliverables
+                    </div>
+                    <div class="example-item good">
+                        <strong>Example format:</strong> "Achieve [specific outcome] with [measurable metrics] by delivering [concrete outputs]"
+                    </div>
+                </div>`;
+        }
+    }
+
+    /**
+     * Initialize i18n observer to update goal examples when language changes
+     */
+    initializeI18nObserver() {
+        if (window.i18n) {
+            window.i18n.addObserver((lang) => {
+                // Update CURRENT_LANGUAGE global variable
+                window.CURRENT_LANGUAGE = lang;
+                
+                // Refresh goal examples if they are currently displayed
+                this.refreshGoalExamples();
+            });
+        }
+    }
+
+    /**
+     * Refresh goal examples for currently selected roles
+     */
+    refreshGoalExamples() {
+        // Refresh standalone form goal example
+        const standaloneRoleSelect = document.getElementById('standalone-role-select');
+        if (standaloneRoleSelect && standaloneRoleSelect.value) {
+            this.populateRoleGoalTemplate(standaloneRoleSelect.value, 'standalone');
+        }
+
+        // Refresh daily form goal example  
+        const dailyRoleSelect = document.getElementById('daily-role-select');
+        if (dailyRoleSelect && dailyRoleSelect.value) {
+            this.populateRoleGoalTemplate(dailyRoleSelect.value, 'daily');
+        }
+
+        // Refresh notification status text
+        this.refreshNotificationStatus();
+    }
+
+    /**
+     * Refresh notification status text when language changes
+     */
+    refreshNotificationStatus() {
+        if (!this.notificationStatus) return;
+
+        // Refresh email notification status
+        const emailStatus = document.querySelector('.notification-option input[value="email"] ~ .status-text');
+        if (emailStatus) {
+            const emailConfigured = this.notificationStatus?.email?.configured;
+            if (emailConfigured) {
+                emailStatus.textContent = this.getText('notifications.configured');
+            } else {
+                emailStatus.textContent = this.getText('notifications.needConfigInSettings');
+            }
+        }
+
+        // Refresh WeChat notification status
+        const wechatStatus = document.querySelector('.notification-option input[value="wechat"] ~ .status-text');
+        if (wechatStatus) {
+            const wechatBound = this.notificationStatus?.wechat?.bound;
+            if (wechatBound) {
+                wechatStatus.textContent = this.getText('notifications.bound');
+            } else {
+                wechatStatus.textContent = this.getText('notifications.needBindInSettings');
+            }
+        }
     }
 }
 

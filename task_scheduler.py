@@ -121,6 +121,8 @@ class ScheduledTask:
     deleted: bool = False     # 软删除标记
     session_id: Optional[str] = None  # Claude CLI会话ID，用于恢复会话
     notification_settings: Optional[Dict[str, Any]] = None  # 通知设置
+    role: str = ""  # AI员工角色
+    goal_config: str = ""  # 专业目标设定
 
 class TaskScheduler:
     """定时任务调度器"""
@@ -211,7 +213,9 @@ class TaskScheduler:
                 work_directory=work_directory,
                 deleted=task_data.get('deleted', False),
                 session_id=task_data.get('sessionId', None),
-                notification_settings=task_data.get('notificationSettings')
+                notification_settings=task_data.get('notificationSettings'),
+                role=task_data.get('role', ''),
+                goal_config=task_data.get('goal_config', '')
             )
             
             # 保存所有任务到all_tasks
@@ -360,6 +364,8 @@ class TaskScheduler:
                 'id': task.id,
                 'name': task.name,
                 'goal': task.goal,
+                'role': task.role,  # 添加角色字段
+                'goal_config': task.goal_config,  # 添加目标设定字段
                 'skipPermissions': task.skip_permissions,
                 'verboseLogs': task.verbose_logs,
                 'resources': task.resources,
@@ -452,7 +458,10 @@ class TaskScheduler:
                         last_run=task_data.get('lastRun'),
                         work_directory=task_data.get('workDirectory', ''),
                         deleted=task_data.get('deleted', False),
-                        session_id=task_data.get('sessionId')  # 确保加载session_id
+                        session_id=task_data.get('sessionId'),  # 确保加载session_id
+                        notification_settings=task_data.get('notificationSettings'),
+                        role=task_data.get('role', ''),
+                        goal_config=task_data.get('goal_config', '')
                     )
                     
                     # 添加调试日志
@@ -491,6 +500,8 @@ class TaskScheduler:
                     'id': task.id,
                     'name': task.name,
                     'goal': task.goal,
+                    'role': task.role,
+                    'goal_config': task.goal_config,
                     'skipPermissions': task.skip_permissions,
                     'verboseLogs': task.verbose_logs,
                     'resources': task.resources,
