@@ -630,7 +630,20 @@ class TaskManager {
             return;
         }
         
-        this.tasksList.innerHTML = this.tasks.map(task => {
+        // Sort tasks by newest first (lastRun or createdAt)
+        const sortedTasks = [...this.tasks].sort((a, b) => {
+            // Use lastRun if available, otherwise fall back to createdAt
+            const aTime = a.lastRun || a.createdAt || '1970-01-01T00:00:00.000Z';
+            const bTime = b.lastRun || b.createdAt || '1970-01-01T00:00:00.000Z';
+            
+            const aDate = new Date(aTime);
+            const bDate = new Date(bTime);
+            
+            // Sort descending (newest first)
+            return bDate - aDate;
+        });
+
+        this.tasksList.innerHTML = sortedTasks.map(task => {
             // 确保任务对象有完整的属性，适配后端驼峰命名
             const safeTask = {
                 id: task.id || '',
@@ -801,8 +814,17 @@ class TaskManager {
                 </div>
             `;
         } else {
-            // 显示所有任务
-            const displayTasks = this.tasks;
+            // Sort tasks by newest first for sidebar (same as main list)
+            const displayTasks = [...this.tasks].sort((a, b) => {
+                const aTime = a.lastRun || a.createdAt || '1970-01-01T00:00:00.000Z';
+                const bTime = b.lastRun || b.createdAt || '1970-01-01T00:00:00.000Z';
+                
+                const aDate = new Date(aTime);
+                const bDate = new Date(bTime);
+                
+                // Sort descending (newest first)
+                return bDate - aDate;
+            });
             
             sidebarTasksList.innerHTML = displayTasks.map(task => {
                 const safeTask = {
