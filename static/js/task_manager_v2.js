@@ -834,15 +834,26 @@ class TaskManager {
                     enabled: task.enabled !== false,
                     status: task.status || 'pending',
                     schedule_frequency: task.scheduleFrequency || 'immediate',
-                    resources: Array.isArray(task.resources) ? task.resources : []
+                    resources: Array.isArray(task.resources) ? task.resources : [],
+                    type: task.type || 'pc',  // 任务类型
+                    hasResult: task.hasResult || false,
+                    sessionId: task.sessionId || task.session_id
                 };
 
                 const taskStatus = this.getTaskStatus(safeTask);
+                
+                // 任务类型图标和标识  
+                const typeIndicator = safeTask.type === 'mobile' ? 
+                    '<span class="task-type-indicator mobile" title="Mobile Task">M</span>' : 
+                    '<span class="task-type-indicator pc" title="PC Task">PC</span>';
 
                 return `
-                    <div class="task-item" data-task-id="${safeTask.id}" onclick="window.taskManager && window.taskManager.showTaskDetails('${safeTask.id}')">
+                    <div class="task-item task-type-${safeTask.type}" data-task-id="${safeTask.id}" onclick="window.taskManager && window.taskManager.showTaskDetails('${safeTask.id}')">
                         <div class="task-item-header">
-                            <div class="task-item-name">${this.escapeHtml(safeTask.name)}</div>
+                            <div class="task-item-name">
+                                ${typeIndicator}
+                                ${this.escapeHtml(safeTask.name)}
+                            </div>
                             <div class="task-item-actions">
                                 <span class="task-item-status ${taskStatus.class}">
                                     ${taskStatus.text}
@@ -856,7 +867,7 @@ class TaskManager {
                         </div>
                         ${safeTask.goal && safeTask.goal !== safeTask.name ? `<div class="task-item-goal">${this.escapeHtml(safeTask.goal)}</div>` : ''}
                         <div class="task-item-meta">
-                            ${safeTask.resources.length > 0 ? `<span>${safeTask.resources.length} ${t('task.resourceFiles')}</span>` : `<span>${t('task.noResourceFiles')}</span>`}
+                            ${this.getTaskMetaInfo(safeTask)}
                         </div>
                     </div>
                 `;
@@ -1757,9 +1768,15 @@ class TaskManager {
             });
             
             if (safeTask.session_id) {
-                executeBtn.textContent = t('task.continueTask');
-                executeBtn.title = t('task.continueTaskTitle');
-                console.log('✅ 按钮设置为"继续任务"，sessionId:', safeTask.session_id);
+                if (this.isMobile()) {
+                    executeBtn.textContent = t('mobile.sendFollowUp');
+                    executeBtn.title = t('mobile.followUpDescription').replace('{taskName}', task.name);
+                    console.log('✅ Mobile: 按钮设置为"发送追问"，sessionId:', safeTask.session_id);
+                } else {
+                    executeBtn.textContent = t('task.continueTask');
+                    executeBtn.title = t('task.continueTaskTitle');
+                    console.log('✅ PC: 按钮设置为"继续任务"，sessionId:', safeTask.session_id);
+                }
             } else {
                 executeBtn.textContent = t('task.reExecute');
                 executeBtn.title = t('task.reExecuteTitle');
@@ -1981,6 +1998,13 @@ class TaskManager {
     }
 
     /**
+     * 检测是否为移动端设备
+     */
+    isMobile() {
+        return window.innerWidth <= 768;
+    }
+
+    /**
      * 保存独立新建任务
      */
     async saveStandaloneTask() {
@@ -1988,7 +2012,11 @@ class TaskManager {
         if (!taskData) return;
         
         try {
-            const response = await fetch('/api/tasks', {
+            // Determine API endpoint based on device type
+            const apiEndpoint = this.isMobile() ? '/api/mobile/tasks' : '/api/tasks';
+            console.log(`📱 Device detection: ${this.isMobile() ? 'Mobile' : 'PC'} - Using API: ${apiEndpoint}`);
+            
+            const response = await fetch(apiEndpoint, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -2225,16 +2253,23 @@ class TaskManager {
             let sessionData;
             
             if (task.sessionId) {
-                // 继续任务：使用恢复会话机制
-                console.log('🔄 继续任务，使用session_id:', task.sessionId);
-                sessionData = {
-                    type: 'resume-task-session',
-                    taskId: task.id,
-                    taskName: task.name,
-                    sessionId: task.sessionId,
-                    workDirectory: this.getUserHome()  // 使用跨平台兼容的用户主目录
-                };
-                this.showExecutionFeedback(`继续任务: ${task.name}`);
+                if (this.isMobile()) {
+                    // Mobile: Use follow-up conversation API (追问逻辑)
+                    console.log('📱 移动端追问，使用session_id:', task.sessionId);
+                    await this.handleMobileContinueConversation(task);
+                    return; // Exit early for mobile
+                } else {
+                    // PC: Use session resume mechanism (恢复会话)
+                    console.log('🖥️ PC端继续任务，使用session_id:', task.sessionId);
+                    sessionData = {
+                        type: 'resume-task-session',
+                        taskId: task.id,
+                        taskName: task.name,
+                        sessionId: task.sessionId,
+                        workDirectory: this.getUserHome()  // 使用跨平台兼容的用户主目录
+                    };
+                    this.showExecutionFeedback(`继续任务: ${task.name}`);
+                }
             } else {
                 // 重新执行：使用原有逻辑
                 console.log(' 重新执行任务');
@@ -3471,6 +3506,310 @@ class TaskManager {
             } else {
                 wechatStatus.textContent = this.getText('notifications.needBindInSettings');
             }
+        }
+    }
+
+    /**
+     * Handle mobile continue conversation (追问逻辑)
+     */
+    async handleMobileContinueConversation(task) {
+        try {
+            // Show mobile follow-up input modal
+            const followUpQuestion = await this.showMobileFollowUpModal(task);
+            
+            if (!followUpQuestion) {
+                return; // User cancelled
+            }
+            
+            console.log('📱 Mobile follow-up question:', followUpQuestion);
+            
+            // Call mobile continue conversation API
+            const response = await fetch(`/api/mobile/conversations/${task.sessionId}/continue`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    goal: followUpQuestion,
+                    notificationSettings: {
+                        enabled: true,
+                        methods: ['wechat'] // Default to WeChat for mobile
+                    }
+                })
+            });
+            
+            if (response.ok) {
+                const result = await response.json();
+                console.log('✅ Mobile conversation continued:', result);
+                
+                // Show success feedback
+                this.showExecutionFeedback(`已发送追问: ${followUpQuestion.substring(0, 30)}${followUpQuestion.length > 30 ? '...' : ''}`);
+                
+                // Close detail modal
+                this.closeStandaloneDetailModal();
+                
+                // Refresh tasks after a delay to get updated session data
+                setTimeout(async () => {
+                    await this.loadTasks();
+                }, 2000);
+                
+            } else {
+                const error = await response.json();
+                throw new Error(error.error || 'Mobile conversation continuation failed');
+            }
+            
+        } catch (error) {
+            console.error('❌ Mobile follow-up failed:', error);
+            alert(`移动端追问失败: ${error.message}`);
+        }
+    }
+
+    /**
+     * Show mobile follow-up question modal
+     */
+    async showMobileFollowUpModal(task) {
+        return new Promise(async (resolve) => {
+            // Get task result for context display
+            let taskResult = null;
+            try {
+                if (task.taskId) {
+                    const response = await fetch(`/api/task-files/${task.taskId}`);
+                    if (response.ok) {
+                        const data = await response.json();
+                        taskResult = data.result || null;
+                    }
+                }
+            } catch (error) {
+                console.warn('Failed to load task result:', error);
+            }
+
+            const pageOverlay = document.createElement('div');
+            pageOverlay.className = 'mobile-followup-page';
+            pageOverlay.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: #f8f9fa;
+                z-index: 2000;
+                display: flex;
+                flex-direction: column;
+                overflow: hidden;
+            `;
+            
+            pageOverlay.innerHTML = `
+                <div class="followup-header" style="
+                    display: flex;
+                    align-items: center;
+                    padding: 12px 16px;
+                    background: white;
+                    border-bottom: 1px solid #e9ecef;
+                    min-height: 56px;
+                ">
+                    <button class="back-btn" style="
+                        background: none;
+                        border: none;
+                        font-size: 24px;
+                        cursor: pointer;
+                        color: #007AFF;
+                        padding: 8px;
+                        margin-right: 8px;
+                    ">←</button>
+                    <div style="flex: 1;">
+                        <h3 style="margin: 0; color: #333; font-size: 16px; font-weight: 600;">Follow-up Question</h3>
+                        <p style="margin: 2px 0 0 0; color: #666; font-size: 13px;">${this.escapeHtml(task.name || task.command || 'Task')}</p>
+                    </div>
+                </div>
+                
+                <div class="followup-content" style="
+                    flex: 1;
+                    overflow-y: auto;
+                    padding: 16px;
+                    padding-bottom: 100px;
+                ">
+                    ${taskResult ? `
+                        <div class="task-result-section" style="
+                            background: white;
+                            border-radius: 12px;
+                            padding: 16px;
+                            margin-bottom: 16px;
+                            border: 1px solid #e9ecef;
+                        ">
+                            <h4 style="margin: 0 0 12px 0; color: #495057; font-size: 14px; font-weight: 600;">Previous Result:</h4>
+                            <div class="task-result-content" style="
+                                color: #6c757d;
+                                font-size: 13px;
+                                line-height: 1.5;
+                                background: #f8f9fa;
+                                padding: 12px;
+                                border-radius: 8px;
+                                max-height: 200px;
+                                overflow-y: auto;
+                                border: 1px solid #e9ecef;
+                            ">${this.formatTaskResult(taskResult)}</div>
+                        </div>
+                    ` : ''}
+                    
+                    <div class="followup-hint" style="
+                        background: #e3f2fd;
+                        border: 1px solid #bbdefb;
+                        border-radius: 8px;
+                        padding: 12px;
+                        margin-bottom: 16px;
+                    ">
+                        <p style="margin: 0; color: #1976d2; font-size: 13px;">
+                            Ask follow-up questions about this task, request modifications, or get clarifications.
+                        </p>
+                    </div>
+                </div>
+                
+                <div class="followup-input-area" style="
+                    position: fixed;
+                    bottom: 0;
+                    left: 0;
+                    right: 0;
+                    background: white;
+                    border-top: 1px solid #e9ecef;
+                    padding: 16px;
+                    padding-bottom: calc(16px + env(safe-area-inset-bottom));
+                ">
+                    <div style="display: flex; gap: 12px; align-items: flex-end;">
+                        <textarea id="followup-textarea" placeholder="Type your follow-up question..." style="
+                            flex: 1;
+                            padding: 12px;
+                            border: 2px solid #e9ecef;
+                            border-radius: 20px;
+                            resize: none;
+                            font-size: 16px;
+                            font-family: inherit;
+                            min-height: 44px;
+                            max-height: 120px;
+                            outline: none;
+                            transition: border-color 0.2s;
+                        "></textarea>
+                        <button id="send-followup-btn" style="
+                            background: #007AFF;
+                            color: white;
+                            border: none;
+                            border-radius: 50%;
+                            width: 44px;
+                            height: 44px;
+                            cursor: pointer;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            font-size: 18px;
+                            transition: background-color 0.2s;
+                        " disabled>→</button>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(pageOverlay);
+            
+            const textarea = pageOverlay.querySelector('#followup-textarea');
+            const sendBtn = pageOverlay.querySelector('#send-followup-btn');
+            const backBtn = pageOverlay.querySelector('.back-btn');
+            
+            // Auto-resize textarea
+            textarea.addEventListener('input', () => {
+                textarea.style.height = 'auto';
+                textarea.style.height = Math.min(textarea.scrollHeight, 120) + 'px';
+                
+                // Enable/disable send button
+                const hasText = textarea.value.trim().length > 0;
+                sendBtn.disabled = !hasText;
+                sendBtn.style.opacity = hasText ? '1' : '0.5';
+                sendBtn.style.background = hasText ? '#007AFF' : '#ccc';
+            });
+            
+            // Focus on textarea after a brief delay
+            setTimeout(() => textarea.focus(), 100);
+            
+            // Event handlers
+            const closePage = () => {
+                document.body.removeChild(pageOverlay);
+                resolve(null);
+            };
+            
+            const sendMessage = () => {
+                const question = textarea.value.trim();
+                if (question) {
+                    document.body.removeChild(pageOverlay);
+                    resolve(question);
+                }
+            };
+            
+            backBtn.onclick = closePage;
+            sendBtn.onclick = sendMessage;
+            
+            // Enter key to send (on mobile, use Ctrl/Cmd + Enter)
+            textarea.onkeydown = (e) => {
+                if (e.key === 'Enter') {
+                    if (window.innerWidth > 768 || e.ctrlKey || e.metaKey) {
+                        e.preventDefault();
+                        sendMessage();
+                    }
+                }
+            };
+            
+            // Handle back gesture on mobile
+            let touchStartY = 0;
+            pageOverlay.addEventListener('touchstart', (e) => {
+                touchStartY = e.touches[0].clientY;
+            });
+            
+            pageOverlay.addEventListener('touchend', (e) => {
+                const touchEndY = e.changedTouches[0].clientY;
+                const deltaY = touchEndY - touchStartY;
+                
+                // If swipe down from top area, close page
+                if (touchStartY < 100 && deltaY > 100) {
+                    closePage();
+                }
+            });
+        });
+    }
+
+    /**
+     * Format task result for display
+     */
+    formatTaskResult(result) {
+        if (!result) return '<em>No result available</em>';
+        
+        // If result looks like markdown, render basic formatting
+        let formatted = this.escapeHtml(result);
+        
+        // Simple markdown rendering
+        formatted = formatted
+            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+            .replace(/\*(.*?)\*/g, '<em>$1</em>')
+            .replace(/`(.*?)`/g, '<code style="background: #e9ecef; padding: 2px 4px; border-radius: 3px;">$1</code>')
+            .replace(/\n\n/g, '</p><p>')
+            .replace(/\n/g, '<br>');
+            
+        return `<p>${formatted}</p>`;
+    }
+
+    /**
+     * Escape HTML for safe display
+     */
+    escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+    
+    /**
+     * Get task meta information based on task type
+     */
+    getTaskMetaInfo(task) {
+        // Use consistent resource files info for both PC and mobile tasks
+        if (task.resources && task.resources.length > 0) {
+            return `<span>${task.resources.length} ${t('task.resourceFiles')}</span>`;
+        } else {
+            return `<span>${t('task.noResourceFiles')}</span>`;
         }
     }
 }

@@ -1,0 +1,16 @@
+{
+  "session_id": "7345a5a8-8a18-429c-8d0b-8b6841b17d5d",
+  "created_at": "2025-09-08T21:09:10.873417",
+  "tasks": [
+    {
+      "task_id": "mobile_task_1757336738_d27a56ba",
+      "goal": "我想了解明日武汉天气如何？",
+      "work_directory": "/Users/yuhao",
+      "completed_at": "2025-09-08T21:09:10.871750",
+      "status": "failed",
+      "has_output": true,
+      "is_continuation": false
+    }
+  ],
+  "updated_at": "2025-09-08T21:09:10.873443"
+}

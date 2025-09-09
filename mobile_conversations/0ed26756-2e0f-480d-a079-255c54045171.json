@@ -1,0 +1,16 @@
+{
+  "session_id": "0ed26756-2e0f-480d-a079-255c54045171",
+  "created_at": "2025-09-08T09:39:35.185061",
+  "tasks": [
+    {
+      "task_id": "mobile_task_1757294996_556b580e",
+      "goal": "生成一个关于Claude Co-Desk移动端功能的测试报告",
+      "work_directory": "/Users/yuhao",
+      "completed_at": "2025-09-08T09:39:35.183682",
+      "status": "completed",
+      "has_output": true,
+      "is_continuation": false
+    }
+  ],
+  "updated_at": "2025-09-08T09:39:35.185074"
+}

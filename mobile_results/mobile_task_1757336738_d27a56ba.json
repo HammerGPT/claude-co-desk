@@ -1,0 +1,27 @@
+{
+  "task_id": "mobile_task_1757336738_d27a56ba",
+  "session_id": "7345a5a8-8a18-429c-8d0b-8b6841b17d5d",
+  "source": "mobile",
+  "goal": "我想了解明日武汉天气如何？",
+  "role": "info-collector",
+  "name": "测试移动端任务",
+  "description": "我想了解明日武汉天气如何？",
+  "goal_config": "列出明天武汉24小时的温度变化",
+  "resources": [],
+  "execution_mode": "immediate",
+  "schedule_settings": null,
+  "work_directory": "/Users/yuhao",
+  "skip_permissions": false,
+  "verbose_logs": false,
+  "command_executed": "/Users/yuhao/.local/bin/claude -p Acting as info-collector, 我想了解明日武汉天气如何？\n\nSpecific Goal Configuration:\n列出明天武汉24小时的温度变化\n\nTask Description:\n我想了解明日武汉天气如何？ --session-id 7345a5a8-8a18-429c-8d0b-8b6841b17d5d",
+  "output": "API Error: 403 {\"error\":{\"type\":\"forbidden\",\"message\":\"Request not allowed\"}} · Please run /login\n",
+  "error": null,
+  "exit_code": 1,
+  "notification_settings": null,
+  "created_at": "2025-09-08T21:09:10.871698",
+  "completed_at": "2025-09-08T21:09:10.871750",
+  "viewable_on": [
+    "mobile",
+    "pc"
+  ]
+}

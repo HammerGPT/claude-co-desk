@@ -32,14 +32,42 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/plugins/line-numbers/prism-line-numbers.css" />
     
     <!-- 样式文件 -->
-    <link rel="stylesheet" href="/static/css/main.css">
-    <link rel="stylesheet" href="/static/css/components.css">
-    <link rel="stylesheet" href="/static/css/enhanced_components.css">
-    <link rel="stylesheet" href="/static/css/session_mode.css">
-    <link rel="stylesheet" href="/static/css/icons.css">
-    <link rel="stylesheet" href="/static/css/applications_manager.css">
+    <link rel="stylesheet" href="/static/css/main.css?v=1">
+    <link rel="stylesheet" href="/static/css/components.css?v=2">
+    <link rel="stylesheet" href="/static/css/enhanced_components.css?v=1">
+    <link rel="stylesheet" href="/static/css/session_mode.css?v=1">
+    <link rel="stylesheet" href="/static/css/icons.css?v=1">
+    <link rel="stylesheet" href="/static/css/applications_manager.css?v=1">
     
     <!-- CSS修复已移动到components.css -->
+    
+    <!-- 强制任务类型指示器样式 -->
+    <style>
+        .task-type-indicator {
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            width: 20px !important;
+            height: 20px !important;
+            border-radius: 4px !important;
+            font-size: 10px !important;
+            font-weight: 600 !important;
+            margin-right: 8px !important;
+            line-height: 1 !important;
+        }
+        
+        .task-type-indicator.mobile {
+            background: linear-gradient(135deg, #E3F2FD, #BBDEFB) !important;
+            color: #1976D2 !important;
+            border: 1px solid #42A5F5 !important;
+        }
+        
+        .task-type-indicator.pc {
+            background: linear-gradient(135deg, #F3E5F5, #E1BEE7) !important;
+            color: #7B1FA2 !important;
+            border: 1px solid #AB47BC !important;
+        }
+    </style>
 </head>
 <body>
     <!-- 主应用容器 - 移植自App.jsx -->
@@ -91,19 +119,30 @@
         <div id="main-app" class="main-app hidden">
             <!-- 移动端顶部栏 -->
             <div id="mobile-header" class="mobile-header">
-                <button id="mobile-menu-btn" class="mobile-menu-btn">
-                    <img src="/static/assets/icons/interface/menu.png" width="20" height="20" alt="菜单">
+                <button id="mobile-add-task-btn" class="mobile-menu-btn">
+                    <img src="/static/assets/icons/interface/edit.png" width="20" height="20" alt="新增任务">
                 </button>
                 <h1 class="mobile-title">Claude Co-Desk</h1>
                 <div class="mobile-actions">
-                    <button id="mobile-settings-btn" class="mobile-action-btn">
-                        <img src="/static/assets/icons/interface/tools.png" width="20" height="20" alt="设置">
+                    <button id="mobile-settings-btn" class="mobile-action-btn mobile-pc-hint-btn" data-pc-feature="设置">
+                        <img src="/static/assets/icons/interface/settings.png" width="20" height="20" alt="设置" class="pc-only-icon">
                     </button>
                 </div>
             </div>
             
+            <!-- 移动端任务瀑布流容器 (移动端专用) -->
+            <div id="mobile-tasks-container" class="mobile-tasks-container">
+                <div id="mobile-tasks-list" class="mobile-tasks-list">
+                    <!-- 动态填充任务列表 -->
+                    <div class="empty-tasks">
+                        <p data-i18n="task.noTasksEmpty">暂无任务</p>
+                        <button class="create-first-task-btn" onclick="window.taskManager && window.taskManager.showQuickAddTask()" data-i18n="task.createFirst">创建新任务</button>
+                    </div>
+                </div>
+            </div>
+            
             <!-- 主内容区域 -->
-            <div class="app-layout">
+            <div class="app-layout main-container">
                 <!-- 侧边栏 - 移植自Sidebar.jsx -->
                 <div id="sidebar" class="sidebar">
                     <div class="sidebar-header">
@@ -227,7 +266,7 @@
                                                     </g>
                                                 </svg>
                                             </button>
-                                            <button id="files-drawer-btn" class="action-btn active" data-i18n-title="nav.files">
+                                            <button id="files-drawer-btn" class="action-btn" data-i18n-title="nav.files">
                                                 <svg class="w-4 h-4" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2">
                                                     <path stroke-linecap="round" stroke-linejoin="round" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-5l-2-2H5a2 2 0 00-2 2z"></path>
                                                 </svg>
@@ -263,6 +302,7 @@
                         <!-- 动态填充文件树 -->
                     </div>
                 </div>
+
             </div>
         </div>
         
@@ -702,14 +742,48 @@
                 </div>
                 <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
                     <form id="standalone-task-form" class="standalone-form">
+                            <!-- AI员工角色选择 - 置顶 -->
+                            <div class="form-group">
+                                <label for="standalone-task-role" data-i18n="task.role">AI员工角色</label>
+                                <select id="standalone-role-select" class="form-control" required>
+                                    <option value="" data-i18n="task.selectRole">请选择角色类型</option>
+                                    <option value="sales-specialist" data-i18n="roles.salesSpecialist">销售专员</option>
+                                    <option value="content-operations" data-i18n="roles.contentOperations">内容运营</option>
+                                    <option value="customer-service" data-i18n="roles.customerService">客服专员</option>
+                                    <option value="market-researcher" data-i18n="roles.marketResearcher">市场调研员</option>
+                                    <option value="data-analyst" data-i18n="roles.dataAnalyst">数据分析师</option>
+                                    <option value="ai-product-manager" data-i18n="roles.productManager">产品经理</option>
+                                    <option value="finance-assistant" data-i18n="roles.financeAssistant">财务助手</option>
+                                    <option value="work-assistant" data-i18n="roles.workAssistant">工作助理</option>
+                                    <option value="info-collector" data-i18n="roles.infoCollector">信息收集员</option>
+                                    <option value="fullstack-engineer" data-i18n="roles.fullstackEngineer">全栈工程师</option>
+                                    <option value="document-manager" data-i18n="roles.documentManager">文档管理员</option>
+                                </select>
+                                <small class="form-text text-muted" data-i18n="task.roleHelp">选择最适合处理此任务的专业AI员工</small>
+                            </div>
+
                             <div class="form-group">
                                 <label for="standalone-task-name" data-i18n="task.name">任务名称</label>
-                                <input type="text" id="standalone-task-name" class="form-control" data-i18n-placeholder="task.nameExample" placeholder="例如：信息收集任务" required>
+                                <input type="text" id="standalone-task-name" class="form-control" data-i18n-placeholder="task.nameExample" placeholder="例如：Q4销售数据分析" required>
+                                <small class="form-text text-muted" data-i18n="task.nameHelp">简洁明确的任务标题</small>
                             </div>
                             
                             <div class="form-group">
-                                <label for="standalone-task-goal" data-i18n="task.goal">任务目标</label>
-                                <textarea id="standalone-task-goal" class="form-control" rows="4" data-i18n-placeholder="task.goalPlaceholder" placeholder="描述任务的具体目标和要求..." required></textarea>
+                                <label for="standalone-task-description" data-i18n="task.description">任务描述</label>
+                                <textarea id="standalone-task-description" class="form-control" rows="3" data-i18n-placeholder="task.descriptionPlaceholder" placeholder="描述需要完成的具体工作内容和背景信息..." required></textarea>
+                                <small class="form-text text-muted" data-i18n="task.descriptionHelp">详细说明工作内容、背景和要求</small>
+                            </div>
+                            
+                            <!-- 专业目标设定区域 -->
+                            <div class="form-group" id="standalone-goal-settings">
+                                <label data-i18n="task.goalSettings">专业目标设定</label>
+                                <div class="goal-settings-content">
+                                    <div id="standalone-goal-example" class="mt-2">
+                                        <!-- 动态生成的目标示例 -->
+                                    </div>
+                                    <textarea id="standalone-goal-config" class="form-control" rows="8" data-i18n-placeholder="task.goalConfigPlaceholder" placeholder="请参考上方示例，设定具体的工作目标、关键指标和预期成果..."></textarea>
+                                    <small class="form-text text-muted" data-i18n="task.goalConfigHelp">明确的目标设定将帮助AI员工提供更专业的工作成果</small>
+                                </div>
                             </div>
                             
                             <div class="form-group">
@@ -885,8 +959,16 @@
                         </div>
                         <div class="detail-content">
                             <div class="detail-item">
-                                <label data-i18n="task.goal">任务目标</label>
+                                <label data-i18n="task.description">任务描述</label>
                                 <div id="standalone-detail-task-goal" class="detail-value"></div>
+                            </div>
+                            <div class="detail-item">
+                                <label data-i18n="task.role">AI员工角色</label>
+                                <div id="standalone-detail-task-role" class="detail-value"></div>
+                            </div>
+                            <div class="detail-item">
+                                <label data-i18n="task.goalSettings">专业目标设定</label>
+                                <div id="standalone-detail-goal-config" class="detail-value"></div>
                             </div>
                             <div class="detail-item">
                                 <label data-i18n="task.executionModeLabel">执行模式</label>
@@ -911,8 +993,40 @@
                             </div>
                             
                             <div class="form-group">
-                                <label for="standalone-edit-task-goal" data-i18n="task.goal">任务目标</label>
+                                <label for="standalone-edit-task-goal" data-i18n="task.description">任务描述</label>
                                 <textarea id="standalone-edit-task-goal" class="form-control" rows="4" data-i18n-placeholder="task.goalPlaceholder" placeholder="描述任务的具体目标和要求..." required></textarea>
+                            </div>
+
+                            <!-- AI员工角色选择 -->
+                            <div class="form-group">
+                                <label for="standalone-edit-task-role" data-i18n="task.role">AI员工角色</label>
+                                <select id="standalone-edit-role-select" class="form-control" required>
+                                    <option value="" data-i18n="task.selectRole">请选择角色类型</option>
+                                    <option value="sales-specialist" data-i18n="roles.salesSpecialist">销售专员</option>
+                                    <option value="content-operations" data-i18n="roles.contentOperations">内容运营</option>
+                                    <option value="customer-service" data-i18n="roles.customerService">客服专员</option>
+                                    <option value="market-researcher" data-i18n="roles.marketResearcher">市场调研员</option>
+                                    <option value="data-analyst" data-i18n="roles.dataAnalyst">数据分析师</option>
+                                    <option value="ai-product-manager" data-i18n="roles.productManager">产品经理</option>
+                                    <option value="finance-assistant" data-i18n="roles.financeAssistant">财务助手</option>
+                                    <option value="work-assistant" data-i18n="roles.workAssistant">工作助理</option>
+                                    <option value="info-collector" data-i18n="roles.infoCollector">信息收集员</option>
+                                    <option value="fullstack-engineer" data-i18n="roles.fullstackEngineer">全栈工程师</option>
+                                    <option value="document-manager" data-i18n="roles.documentManager">文档管理员</option>
+                                </select>
+                                <small class="form-text text-muted" data-i18n="task.roleHelp">选择最适合处理此任务的专业AI员工</small>
+                            </div>
+
+                            <!-- 专业目标设定 -->
+                            <div class="form-group">
+                                <label data-i18n="task.goalSettings">专业目标设定</label>
+                                <div class="goal-settings-content">
+                                    <div id="standalone-edit-goal-example" class="mt-2">
+                                        <!-- 动态生成的目标示例 -->
+                                    </div>
+                                    <textarea id="standalone-edit-goal-config" class="form-control" rows="8" data-i18n-placeholder="task.goalConfigPlaceholder" placeholder="请参考上方示例，设定具体的工作目标、关键指标和预期成果..."></textarea>
+                                    <small class="form-text text-muted" data-i18n="task.goalConfigHelp">明确的目标设定将帮助AI员工提供更专业的工作成果</small>
+                                </div>
                             </div>
                             
                             <div class="form-group">
@@ -1089,8 +1203,16 @@
                             </div>
                             <div class="detail-content">
                                 <div class="detail-item">
-                                    <label>任务目标</label>
+                                    <label>AI员工角色</label>
+                                    <div id="detail-task-role" class="detail-value"></div>
+                                </div>
+                                <div class="detail-item">
+                                    <label>任务描述</label>
                                     <div id="detail-task-goal" class="detail-value"></div>
+                                </div>
+                                <div class="detail-item">
+                                    <label>专业目标设定</label>
+                                    <div id="detail-goal-config" class="detail-value"></div>
                                 </div>
                                 <div class="detail-item">
                                     <label>执行模式</label>
@@ -1115,14 +1237,48 @@
                         </div>
                         
                         <form id="task-form">
+                            <!-- AI员工角色选择 - 置顶 -->
                             <div class="form-group">
-                                <label for="task-name">任务名称</label>
-                                <input type="text" id="task-name" class="form-control" placeholder="例如：信息收集任务" required>
+                                <label for="task-role" data-i18n="task.role">AI员工角色</label>
+                                <select id="daily-role-select" class="form-control" required>
+                                    <option value="" data-i18n="task.selectRole">请选择角色类型</option>
+                                    <option value="sales-specialist" data-i18n="roles.salesSpecialist">销售专员</option>
+                                    <option value="content-operations" data-i18n="roles.contentOperations">内容运营</option>
+                                    <option value="customer-service" data-i18n="roles.customerService">客服专员</option>
+                                    <option value="market-researcher" data-i18n="roles.marketResearcher">市场调研员</option>
+                                    <option value="data-analyst" data-i18n="roles.dataAnalyst">数据分析师</option>
+                                    <option value="ai-product-manager" data-i18n="roles.productManager">产品经理</option>
+                                    <option value="finance-assistant" data-i18n="roles.financeAssistant">财务助手</option>
+                                    <option value="work-assistant" data-i18n="roles.workAssistant">工作助理</option>
+                                    <option value="info-collector" data-i18n="roles.infoCollector">信息收集员</option>
+                                    <option value="fullstack-engineer" data-i18n="roles.fullstackEngineer">全栈工程师</option>
+                                    <option value="document-manager" data-i18n="roles.documentManager">文档管理员</option>
+                                </select>
+                                <small class="form-text text-muted" data-i18n="task.roleHelp">选择最适合处理此任务的专业AI员工</small>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="task-name" data-i18n="task.name">任务名称</label>
+                                <input type="text" id="task-name" class="form-control" data-i18n-placeholder="task.nameExample" placeholder="例如：每日销售报告生成" required>
+                                <small class="form-text text-muted" data-i18n="task.nameHelp">简洁明确的任务标题</small>
                             </div>
                             
                             <div class="form-group">
-                                <label for="task-goal">任务目标</label>
-                                <textarea id="task-goal" class="form-control" rows="4" placeholder="描述任务的具体目标和要求..." required></textarea>
+                                <label for="task-description" data-i18n="task.description">任务描述</label>
+                                <textarea id="task-description" class="form-control" rows="3" data-i18n-placeholder="task.descriptionPlaceholder" placeholder="描述需要完成的具体工作内容和背景信息..." required></textarea>
+                                <small class="form-text text-muted" data-i18n="task.descriptionHelp">详细说明工作内容、背景和要求</small>
+                            </div>
+                            
+                            <!-- 专业目标设定区域 -->
+                            <div class="form-group" id="goal-settings" style="display: none;">
+                                <label data-i18n="task.goalSettings">专业目标设定</label>
+                                <div class="goal-settings-content">
+                                    <div id="daily-goal-example" class="mt-2">
+                                        <!-- 动态生成的目标示例 -->
+                                    </div>
+                                    <textarea id="daily-goal-config" class="form-control" rows="8" data-i18n-placeholder="task.goalConfigPlaceholder" placeholder="请参考上方示例，设定具体的工作目标、关键指标和预期成果..."></textarea>
+                                    <small class="form-text text-muted" data-i18n="task.goalConfigHelp">明确的目标设定将帮助AI员工提供更专业的工作成果</small>
+                                </div>
                             </div>
                             
                             <div class="form-group">

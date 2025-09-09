@@ -1,0 +1,25 @@
+{
+  "session_id": "c75547d1-fdd9-456d-8a2c-bfd593a89c78",
+  "created_at": "2025-09-07T13:16:49.159506",
+  "tasks": [
+    {
+      "task_id": "mobile_task_1757222147_c1fa5b32",
+      "goal": "创建一个简单的测试文件test_session.txt并写入当前时间",
+      "work_directory": "/Users/yuhao",
+      "completed_at": "2025-09-07T13:16:49.158573",
+      "status": "completed",
+      "has_output": true,
+      "is_continuation": false
+    },
+    {
+      "task_id": "mobile_task_1757222400_62396fe1",
+      "goal": "列出刚才创建的文件内容并删除测试文件",
+      "work_directory": "/Users/yuhao",
+      "completed_at": "2025-09-07T13:20:23.996403",
+      "status": "completed",
+      "has_output": true,
+      "is_continuation": true
+    }
+  ],
+  "updated_at": "2025-09-07T13:20:23.998474"
+}

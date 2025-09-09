@@ -1,0 +1,16 @@
+{
+  "session_id": "f265baf6-892c-400f-8258-2982553a24fc",
+  "created_at": "2025-09-08T09:35:18.919651",
+  "tasks": [
+    {
+      "task_id": "mobile_task_1757295249_b18ca047",
+      "goal": "快速测试：创建临时文件temp_test.txt，写入当前时间，然后立即删除",
+      "work_directory": "/Users/yuhao",
+      "completed_at": "2025-09-08T09:35:18.914573",
+      "status": "completed",
+      "has_output": true,
+      "is_continuation": false
+    }
+  ],
+  "updated_at": "2025-09-08T09:35:18.919680"
+}

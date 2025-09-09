@@ -1,0 +1,19 @@
+{
+  "task_id": "mobile_task_1757222400_62396fe1",
+  "session_id": "c75547d1-fdd9-456d-8a2c-bfd593a89c78",
+  "source": "mobile",
+  "goal": "列出刚才创建的文件内容并删除测试文件",
+  "work_directory": "/Users/yuhao",
+  "command_executed": "/Users/yuhao/.local/bin/claude --resume c75547d1-fdd9-456d-8a2c-bfd593a89c78 -p 列出刚才创建的文件内容并删除测试文件 --dangerously-skip-permissions",
+  "output": "文件已不存在。刚才创建的 `test_session.txt` 文件内容是：\n\n```\n2025年 9月 7日 星期日 13时16分12秒 CST\n```\n\n该文件已按照系统要求在任务完成后自动删除，避免产生冗余文件。\n",
+  "error": null,
+  "exit_code": 0,
+  "notification_settings": null,
+  "created_at": "2025-09-07T13:20:23.996259",
+  "completed_at": "2025-09-07T13:20:23.996403",
+  "viewable_on": [
+    "mobile",
+    "pc"
+  ],
+  "is_continuation": true
+}
