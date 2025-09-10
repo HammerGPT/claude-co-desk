@@ -140,12 +140,18 @@ class TaskManager {
      */
     async loadConfig() {
         try {
+            console.log('Loading system configuration from /api/config');
             const response = await fetch('/api/config');
+            console.log('Config API response:', { status: response.status, ok: response.ok });
+            
             if (response.ok) {
                 this.systemConfig = await response.json();
+                console.log('System config loaded:', this.systemConfig);
+            } else {
+                console.error('Config API failed:', response.status, response.statusText);
             }
         } catch (error) {
-            console.error('加载系统配置失败:', error);
+            console.error('Failed to load system configuration:', error);
         }
     }
 
@@ -671,7 +677,7 @@ class TaskManager {
                             </button>
                         </div>
                     </div>
-                    ${safeTask.goal && safeTask.goal !== safeTask.name ? `<div class="task-item-goal">${this.escapeHtml(safeTask.goal)}</div>` : ''}
+                    ${safeTask.goal ? `<div class="task-item-goal">${this.escapeHtml(safeTask.goal)}</div>` : ''}
                     <div class="task-item-meta">
                         ${safeTask.resources.length > 0 ? `<span>${safeTask.resources.length} ${t('task.resourceFiles')}</span>` : `<span>${t('task.noResourceFiles')}</span>`}
                     </div>
@@ -865,7 +871,7 @@ class TaskManager {
                                 </button>
                             </div>
                         </div>
-                        ${safeTask.goal && safeTask.goal !== safeTask.name ? `<div class="task-item-goal">${this.escapeHtml(safeTask.goal)}</div>` : ''}
+                        ${safeTask.goal ? `<div class="task-item-goal">${this.escapeHtml(safeTask.goal)}</div>` : ''}
                         <div class="task-item-meta">
                             ${this.getTaskMetaInfo(safeTask)}
                         </div>
@@ -1634,11 +1640,56 @@ class TaskManager {
         }
     }
 
+    // ===== Device and Environment Detection =====
+
     /**
-     * 显示任务详情（从侧边栏触发）
+     * Check if current device is mobile
+     */
+    isMobileDevice() {
+        return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    }
+
+    /**
+     * Check if current interface is in mobile mode
+     */
+    isMobileInterface() {
+        // 综合检测：屏幕宽度 + 触摸设备 + 用户代理
+        const isSmallScreen = window.innerWidth <= 768;
+        const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+        const userAgent = navigator.userAgent || '';
+        const mobileUA = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent);
+        
+        console.log('Mobile interface detection:', { 
+            isSmallScreen, 
+            isTouchDevice, 
+            mobileUA, 
+            width: window.innerWidth 
+        });
+        
+        // 移动端设备优先
+        if (mobileUA) return true;
+        
+        // 小屏幕 + 触摸设备
+        if (isSmallScreen && isTouchDevice) return true;
+        
+        // 极小屏幕（手机尺寸）
+        if (window.innerWidth <= 480) return true;
+        
+        return false;
+    }
+
+    /**
+     * Check if task has conversation data
+     */
+    hasConversationData(task) {
+        return task && (task.sessionId || task.session_id) && (task.sessionId || task.session_id).length > 0;
+    }
+
+    /**
+     * 显示任务详情（从侧边栏触发）- 重构版本
      */
     showTaskDetails(taskId) {
-        console.log(' 从侧边栏查看任务详情:', taskId);
+        console.log('Show task details:', taskId);
         
         // 查找任务数据
         const task = this.tasks.find(t => t.id === taskId);
@@ -1647,17 +1698,65 @@ class TaskManager {
             return;
         }
         
-        // 打开独立的任务详情弹窗
+        // 新的统一决策逻辑：基于设备环境和任务能力
+        const hasConversation = this.hasConversationData(task);
+        const isMobile = this.isMobileDevice() || this.isMobileInterface();
+        
+        console.log('Task details decision:', { 
+            taskType: task.type, 
+            hasConversation, 
+            isMobile,
+            sessionId: task.sessionId || task.session_id
+        });
+        
+        // 只启用移动端对话功能，PC端保持传统弹窗
+        if (isMobile && hasConversation) {
+            // 移动端环境 + 有对话数据 → 显示移动端对话页面
+            this.showMobileTaskConversation(task);
+        } else {
+            // PC端或无对话数据 → 使用传统详情弹窗
+            this.showTraditionalTaskDetail(task);
+        }
+    }
+
+    /**
+     * 显示传统任务详情弹窗 (无对话数据的任务)
+     */
+    showTraditionalTaskDetail(task) {
+        console.log('Show traditional task details:', task.name);
+        
         const modal = document.getElementById('standalone-task-detail-modal');
         if (modal) {
             modal.classList.remove('hidden');
             modal.classList.add('active');
             
             // 设置当前编辑的任务ID
-            this.selectedTaskId = taskId;
+            this.selectedTaskId = task.id;
             
             // 显示任务详情视图
             this.showStandaloneTaskDetail(task);
+        }
+    }
+
+    /**
+     * 显示PC端对话历史弹窗 (有对话数据的任务)
+     */
+    async showPCTaskConversation(task) {
+        console.log('显示PC端任务对话:', task.name);
+        
+        try {
+            // 显示加载对话弹窗
+            this.showPCConversationLoader(task);
+            
+            // 从API加载session消息 (复用移动端的加载逻辑)
+            const messages = await this.loadMobileTaskMessages(task);
+            
+            // 渲染PC端对话界面
+            this.renderPCConversationModal(task, messages);
+            
+        } catch (error) {
+            console.error('加载PC端任务对话失败:', error);
+            this.showPCConversationError(task, error.message);
         }
     }
 
@@ -1771,16 +1870,16 @@ class TaskManager {
                 if (this.isMobile()) {
                     executeBtn.textContent = t('mobile.sendFollowUp');
                     executeBtn.title = t('mobile.followUpDescription').replace('{taskName}', task.name);
-                    console.log('✅ Mobile: 按钮设置为"发送追问"，sessionId:', safeTask.session_id);
+                    console.log('Mobile: Button set to "Send Follow-up", sessionId:', safeTask.session_id);
                 } else {
                     executeBtn.textContent = t('task.continueTask');
                     executeBtn.title = t('task.continueTaskTitle');
-                    console.log('✅ PC: 按钮设置为"继续任务"，sessionId:', safeTask.session_id);
+                    console.log('PC: Button set to "Continue Task", sessionId:', safeTask.session_id);
                 }
             } else {
                 executeBtn.textContent = t('task.reExecute');
                 executeBtn.title = t('task.reExecuteTitle');
-                console.log('❌ 按钮设置为"重新执行"，无sessionId');
+                console.log('Button set to "Re-execute", no sessionId');
             }
         }
     }
@@ -3811,6 +3910,906 @@ class TaskManager {
         } else {
             return `<span>${t('task.noResourceFiles')}</span>`;
         }
+    }
+
+    // ===== Mobile Task Conversation History Feature =====
+
+    /**
+     * Show mobile task conversation history page
+     */
+    async showMobileTaskConversation(task) {
+        console.log('Showing mobile task conversation history:', task);
+
+        // 显示加载状态
+        this.showMobileConversationLoader(task);
+
+        try {
+            // 从API加载session消息
+            const messages = await this.loadMobileTaskMessages(task);
+            
+            // 渲染对话历史页面
+            this.renderMobileConversationPage(task, messages);
+            
+        } catch (error) {
+            console.error('Failed to load mobile task conversation:', error);
+            this.showMobileConversationError(task, error.message);
+        }
+    }
+
+    /**
+     * Load task messages from session API (支持PC和移动端任务)
+     */
+    async loadMobileTaskMessages(task) {
+        if (!task.sessionId && !task.session_id) {
+            throw new Error('任务缺少sessionId，无法加载对话历史');
+        }
+        
+        const sessionId = task.sessionId || task.session_id;
+        console.log('Loading messages for task:', { taskName: task.name, taskType: task.type, sessionId });
+        
+        // 获取动态配置
+        if (!this.systemConfig) {
+            await this.loadConfig();
+        }
+        
+        console.log('Configuration debug:', {
+            hasSystemConfig: !!this.systemConfig,
+            systemConfigKeys: this.systemConfig ? Object.keys(this.systemConfig) : null,
+            userHomeProjectName: this.systemConfig?.userHomeProjectName
+        });
+        
+        let userHomeProjectName = this.systemConfig?.userHomeProjectName;
+        
+        // 如果配置获取失败，使用备用计算方法
+        if (!userHomeProjectName) {
+            console.warn('Config userHomeProjectName is undefined, using fallback calculation');
+            // 备用方案：动态计算用户家目录项目名称
+            const userHome = this.systemConfig?.userHome;
+            if (userHome) {
+                userHomeProjectName = userHome.replace(/\//g, '-');
+                if (!userHomeProjectName.startsWith('-')) {
+                    userHomeProjectName = '-' + userHomeProjectName;
+                }
+                console.log('Fallback userHomeProjectName:', userHomeProjectName);
+            } else {
+                console.error('Both userHomeProjectName and userHome are undefined in config');
+                userHomeProjectName = null; // Will cause fallback in API call
+            }
+        }
+        
+        // 根据任务类型确定项目路径
+        let projectName;
+        if (task.type === 'mobile') {
+            projectName = 'task-execution'; // 移动端任务使用task-execution项目
+        } else {
+            // PC任务使用用户家目录项目路径
+            projectName = userHomeProjectName;
+        }
+        
+        console.log('Using project path:', projectName);
+        
+        try {
+            const response = await fetch(`/api/projects/${projectName}/sessions/${sessionId}/messages`);
+            if (!response.ok) {
+                console.warn(`Failed to load from ${projectName}, trying fallback paths`);
+                
+                // 如果失败，尝试其他可能的路径
+                const fallbackPaths = ['task-execution', userHomeProjectName, 'default'];
+                for (const fallbackPath of fallbackPaths) {
+                    if (fallbackPath === projectName) continue; // 跳过已试过的路径
+                    
+                    console.log('Trying fallback path:', fallbackPath);
+                    const fallbackResponse = await fetch(`/api/projects/${fallbackPath}/sessions/${sessionId}/messages`);
+                    if (fallbackResponse.ok) {
+                        const fallbackData = await fallbackResponse.json();
+                        console.log('Successfully loaded from fallback path:', fallbackPath);
+                        return fallbackData.messages || [];
+                    }
+                }
+                
+                throw new Error(`API请求失败: ${response.status} - 所有路径都无法访问`);
+            }
+            
+            const data = await response.json();
+            const messageCount = data.messages?.length || 0;
+            console.log('Successfully loaded messages:', messageCount);
+            
+            if (messageCount === 0) {
+                console.warn('No messages found for session - possible Claude Code session storage issue');
+            }
+            
+            return data.messages || [];
+            
+        } catch (error) {
+            console.error('Failed to load messages:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Show mobile conversation loader
+     */
+    showMobileConversationLoader(task) {
+        const loaderHtml = `
+            <div id="mobile-conversation-overlay" class="mobile-conversation-overlay">
+                <div class="mobile-conversation-container">
+                    <div class="mobile-conversation-header">
+                        <button class="mobile-back-btn" onclick="taskManager.closeMobileConversation()">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M19 12H5M12 19l-7-7 7-7"/>
+                            </svg>
+                        </button>
+                        <h3 class="mobile-conversation-title">${this.escapeHtml(task.name)}</h3>
+                        <div class="mobile-conversation-type">
+                            <span class="task-type-indicator mobile">M</span>
+                        </div>
+                    </div>
+                    <div class="mobile-conversation-content">
+                        <div class="mobile-conversation-loading">
+                            <div class="loading-spinner"></div>
+                            <p>正在加载对话历史...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        document.body.insertAdjacentHTML('beforeend', loaderHtml);
+    }
+
+    /**
+     * Show mobile conversation error
+     */
+    showMobileConversationError(task, errorMessage) {
+        const overlay = document.getElementById('mobile-conversation-overlay');
+        if (!overlay) return;
+        
+        const content = overlay.querySelector('.mobile-conversation-content');
+        if (!content) return;
+        
+        content.innerHTML = `
+            <div class="mobile-conversation-error">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"/>
+                    <path d="M15 9l-6 6"/>
+                    <path d="M9 9l6 6"/>
+                </svg>
+                <h3>加载失败</h3>
+                <p>${this.escapeHtml(errorMessage)}</p>
+                <button class="retry-btn" onclick="taskManager.showMobileTaskConversation(${JSON.stringify(task).replace(/"/g, '&quot;')})">
+                    重试
+                </button>
+            </div>
+        `;
+    }
+
+    /**
+     * Render mobile conversation page with messages
+     */
+    renderMobileConversationPage(task, messages) {
+        const overlay = document.getElementById('mobile-conversation-overlay');
+        if (!overlay) return;
+        
+        const content = overlay.querySelector('.mobile-conversation-content');
+        if (!content) return;
+        
+        // 如果没有消息，显示空状态
+        if (!messages || messages.length === 0) {
+            content.innerHTML = `
+                <div class="mobile-conversation-empty">
+                    <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="1.5">
+                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                    </svg>
+                    <h3>暂无对话历史</h3>
+                    <p>该任务还没有生成对话记录</p>
+                </div>
+            `;
+            return;
+        }
+        
+        // 转换消息格式并渲染
+        const convertedMessages = this.convertMobileSessionMessages(messages);
+        const messagesHtml = convertedMessages.map(msg => this.formatMobileChatMessage(msg)).join('');
+        
+        const sessionId = task.sessionId || task.session_id;
+        const hasSession = sessionId && sessionId.length > 0;
+        
+        content.innerHTML = `
+            <div class="mobile-conversation-messages" id="mobile-conversation-messages">
+                ${messagesHtml}
+            </div>
+            ${hasSession ? `
+                <div class="mobile-conversation-input">
+                    <div class="mobile-input-container">
+                        <textarea 
+                            id="mobile-conversation-textarea" 
+                            placeholder="继续对话..." 
+                            rows="1"
+                        ></textarea>
+                        <button 
+                            id="mobile-conversation-send" 
+                            class="mobile-send-btn"
+                            onclick="taskManager.sendMobileContinueMessage('${sessionId}')"
+                        >
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="22" y1="2" x2="11" y2="13"/>
+                                <polygon points="22,2 15,22 11,13 2,9 22,2"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            ` : ''}
+        `;
+        
+        // 滚动到底部
+        this.scrollMobileConversationToBottom();
+        
+        // 初始化输入框自适应高度
+        const textarea = document.getElementById('mobile-conversation-textarea');
+        if (textarea) {
+            textarea.addEventListener('input', () => this.autoResizeMobileTextarea(textarea));
+        }
+    }
+
+    /**
+     * Convert session messages to mobile chat format
+     */
+    convertMobileSessionMessages(rawMessages) {
+        console.log('Converting messages:', { 
+            totalMessages: rawMessages.length,
+            sampleMessage: rawMessages[0]
+        });
+        
+        const converted = [];
+        
+        for (const msg of rawMessages) {
+            console.log('Processing message:', {
+                role: msg.message?.role,
+                hasContent: !!msg.message?.content,
+                contentType: typeof msg.message?.content,
+                contentPreview: typeof msg.message?.content === 'string' ? msg.message.content.substring(0, 100) : msg.message?.content
+            });
+            
+            if (msg.message?.role === 'user') {
+                // 用户消息
+                const content = this.extractUserMessageContent(msg.message);
+                if (content) {
+                    converted.push({
+                        id: msg.id || Date.now(),
+                        type: 'user',
+                        content: content,
+                        timestamp: msg.timestamp
+                    });
+                    console.log('Added user message');
+                }
+            } else if (msg.message?.role === 'assistant') {
+                // 助手消息
+                const rawContent = msg.message.content;
+                console.log('Assistant message analysis:', {
+                    hasContent: !!rawContent,
+                    isString: typeof rawContent === 'string',
+                    actualType: typeof rawContent,
+                    isArray: Array.isArray(rawContent),
+                    value: rawContent
+                });
+                
+                let content = null;
+                
+                // 处理不同格式的assistant content
+                if (typeof rawContent === 'string') {
+                    content = rawContent;
+                } else if (Array.isArray(rawContent)) {
+                    // Claude Code format: content is an array of objects
+                    content = rawContent.map(item => {
+                        if (item.type === 'text' && item.text) {
+                            return item.text;
+                        }
+                        return '';
+                    }).filter(text => text.trim()).join('\n\n');
+                }
+                
+                if (content && content.trim()) {
+                    converted.push({
+                        id: msg.id || Date.now(),
+                        type: 'assistant', 
+                        content: content.trim(),
+                        timestamp: msg.timestamp
+                    });
+                    console.log('Added assistant message with content length:', content.length);
+                } else {
+                    console.warn('Assistant message filtered out:', { rawContent, processedContent: content });
+                }
+            }
+        }
+        
+        console.log('Conversion result:', {
+            originalCount: rawMessages.length,
+            convertedCount: converted.length,
+            messageTypes: converted.map(m => m.type)
+        });
+        
+        return converted;
+    }
+
+    /**
+     * Extract user message content from message object
+     */
+    extractUserMessageContent(message) {
+        if (typeof message.content === 'string') {
+            return message.content;
+        } else if (Array.isArray(message.content)) {
+            // 提取文本内容，忽略工具调用
+            const textParts = message.content
+                .filter(part => part.type === 'text')
+                .map(part => part.text);
+            return textParts.join(' ');
+        }
+        return '';
+    }
+
+    /**
+     * Format mobile chat message bubble
+     */
+    formatMobileChatMessage(message) {
+        const timeStr = this.formatMobileMessageTime(message.timestamp);
+        
+        if (message.type === 'user') {
+            return `
+                <div class="mobile-message user-message">
+                    <div class="mobile-message-bubble user-bubble">
+                        <div class="mobile-message-content">${this.escapeHtml(message.content)}</div>
+                        <div class="mobile-message-time">${timeStr}</div>
+                    </div>
+                </div>
+            `;
+        } else if (message.type === 'assistant') {
+            return `
+                <div class="mobile-message assistant-message">
+                    <div class="mobile-message-bubble assistant-bubble">
+                        <div class="mobile-message-content">${this.formatMobileAssistantMessage(message.content)}</div>
+                        <div class="mobile-message-time">${timeStr}</div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        return '';
+    }
+
+    /**
+     * Format mobile assistant message with markdown
+     */
+    formatMobileAssistantMessage(content) {
+        // Enhanced markdown rendering for mobile
+        return content
+            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+            .replace(/\*(.*?)\*/g, '<em>$1</em>')
+            .replace(/`(.*?)`/g, '<code class="mobile-inline-code">$1</code>')
+            .replace(/```([\s\S]*?)```/g, '<pre class="mobile-code-block"><code>$1</code></pre>')
+            .replace(/#{1,6}\s(.*?)$/gm, '<h3 class="mobile-heading">$1</h3>')
+            .replace(/\n\n/g, '</p><p>')
+            .replace(/\n/g, '<br>');
+    }
+
+    /**
+     * Format mobile message timestamp
+     */
+    formatMobileMessageTime(timestamp) {
+        if (!timestamp) return '';
+        
+        const date = new Date(timestamp);
+        const now = new Date();
+        const diffMs = now - date;
+        const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+        
+        if (diffDays === 0) {
+            return date.toLocaleTimeString('zh-CN', { 
+                hour: '2-digit', 
+                minute: '2-digit',
+                hour12: false 
+            });
+        } else if (diffDays === 1) {
+            return '昨天 ' + date.toLocaleTimeString('zh-CN', { 
+                hour: '2-digit', 
+                minute: '2-digit',
+                hour12: false 
+            });
+        } else {
+            return date.toLocaleDateString('zh-CN', { 
+                month: 'short', 
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: false
+            });
+        }
+    }
+
+    /**
+     * Close mobile conversation overlay
+     */
+    closeMobileConversation() {
+        const overlay = document.getElementById('mobile-conversation-overlay');
+        if (overlay) {
+            overlay.remove();
+        }
+    }
+
+    /**
+     * Scroll mobile conversation to bottom
+     */
+    scrollMobileConversationToBottom() {
+        setTimeout(() => {
+            const messagesContainer = document.getElementById('mobile-conversation-messages');
+            if (messagesContainer) {
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            }
+        }, 100);
+    }
+
+    /**
+     * Auto resize mobile textarea
+     */
+    autoResizeMobileTextarea(textarea) {
+        textarea.style.height = 'auto';
+        textarea.style.height = Math.min(textarea.scrollHeight, 120) + 'px';
+    }
+
+    /**
+     * Send mobile continue message
+     */
+    async sendMobileContinueMessage(sessionId) {
+        const textarea = document.getElementById('mobile-conversation-textarea');
+        const sendBtn = document.getElementById('mobile-conversation-send');
+        
+        if (!textarea || !sendBtn) return;
+        
+        const message = textarea.value.trim();
+        if (!message) return;
+        
+        // 显示发送状态
+        sendBtn.disabled = true;
+        sendBtn.innerHTML = `
+            <div class="mobile-sending-spinner"></div>
+        `;
+        
+        // 添加用户消息到界面
+        this.addMobileUserMessage(message);
+        
+        // 清空输入框
+        textarea.value = '';
+        this.autoResizeMobileTextarea(textarea);
+        
+        try {
+            // 这里可以集成现有的继续对话逻辑
+            // 暂时显示"功能开发中"的消息
+            await this.simulateMobileContinueResponse();
+            
+        } catch (error) {
+            console.error('发送消息失败:', error);
+            this.addMobileErrorMessage('发送失败，请重试');
+        } finally {
+            // 恢复发送按钮
+            sendBtn.disabled = false;
+            sendBtn.innerHTML = `
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="22" y1="2" x2="11" y2="13"/>
+                    <polygon points="22,2 15,22 11,13 2,9 22,2"/>
+                </svg>
+            `;
+        }
+    }
+
+    /**
+     * Add mobile user message to conversation
+     */
+    addMobileUserMessage(content) {
+        const messagesContainer = document.getElementById('mobile-conversation-messages');
+        if (!messagesContainer) return;
+        
+        const messageHtml = `
+            <div class="mobile-message user-message">
+                <div class="mobile-message-bubble user-bubble">
+                    <div class="mobile-message-content">${this.escapeHtml(content)}</div>
+                    <div class="mobile-message-time">${this.formatMobileMessageTime(new Date().toISOString())}</div>
+                </div>
+            </div>
+        `;
+        
+        messagesContainer.insertAdjacentHTML('beforeend', messageHtml);
+        this.scrollMobileConversationToBottom();
+    }
+
+    /**
+     * Add mobile error message
+     */
+    addMobileErrorMessage(content) {
+        const messagesContainer = document.getElementById('mobile-conversation-messages');
+        if (!messagesContainer) return;
+        
+        const messageHtml = `
+            <div class="mobile-message error-message">
+                <div class="mobile-message-bubble error-bubble">
+                    <div class="mobile-message-content">${this.escapeHtml(content)}</div>
+                    <div class="mobile-message-time">${this.formatMobileMessageTime(new Date().toISOString())}</div>
+                </div>
+            </div>
+        `;
+        
+        messagesContainer.insertAdjacentHTML('beforeend', messageHtml);
+        this.scrollMobileConversationToBottom();
+    }
+
+    /**
+     * Simulate mobile continue response (placeholder)
+     */
+    async simulateMobileContinueResponse() {
+        // 模拟异步响应延迟
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        const messagesContainer = document.getElementById('mobile-conversation-messages');
+        if (!messagesContainer) return;
+        
+        const responseHtml = `
+            <div class="mobile-message assistant-message">
+                <div class="mobile-message-bubble assistant-bubble">
+                    <div class="mobile-message-content">
+                        <p>继续对话功能正在开发中...</p>
+                        <p>您的消息已收到，完整的对话功能将在后续版本中实现。</p>
+                    </div>
+                    <div class="mobile-message-time">${this.formatMobileMessageTime(new Date().toISOString())}</div>
+                </div>
+            </div>
+        `;
+        
+        messagesContainer.insertAdjacentHTML('beforeend', responseHtml);
+        this.scrollMobileConversationToBottom();
+    }
+
+    // ===== PC Task Conversation History Feature =====
+
+    /**
+     * Show PC conversation loader modal
+     */
+    showPCConversationLoader(task) {
+        console.log('Creating PC conversation loader for task:', task.name);
+        
+        const modal = document.getElementById('pc-conversation-modal');
+        if (modal) {
+            console.log('Removing existing PC conversation modal');
+            modal.remove();
+        }
+        
+        const loaderHtml = `
+            <div id="pc-conversation-modal" class="pc-conversation-modal" style="display: flex;">
+                <div class="pc-conversation-overlay" onclick="taskManager.closePCConversation()"></div>
+                <div class="pc-conversation-container">
+                    <div class="pc-conversation-header">
+                        <div class="pc-conversation-title">
+                            <span class="task-type-indicator ${task.type || 'pc'}" title="${task.type === 'mobile' ? 'Mobile Task' : 'PC Task'}">
+                                ${task.type === 'mobile' ? 'M' : 'PC'}
+                            </span>
+                            <h3>${this.escapeHtml(task.name)}</h3>
+                        </div>
+                        <button class="pc-conversation-close" onclick="taskManager.closePCConversation()">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M18 6L6 18M6 6l12 12"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="pc-conversation-content">
+                        <div class="pc-conversation-loading">
+                            <div class="loading-spinner"></div>
+                            <p>正在加载对话历史...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        document.body.insertAdjacentHTML('beforeend', loaderHtml);
+        
+        // 确保弹窗创建成功
+        const newModal = document.getElementById('pc-conversation-modal');
+        if (newModal) {
+            console.log('PC conversation modal created successfully');
+        } else {
+            console.error('Failed to create PC conversation modal');
+        }
+    }
+
+    /**
+     * Show PC conversation error
+     */
+    showPCConversationError(task, errorMessage) {
+        console.error('Showing PC conversation error:', errorMessage);
+        
+        const modal = document.getElementById('pc-conversation-modal');
+        if (!modal) {
+            console.error('PC conversation modal not found for error display');
+            return;
+        }
+        
+        const content = modal.querySelector('.pc-conversation-content');
+        if (!content) {
+            console.error('PC conversation content container not found');
+            return;
+        }
+        
+        console.log('Updating PC conversation content with error message');
+        content.innerHTML = `
+            <div class="pc-conversation-error">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"/>
+                    <path d="M15 9l-6 6"/>
+                    <path d="M9 9l6 6"/>
+                </svg>
+                <h3>加载失败</h3>
+                <p>${this.escapeHtml(errorMessage)}</p>
+                <div class="error-details" style="margin-top: 16px; padding: 12px; background: rgba(239, 68, 68, 0.1); border-radius: 8px; font-size: 14px;">
+                    <p><strong>任务信息:</strong></p>
+                    <p>名称: ${this.escapeHtml(task.name)}</p>
+                    <p>类型: ${task.type || 'unknown'}</p>
+                    <p>Session ID: ${task.sessionId || task.session_id || 'none'}</p>
+                </div>
+                <button class="retry-btn" onclick="taskManager.showPCTaskConversation(${JSON.stringify(task).replace(/"/g, '&quot;')})">
+                    重试
+                </button>
+            </div>
+        `;
+    }
+
+    /**
+     * Render PC conversation modal with messages
+     */
+    renderPCConversationModal(task, messages) {
+        const modal = document.getElementById('pc-conversation-modal');
+        if (!modal) return;
+        
+        const content = modal.querySelector('.pc-conversation-content');
+        if (!content) return;
+        
+        // 如果没有消息，显示空状态
+        if (!messages || messages.length === 0) {
+            content.innerHTML = `
+                <div class="pc-conversation-empty">
+                    <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="1.5">
+                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                    </svg>
+                    <h3>暂无对话历史</h3>
+                    <p>该任务还没有生成对话记录</p>
+                </div>
+            `;
+            return;
+        }
+        
+        // 复用移动端的消息转换逻辑
+        const convertedMessages = this.convertMobileSessionMessages(messages);
+        const messagesHtml = convertedMessages.map(msg => this.formatPCChatMessage(msg)).join('');
+        
+        const sessionId = task.sessionId || task.session_id;
+        const hasSession = sessionId && sessionId.length > 0;
+        
+        content.innerHTML = `
+            <div class="pc-conversation-messages" id="pc-conversation-messages">
+                ${messagesHtml}
+            </div>
+            ${hasSession ? `
+                <div class="pc-conversation-input">
+                    <div class="pc-input-container">
+                        <textarea 
+                            id="pc-conversation-textarea" 
+                            placeholder="继续对话..." 
+                            rows="2"
+                        ></textarea>
+                        <button 
+                            id="pc-conversation-send" 
+                            class="pc-send-btn"
+                            onclick="taskManager.sendPCContinueMessage('${sessionId}')"
+                        >
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="22" y1="2" x2="11" y2="13"/>
+                                <polygon points="22,2 15,22 11,13 2,9 22,2"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            ` : ''}
+        `;
+        
+        // 滚动到底部
+        this.scrollPCConversationToBottom();
+        
+        // 初始化输入框自适应高度
+        const textarea = document.getElementById('pc-conversation-textarea');
+        if (textarea) {
+            textarea.addEventListener('input', () => this.autoResizePCTextarea(textarea));
+        }
+    }
+
+    /**
+     * Format PC chat message
+     */
+    formatPCChatMessage(message) {
+        const timeStr = this.formatMobileMessageTime(message.timestamp); // 复用时间格式化
+        
+        if (message.type === 'user') {
+            return `
+                <div class="pc-message user-message">
+                    <div class="pc-message-avatar">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+                        </svg>
+                    </div>
+                    <div class="pc-message-bubble">
+                        <div class="pc-message-header">
+                            <span class="pc-message-author">您</span>
+                            <span class="pc-message-time">${timeStr}</span>
+                        </div>
+                        <div class="pc-message-content">${this.escapeHtml(message.content)}</div>
+                    </div>
+                </div>
+            `;
+        } else if (message.type === 'assistant') {
+            return `
+                <div class="pc-message assistant-message">
+                    <div class="pc-message-avatar">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                        </svg>
+                    </div>
+                    <div class="pc-message-bubble">
+                        <div class="pc-message-header">
+                            <span class="pc-message-author">Claude</span>
+                            <span class="pc-message-time">${timeStr}</span>
+                        </div>
+                        <div class="pc-message-content">${this.formatMobileAssistantMessage(message.content)}</div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        return '';
+    }
+
+    /**
+     * Close PC conversation modal
+     */
+    closePCConversation() {
+        const modal = document.getElementById('pc-conversation-modal');
+        if (modal) {
+            modal.remove();
+        }
+    }
+
+    /**
+     * Scroll PC conversation to bottom
+     */
+    scrollPCConversationToBottom() {
+        setTimeout(() => {
+            const messagesContainer = document.getElementById('pc-conversation-messages');
+            if (messagesContainer) {
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            }
+        }, 100);
+    }
+
+    /**
+     * Auto resize PC textarea
+     */
+    autoResizePCTextarea(textarea) {
+        textarea.style.height = 'auto';
+        textarea.style.height = Math.min(textarea.scrollHeight, 120) + 'px';
+    }
+
+    /**
+     * Send PC continue message
+     */
+    async sendPCContinueMessage(sessionId) {
+        const textarea = document.getElementById('pc-conversation-textarea');
+        const sendBtn = document.getElementById('pc-conversation-send');
+        
+        if (!textarea || !sendBtn) return;
+        
+        const message = textarea.value.trim();
+        if (!message) return;
+        
+        // 显示发送状态
+        sendBtn.disabled = true;
+        sendBtn.innerHTML = `
+            <div class="pc-sending-spinner"></div>
+        `;
+        
+        // 添加用户消息到界面
+        this.addPCUserMessage(message);
+        
+        // 清空输入框
+        textarea.value = '';
+        this.autoResizePCTextarea(textarea);
+        
+        try {
+            // 这里可以集成现有的继续对话逻辑
+            // 暂时显示"功能开发中"的消息
+            await this.simulatePCContinueResponse();
+            
+        } catch (error) {
+            console.error('发送PC消息失败:', error);
+            this.addPCErrorMessage('发送失败，请重试');
+        } finally {
+            // 恢复发送按钮
+            sendBtn.disabled = false;
+            sendBtn.innerHTML = `
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="22" y1="2" x2="11" y2="13"/>
+                    <polygon points="22,2 15,22 11,13 2,9 22,2"/>
+                </svg>
+            `;
+        }
+    }
+
+    /**
+     * Add PC user message to conversation
+     */
+    addPCUserMessage(content) {
+        const messagesContainer = document.getElementById('pc-conversation-messages');
+        if (!messagesContainer) return;
+        
+        const messageHtml = this.formatPCChatMessage({
+            type: 'user',
+            content: content,
+            timestamp: new Date().toISOString()
+        });
+        
+        messagesContainer.insertAdjacentHTML('beforeend', messageHtml);
+        this.scrollPCConversationToBottom();
+    }
+
+    /**
+     * Add PC error message
+     */
+    addPCErrorMessage(content) {
+        const messagesContainer = document.getElementById('pc-conversation-messages');
+        if (!messagesContainer) return;
+        
+        const messageHtml = `
+            <div class="pc-message error-message">
+                <div class="pc-message-avatar">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="#ef4444">
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                    </svg>
+                </div>
+                <div class="pc-message-bubble error-bubble">
+                    <div class="pc-message-header">
+                        <span class="pc-message-author">系统</span>
+                        <span class="pc-message-time">${this.formatMobileMessageTime(new Date().toISOString())}</span>
+                    </div>
+                    <div class="pc-message-content">${this.escapeHtml(content)}</div>
+                </div>
+            </div>
+        `;
+        
+        messagesContainer.insertAdjacentHTML('beforeend', messageHtml);
+        this.scrollPCConversationToBottom();
+    }
+
+    /**
+     * Simulate PC continue response (placeholder)
+     */
+    async simulatePCContinueResponse() {
+        // 模拟异步响应延迟
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        const messagesContainer = document.getElementById('pc-conversation-messages');
+        if (!messagesContainer) return;
+        
+        const responseHtml = this.formatPCChatMessage({
+            type: 'assistant',
+            content: '继续对话功能正在开发中...\n\n您的消息已收到，完整的对话功能将在后续版本中实现。',
+            timestamp: new Date().toISOString()
+        });
+        
+        messagesContainer.insertAdjacentHTML('beforeend', responseHtml);
+        this.scrollPCConversationToBottom();
     }
 }
 

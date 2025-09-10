@@ -63,6 +63,16 @@ class Config:
         return cls.USER_HOME
     
     @classmethod
+    def get_user_home_project_name(cls) -> str:
+        """获取用户家目录对应的Claude项目名称"""
+        # 动态生成项目路径，避免硬编码
+        home_path = cls.USER_HOME.replace('/', '-')
+        if home_path.startswith('-'):
+            return home_path
+        else:
+            return f'-{home_path}'
+    
+    @classmethod
     def get_server_config(cls) -> dict:
         """获取服务器配置"""
         return {
@@ -75,6 +85,7 @@ class Config:
         """获取前端需要的配置信息"""
         return {
             'userHome': cls.USER_HOME,
+            'userHomeProjectName': cls.get_user_home_project_name(),
             'claudeCliPath': cls.get_claude_cli_path(),
             'serverPort': cls.PORT,
             'defaultWorkingDirectory': cls.get_default_working_directory(),
