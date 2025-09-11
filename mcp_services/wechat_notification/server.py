@@ -255,6 +255,7 @@ class WeChatNotificationMCP:
             logger.info(f"Message successful for uncached user {user_identifier}, triggering sync")
             await self._sync_user_bindings(force_sync=True)
     
+    
     def _register_tools(self):
         """Register all available MCP tools"""
         
@@ -437,6 +438,9 @@ class WeChatNotificationMCP:
             if response.get("success", False):
                 # Update binding cache after successful message
                 await self._update_binding_cache(user_identifier, True, message_id)
+                
+                # Save task to local tasks storage (unified storage approach)
+                await self._save_mobile_task_to_local_storage(message, task_name, message_id)
                 
                 # Log successful notification
                 await log_notification_activity({

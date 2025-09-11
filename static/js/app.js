@@ -21,8 +21,13 @@ class App {
         this.progressPercent = null;
         this.statusItems = null;
         
+        // 移动端支持
+        this.isMobile = window.innerWidth <= 768;
+        this.mobileMenuOpen = false;
+        
         this.initElements();
         this.initEventListeners();
+        this.initMobileSupport();
         this.initialize();
     }
 
@@ -230,31 +235,42 @@ class App {
             
             await new Promise(resolve => setTimeout(resolve, 200));
             
-            // 阶段3：组件加载 (60-80%)
+            // 阶段3：组件加载 (60-80%) - 移动端条件加载
             this.updateProgress(70, 'init.loadingComponents', 'init.loadingComponents');
             await new Promise(resolve => setTimeout(resolve, 300));
-            if (window.employeesManager) {
-                console.log('Initializing employees manager...');
-                // 员工管理器已经在自己的构造函数中初始化了
+            
+            if (this.isMobile) {
+                console.log('Mobile mode: Loading essential components only...');
+                // 移动端只加载必要组件
+                await this.initMobileComponents();
+            } else {
+                console.log('Desktop mode: Loading all components...');
+                // PC端加载所有组件
+                await this.initDesktopComponents();
             }
-            this.updateLastStatusItem('success');
             
+            this.updateLastStatusItem('success');
             await new Promise(resolve => setTimeout(resolve, 200));
             
-            // 阶段4：项目加载 (80-100%)
-            this.updateProgress(90, 'init.loadingProjects', 'init.loadingProjects');
-            await new Promise(resolve => setTimeout(resolve, 300));
-            await window.enhancedSidebar.loadProjects();
-            this.updateLastStatusItem('success');
-            
-            await new Promise(resolve => setTimeout(resolve, 200));
+            // 阶段4：项目加载 (80-100%) - 移动端跳过项目管理
+            if (!this.isMobile) {
+                this.updateProgress(90, 'init.loadingProjects', 'init.loadingProjects');
+                await new Promise(resolve => setTimeout(resolve, 300));
+                await window.enhancedSidebar.loadProjects();
+                this.updateLastStatusItem('success');
+                await new Promise(resolve => setTimeout(resolve, 200));
+            } else {
+                console.log('Mobile mode: Skipping project management...');
+                this.updateProgress(90, 'init.systemReady', 'init.systemReady');
+                await new Promise(resolve => setTimeout(resolve, 300));
+            }
             
             // 完成
             this.updateProgress(100, 'init.systemReady', 'init.systemReady');
             await new Promise(resolve => setTimeout(resolve, 200));
             this.updateLastStatusItem('success');
             
-            console.log('Application initialization completed');
+            console.log(`Application initialization completed (${this.isMobile ? 'Mobile' : 'Desktop'} mode)`);
             
             // 短暂延迟显示完成状态
             setTimeout(() => this.showMainApp(), 500);
@@ -269,6 +285,46 @@ class App {
                 error: `Initialization failed: ${error.message}`
             });
         }
+    }
+
+    /**
+     * 初始化移动端组件 - 只加载必要功能
+     */
+    async initMobileComponents() {
+        console.log('Initializing mobile-essential components...');
+        
+        // 只初始化任务管理器（核心功能）
+        if (window.taskManager) {
+            console.log('✓ Task Manager loaded (mobile-essential)');
+        }
+        
+        // 跳过以下组件以提升性能：
+        // - employeesManager (智能体团队管理)
+        // - 项目管理相关组件
+        // - Dashboard复杂功能
+        // - MCP工具管理
+        // - 文件管理器
+        
+        console.log('Mobile components initialization completed');
+    }
+
+    /**
+     * 初始化桌面端组件 - 加载所有功能
+     */
+    async initDesktopComponents() {
+        console.log('Initializing desktop components...');
+        
+        // 加载所有功能组件
+        if (window.employeesManager) {
+            console.log('✓ Employees Manager loaded');
+        }
+        
+        if (window.taskManager) {
+            console.log('✓ Task Manager loaded');
+        }
+        
+        // 其他PC端专用组件在各自的文件中已经初始化
+        console.log('Desktop components initialization completed');
     }
 
     /**
@@ -681,6 +737,260 @@ class App {
             
         } catch (error) {
             console.error(' [APP] 清理过程中出现错误:', error);
+        }
+    }
+
+    /**
+     * Initialize mobile support
+     */
+    initMobileSupport() {
+        // 移动端新增任务按钮 (替换原菜单按钮)
+        const mobileAddTaskBtn = document.getElementById('mobile-add-task-btn');
+        
+        if (mobileAddTaskBtn) {
+            // 新增任务功能
+            mobileAddTaskBtn.addEventListener('click', () => {
+                if (window.taskManager) {
+                    window.taskManager.showQuickAddTask();
+                } else {
+                    console.warn('TaskManager not available');
+                }
+            });
+        }
+
+        // 添加PC端功能提示
+        if (this.isMobile) {
+            this.initPCOnlyToasts();
+            this.initMobileTasks();
+        }
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            this.handleResize();
+        });
+    }
+
+    /**
+     * Initialize mobile tasks display
+     */
+    initMobileTasks() {
+        // 如果TaskManager已经加载，立即初始化移动端任务显示
+        if (window.taskManager) {
+            this.setupMobileTasksSync();
+        } else {
+            // 等待TaskManager加载完成
+            const checkTaskManager = setInterval(() => {
+                if (window.taskManager) {
+                    clearInterval(checkTaskManager);
+                    this.setupMobileTasksSync();
+                }
+            }, 100);
+        }
+    }
+
+    /**
+     * Setup mobile tasks synchronization with TaskManager
+     */
+    setupMobileTasksSync() {
+        // 立即执行一次初始同步
+        this.syncTasksToMobile();
+        
+        // 监听任务列表变化，同步到移动端容器
+        const originalRenderTasks = window.taskManager.renderTasks;
+        if (originalRenderTasks) {
+            window.taskManager.renderTasks = function() {
+                // 调用原方法
+                originalRenderTasks.call(this);
+                
+                // 同步到移动端
+                if (window.app && window.app.isMobile) {
+                    window.app.syncTasksToMobile();
+                }
+            };
+        }
+        
+        // 监听任务加载完成事件，确保初始任务显示
+        const originalLoadTasks = window.taskManager.loadTasks;
+        if (originalLoadTasks) {
+            window.taskManager.loadTasks = function() {
+                // 调用原方法
+                const result = originalLoadTasks.call(this);
+                
+                // 加载完成后同步到移动端
+                if (window.app && window.app.isMobile) {
+                    // 使用延迟确保DOM更新完成
+                    setTimeout(() => {
+                        window.app.syncTasksToMobile();
+                    }, 100);
+                }
+                
+                return result;
+            };
+        }
+    }
+
+    /**
+     * Sync tasks to mobile container
+     */
+    syncTasksToMobile() {
+        const mobileTasksList = document.getElementById('mobile-tasks-list');
+        const sidebarTasksList = document.getElementById('tasks-list');
+        
+        if (mobileTasksList && sidebarTasksList) {
+            // 复制侧边栏任务列表到移动端
+            mobileTasksList.innerHTML = sidebarTasksList.innerHTML;
+        }
+    }
+
+    /**
+     * Initialize PC-only feature toast notifications for mobile
+     */
+    initPCOnlyToasts() {
+        // 为所有PC功能提示按钮添加事件监听
+        document.addEventListener('click', (e) => {
+            const pcHintBtn = e.target.closest('.mobile-pc-hint-btn');
+            if (pcHintBtn && this.isMobile) {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                const featureKey = pcHintBtn.getAttribute('data-pc-feature') || 'default';
+                let message;
+                
+                // 确保国际化系统加载完成
+                if (typeof t === 'function') {
+                    message = t(`mobile.pcFeatureHint.${featureKey}`);
+                    if (!message || message.startsWith('mobile.pcFeatureHint.')) {
+                        message = t('mobile.pcFeatureHint.default');
+                    }
+                }
+                
+                // Fallback机制
+                if (!message || message.startsWith('mobile.pcFeatureHint.')) {
+                    const fallbackMessages = {
+                        'settings': 'System settings feature, please use on PC for full experience',
+                        'projectManagement': 'Project management feature, please use on PC',
+                        'agentsTeam': 'Digital employee team management, please use on PC',
+                        'fileManagement': 'File management feature, please use on PC',
+                        'default': 'This feature is available on PC'
+                    };
+                    message = fallbackMessages[featureKey] || fallbackMessages.default;
+                }
+                
+                this.showPCOnlyToast(message);
+            }
+        });
+
+        // 为移动端隐藏的元素添加数据属性，如果用户尝试访问则显示提示
+        const hiddenElements = [
+            { selector: '#settings-btn', feature: 'settings' },
+            { selector: '#agents-team-btn', feature: 'agentsTeam' },
+            { selector: '#new-project', feature: 'projectManagement' },
+            { selector: '#refresh-projects', feature: 'projectManagement' },
+            { selector: '#files-drawer-btn', feature: 'fileManagement' }
+        ];
+
+        hiddenElements.forEach(({ selector, feature }) => {
+            const element = document.querySelector(selector);
+            if (element) {
+                element.setAttribute('data-pc-feature', feature);
+                element.classList.add('mobile-pc-hint-btn');
+            }
+        });
+    }
+
+    /**
+     * Show PC-only feature toast notification
+     */
+    showPCOnlyToast(message) {
+        // 移除现有的toast
+        const existingToast = document.querySelector('.pc-only-toast');
+        if (existingToast) {
+            existingToast.remove();
+        }
+
+        // 创建toast元素
+        const toast = document.createElement('div');
+        toast.className = 'pc-only-toast';
+        toast.innerHTML = `
+            <div class="toast-content">
+                <img src="/static/assets/icons/interface/settings.png" width="16" height="16" alt="PC" class="toast-icon">
+                <span class="toast-message">${message}</span>
+            </div>
+        `;
+
+        // 添加toast样式
+        Object.assign(toast.style, {
+            position: 'fixed',
+            top: '20px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            background: 'hsl(var(--card))',
+            color: 'hsl(var(--card-foreground))',
+            padding: '12px 16px',
+            borderRadius: '8px',
+            border: '1px solid hsl(var(--border))',
+            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+            zIndex: '9999',
+            maxWidth: '80vw',
+            fontSize: '14px',
+            opacity: '0',
+            transition: 'all 300ms ease'
+        });
+
+        // toast内容样式
+        const toastContent = toast.querySelector('.toast-content');
+        Object.assign(toastContent.style, {
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
+        });
+
+        const toastIcon = toast.querySelector('.toast-icon');
+        Object.assign(toastIcon.style, {
+            opacity: '0.7',
+            flexShrink: '0'
+        });
+
+        const toastMessage = toast.querySelector('.toast-message');
+        Object.assign(toastMessage.style, {
+            lineHeight: '1.4'
+        });
+
+        // 添加到页面
+        document.body.appendChild(toast);
+
+        // 显示动画
+        requestAnimationFrame(() => {
+            toast.style.opacity = '1';
+            toast.style.transform = 'translateX(-50%) translateY(0px)';
+        });
+
+        // 3秒后自动隐藏
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            toast.style.transform = 'translateX(-50%) translateY(-10px)';
+            setTimeout(() => {
+                if (toast.parentNode) {
+                    toast.parentNode.removeChild(toast);
+                }
+            }, 300);
+        }, 3000);
+    }
+
+
+    /**
+     * Handle window resize
+     */
+    handleResize() {
+        const newIsMobile = window.innerWidth <= 768;
+        
+        if (newIsMobile !== this.isMobile) {
+            this.isMobile = newIsMobile;
+            
+            // 重新同步任务显示
+            if (this.isMobile) {
+                this.syncTasksToMobile();
+            }
         }
     }
 

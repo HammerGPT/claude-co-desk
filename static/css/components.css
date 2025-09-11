@@ -6288,3 +6288,875 @@ body.modal-open {
     color: #7B1FA2;
     border: 1px solid #AB47BC;
 }
+
+/* ===== Mobile Task Conversation History Styles ===== */
+
+/* 移动端对话历史遮罩层 */
+.mobile-conversation-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    display: flex;
+    align-items: flex-end;
+    animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+/* 移动端对话历史容器 */
+.mobile-conversation-container {
+    background: hsl(var(--background));
+    width: 100%;
+    height: 90vh;
+    border-radius: 16px 16px 0 0;
+    display: flex;
+    flex-direction: column;
+    animation: slideUp 0.3s ease-out;
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.15);
+}
+
+@keyframes slideUp {
+    from { transform: translateY(100%); }
+    to { transform: translateY(0); }
+}
+
+/* 移动端对话头部 */
+.mobile-conversation-header {
+    display: flex;
+    align-items: center;
+    padding: 16px 20px;
+    border-bottom: 1px solid hsl(var(--border));
+    background: hsl(var(--card));
+    border-radius: 16px 16px 0 0;
+    min-height: 64px;
+}
+
+.mobile-back-btn {
+    background: none;
+    border: none;
+    padding: 8px;
+    margin-right: 12px;
+    border-radius: 8px;
+    color: hsl(var(--foreground));
+    cursor: pointer;
+    transition: background 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.mobile-back-btn:hover {
+    background: hsl(var(--accent));
+}
+
+.mobile-back-btn svg {
+    width: 20px;
+    height: 20px;
+}
+
+.mobile-conversation-title {
+    flex: 1;
+    font-size: 16px;
+    font-weight: 600;
+    color: hsl(var(--foreground));
+    margin: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    padding-right: 12px;
+}
+
+.mobile-conversation-type {
+    display: flex;
+    align-items: center;
+}
+
+/* 移动端对话内容区域 */
+.mobile-conversation-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+/* 加载状态 */
+.mobile-conversation-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: hsl(var(--muted-foreground));
+}
+
+.loading-spinner {
+    width: 32px;
+    height: 32px;
+    border: 3px solid hsl(var(--border));
+    border-top: 3px solid hsl(var(--primary));
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 16px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* 错误状态 */
+.mobile-conversation-error {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    padding: 32px;
+    text-align: center;
+    color: hsl(var(--muted-foreground));
+}
+
+.mobile-conversation-error svg {
+    margin-bottom: 16px;
+}
+
+.mobile-conversation-error h3 {
+    color: hsl(var(--foreground));
+    margin: 0 0 8px 0;
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.mobile-conversation-error p {
+    margin: 0 0 24px 0;
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+.retry-btn {
+    background: hsl(var(--primary));
+    color: hsl(var(--primary-foreground));
+    border: none;
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+
+.retry-btn:hover {
+    background: hsl(var(--primary) / 0.9);
+}
+
+/* 空状态 */
+.mobile-conversation-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    padding: 32px;
+    text-align: center;
+    color: hsl(var(--muted-foreground));
+}
+
+.mobile-conversation-empty svg {
+    margin-bottom: 16px;
+}
+
+.mobile-conversation-empty h3 {
+    color: hsl(var(--foreground));
+    margin: 0 0 8px 0;
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.mobile-conversation-empty p {
+    margin: 0;
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+/* 对话消息列表 */
+.mobile-conversation-messages {
+    flex: 1;
+    padding: 16px 20px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    scroll-behavior: smooth;
+}
+
+/* 消息气泡样式 */
+.mobile-message {
+    display: flex;
+    width: 100%;
+}
+
+.mobile-message.user-message {
+    justify-content: flex-end;
+}
+
+.mobile-message.assistant-message {
+    justify-content: flex-start;
+}
+
+.mobile-message.error-message {
+    justify-content: center;
+}
+
+.mobile-message-bubble {
+    max-width: 80%;
+    padding: 12px 16px;
+    border-radius: 18px;
+    word-wrap: break-word;
+    position: relative;
+}
+
+/* 用户消息气泡 */
+.mobile-message-bubble.user-bubble {
+    background: hsl(var(--primary));
+    color: hsl(var(--primary-foreground));
+    border-bottom-right-radius: 6px;
+}
+
+/* 助手消息气泡 */
+.mobile-message-bubble.assistant-bubble {
+    background: hsl(var(--card));
+    color: hsl(var(--foreground));
+    border: 1px solid hsl(var(--border));
+    border-bottom-left-radius: 6px;
+}
+
+/* 错误消息气泡 */
+.mobile-message-bubble.error-bubble {
+    background: hsl(var(--destructive));
+    color: hsl(var(--destructive-foreground));
+    border-radius: 18px;
+    max-width: 90%;
+}
+
+.mobile-message-content {
+    font-size: 14px;
+    line-height: 1.4;
+    margin-bottom: 4px;
+}
+
+.mobile-message-content:last-child {
+    margin-bottom: 0;
+}
+
+.mobile-message-time {
+    font-size: 11px;
+    opacity: 0.7;
+    text-align: right;
+    margin-top: 4px;
+}
+
+.user-bubble .mobile-message-time {
+    color: hsl(var(--primary-foreground) / 0.8);
+}
+
+.assistant-bubble .mobile-message-time {
+    color: hsl(var(--muted-foreground));
+    text-align: left;
+}
+
+/* 移动端Markdown样式 */
+.mobile-message-content strong {
+    font-weight: 600;
+}
+
+.mobile-message-content em {
+    font-style: italic;
+}
+
+.mobile-message-content code.mobile-inline-code {
+    background: hsl(var(--accent));
+    color: hsl(var(--accent-foreground));
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 13px;
+    font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
+}
+
+.mobile-message-content pre.mobile-code-block {
+    background: hsl(var(--accent));
+    color: hsl(var(--accent-foreground));
+    padding: 12px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
+    overflow-x: auto;
+    margin: 8px 0;
+}
+
+.mobile-message-content h3.mobile-heading {
+    font-size: 16px;
+    font-weight: 600;
+    margin: 8px 0 4px 0;
+    color: inherit;
+}
+
+/* 移动端输入区域 */
+.mobile-conversation-input {
+    padding: 16px 20px;
+    border-top: 1px solid hsl(var(--border));
+    background: hsl(var(--background));
+}
+
+.mobile-input-container {
+    display: flex;
+    align-items: flex-end;
+    gap: 12px;
+    max-width: 100%;
+}
+
+#mobile-conversation-textarea {
+    flex: 1;
+    border: 1px solid hsl(var(--border));
+    border-radius: 20px;
+    padding: 12px 16px;
+    font-size: 14px;
+    background: hsl(var(--background));
+    color: hsl(var(--foreground));
+    resize: none;
+    outline: none;
+    min-height: 44px;
+    max-height: 120px;
+    transition: border-color 0.2s ease;
+    font-family: inherit;
+}
+
+#mobile-conversation-textarea:focus {
+    border-color: hsl(var(--primary));
+}
+
+#mobile-conversation-textarea::placeholder {
+    color: hsl(var(--muted-foreground));
+}
+
+.mobile-send-btn {
+    width: 44px;
+    height: 44px;
+    background: hsl(var(--primary));
+    color: hsl(var(--primary-foreground));
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s ease, transform 0.1s ease;
+    flex-shrink: 0;
+}
+
+.mobile-send-btn:hover:not(:disabled) {
+    background: hsl(var(--primary) / 0.9);
+}
+
+.mobile-send-btn:active {
+    transform: scale(0.95);
+}
+
+.mobile-send-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.mobile-send-btn svg {
+    width: 20px;
+    height: 20px;
+}
+
+/* 发送中的加载动画 */
+.mobile-sending-spinner {
+    width: 18px;
+    height: 18px;
+    border: 2px solid hsl(var(--primary-foreground) / 0.3);
+    border-top: 2px solid hsl(var(--primary-foreground));
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+/* 响应式调整 */
+@media (max-width: 768px) {
+    .mobile-conversation-overlay {
+        align-items: stretch;
+    }
+    
+    .mobile-conversation-container {
+        height: 100vh;
+        border-radius: 0;
+    }
+    
+    .mobile-conversation-header {
+        border-radius: 0;
+    }
+    
+    .mobile-message-bubble {
+        max-width: 85%;
+    }
+}
+
+@media (max-width: 480px) {
+    .mobile-conversation-messages {
+        padding: 12px 16px;
+    }
+    
+    .mobile-conversation-input {
+        padding: 12px 16px;
+    }
+    
+    .mobile-conversation-header {
+        padding: 12px 16px;
+    }
+    
+    .mobile-message-bubble {
+        max-width: 90%;
+        padding: 10px 14px;
+    }
+}
+
+/* ===== PC Task Conversation History Styles ===== */
+
+/* PC端对话历史模态框 */
+.pc-conversation-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: fadeIn 0.2s ease-out;
+}
+
+.pc-conversation-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    cursor: pointer;
+}
+
+.pc-conversation-container {
+    background: hsl(var(--background));
+    width: 90vw;
+    max-width: 900px;
+    height: 80vh;
+    max-height: 700px;
+    border-radius: 12px;
+    border: 1px solid hsl(var(--border));
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    z-index: 1001;
+    animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+    from { 
+        opacity: 0; 
+        transform: scale(0.9) translateY(-20px); 
+    }
+    to { 
+        opacity: 1; 
+        transform: scale(1) translateY(0); 
+    }
+}
+
+/* PC端对话头部 */
+.pc-conversation-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 24px;
+    border-bottom: 1px solid hsl(var(--border));
+    background: hsl(var(--card));
+    border-radius: 12px 12px 0 0;
+    min-height: 64px;
+}
+
+.pc-conversation-title {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex: 1;
+}
+
+.pc-conversation-title h3 {
+    font-size: 18px;
+    font-weight: 600;
+    margin: 0;
+    color: hsl(var(--foreground));
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.pc-conversation-close {
+    background: none;
+    border: none;
+    padding: 8px;
+    border-radius: 8px;
+    color: hsl(var(--muted-foreground));
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.pc-conversation-close:hover {
+    background: hsl(var(--accent));
+    color: hsl(var(--foreground));
+}
+
+/* PC端对话内容区域 */
+.pc-conversation-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+/* PC端加载状态 */
+.pc-conversation-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: hsl(var(--muted-foreground));
+}
+
+.pc-conversation-loading .loading-spinner {
+    width: 32px;
+    height: 32px;
+    border: 3px solid hsl(var(--border));
+    border-top: 3px solid hsl(var(--primary));
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 16px;
+}
+
+/* PC端错误状态 */
+.pc-conversation-error {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    padding: 40px;
+    text-align: center;
+    color: hsl(var(--muted-foreground));
+}
+
+.pc-conversation-error svg {
+    margin-bottom: 20px;
+}
+
+.pc-conversation-error h3 {
+    color: hsl(var(--foreground));
+    margin: 0 0 12px 0;
+    font-size: 20px;
+    font-weight: 600;
+}
+
+.pc-conversation-error p {
+    margin: 0 0 24px 0;
+    font-size: 15px;
+    line-height: 1.5;
+}
+
+.pc-conversation-error .retry-btn {
+    background: hsl(var(--primary));
+    color: hsl(var(--primary-foreground));
+    border: none;
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+
+.pc-conversation-error .retry-btn:hover {
+    background: hsl(var(--primary) / 0.9);
+}
+
+/* PC端空状态 */
+.pc-conversation-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    padding: 40px;
+    text-align: center;
+    color: hsl(var(--muted-foreground));
+}
+
+.pc-conversation-empty svg {
+    margin-bottom: 20px;
+}
+
+.pc-conversation-empty h3 {
+    color: hsl(var(--foreground));
+    margin: 0 0 12px 0;
+    font-size: 20px;
+    font-weight: 600;
+}
+
+.pc-conversation-empty p {
+    margin: 0;
+    font-size: 15px;
+    line-height: 1.5;
+}
+
+/* PC端对话消息列表 */
+.pc-conversation-messages {
+    flex: 1;
+    padding: 20px 24px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    scroll-behavior: smooth;
+}
+
+.pc-conversation-messages::-webkit-scrollbar {
+    width: 6px;
+}
+
+.pc-conversation-messages::-webkit-scrollbar-track {
+    background: hsl(var(--muted));
+}
+
+.pc-conversation-messages::-webkit-scrollbar-thumb {
+    background: hsl(var(--muted-foreground) / 0.3);
+    border-radius: 3px;
+}
+
+.pc-conversation-messages::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--muted-foreground) / 0.5);
+}
+
+/* PC端消息样式 */
+.pc-message {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    max-width: 100%;
+}
+
+.pc-message.user-message {
+    flex-direction: row-reverse;
+}
+
+.pc-message.user-message .pc-message-bubble {
+    background: hsl(var(--primary) / 0.1);
+    border: 1px solid hsl(var(--primary) / 0.2);
+}
+
+.pc-message.assistant-message .pc-message-bubble {
+    background: hsl(var(--card));
+    border: 1px solid hsl(var(--border));
+}
+
+.pc-message.error-message .pc-message-bubble.error-bubble {
+    background: hsl(var(--destructive) / 0.1);
+    border: 1px solid hsl(var(--destructive) / 0.3);
+}
+
+.pc-message-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: hsl(var(--muted));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    color: hsl(var(--muted-foreground));
+}
+
+.user-message .pc-message-avatar {
+    background: hsl(var(--primary));
+    color: hsl(var(--primary-foreground));
+}
+
+.assistant-message .pc-message-avatar {
+    background: hsl(var(--accent));
+    color: hsl(var(--accent-foreground));
+}
+
+.pc-message-bubble {
+    flex: 1;
+    max-width: calc(100% - 48px);
+    padding: 16px 18px;
+    border-radius: 12px;
+    word-wrap: break-word;
+}
+
+.pc-message-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+}
+
+.pc-message-author {
+    font-weight: 600;
+    font-size: 14px;
+    color: hsl(var(--foreground));
+}
+
+.pc-message-time {
+    font-size: 12px;
+    color: hsl(var(--muted-foreground));
+}
+
+.pc-message-content {
+    font-size: 14px;
+    line-height: 1.5;
+    color: hsl(var(--foreground));
+}
+
+.pc-message-content p {
+    margin: 0 0 8px 0;
+}
+
+.pc-message-content p:last-child {
+    margin-bottom: 0;
+}
+
+/* PC端输入区域 */
+.pc-conversation-input {
+    padding: 20px 24px;
+    border-top: 1px solid hsl(var(--border));
+    background: hsl(var(--background));
+    border-radius: 0 0 12px 12px;
+}
+
+.pc-input-container {
+    display: flex;
+    align-items: flex-end;
+    gap: 16px;
+    max-width: 100%;
+}
+
+#pc-conversation-textarea {
+    flex: 1;
+    border: 1px solid hsl(var(--border));
+    border-radius: 8px;
+    padding: 12px 16px;
+    font-size: 14px;
+    background: hsl(var(--background));
+    color: hsl(var(--foreground));
+    resize: none;
+    outline: none;
+    min-height: 48px;
+    max-height: 120px;
+    transition: border-color 0.2s ease;
+    font-family: inherit;
+}
+
+#pc-conversation-textarea:focus {
+    border-color: hsl(var(--primary));
+}
+
+#pc-conversation-textarea::placeholder {
+    color: hsl(var(--muted-foreground));
+}
+
+.pc-send-btn {
+    width: 48px;
+    height: 48px;
+    background: hsl(var(--primary));
+    color: hsl(var(--primary-foreground));
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+}
+
+.pc-send-btn:hover:not(:disabled) {
+    background: hsl(var(--primary) / 0.9);
+    transform: translateY(-1px);
+}
+
+.pc-send-btn:active {
+    transform: translateY(0);
+}
+
+.pc-send-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.pc-send-btn svg {
+    width: 20px;
+    height: 20px;
+}
+
+/* PC发送中的加载动画 */
+.pc-sending-spinner {
+    width: 18px;
+    height: 18px;
+    border: 2px solid hsl(var(--primary-foreground) / 0.3);
+    border-top: 2px solid hsl(var(--primary-foreground));
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+/* PC端响应式调整 */
+@media (max-width: 1200px) {
+    .pc-conversation-container {
+        width: 95vw;
+        height: 85vh;
+    }
+}
+
+@media (max-width: 768px) {
+    .pc-conversation-container {
+        width: 100vw;
+        height: 100vh;
+        border-radius: 0;
+        max-width: none;
+        max-height: none;
+    }
+    
+    .pc-conversation-header {
+        border-radius: 0;
+        padding: 16px 20px;
+    }
+    
+    .pc-conversation-messages {
+        padding: 16px 20px;
+    }
+    
+    .pc-conversation-input {
+        padding: 16px 20px;
+        border-radius: 0;
+    }
+}

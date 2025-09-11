@@ -166,6 +166,11 @@ body {
   overflow: hidden;
 }
 
+/* 移动端任务容器默认隐藏 */
+.mobile-tasks-container {
+  display: none;
+}
+
 /* 加载界面 */
 .loading-screen {
   height: 100vh;
@@ -491,5 +496,288 @@ form, fieldset, legend, label {
   
   ::-webkit-scrollbar-thumb {
     background: var(--scrollbar-thumb-color);
+  }
+}
+
+/* ===== 移动端响应式设计 ===== */
+@media (max-width: 768px) {
+  /* 基础布局调整 */
+  body {
+    overflow-x: hidden;
+  }
+  
+  /* 主要容器调整 */
+  .main-container {
+    flex-direction: column;
+    height: 100vh;
+    overflow: hidden;
+  }
+  
+  /* 侧边栏在移动端隐藏或转换为顶部导航 */
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: -100%;
+    width: 280px;
+    height: 100vh;
+    z-index: 1000;
+    transition: left 0.3s ease-in-out;
+    border-right: 1px solid hsl(var(--border));
+    background: hsl(var(--background));
+  }
+  
+  .sidebar.mobile-open {
+    left: 0;
+  }
+  
+  /* 移动端遮罩层 */
+  .mobile-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 999;
+    opacity: 0;
+    transition: opacity 0.3s ease-in-out;
+  }
+  
+  .mobile-overlay.active {
+    display: block;
+    opacity: 1;
+  }
+  
+  /* 主内容区域调整 */
+  .main-content {
+    width: 100%;
+    margin-left: 0;
+    padding: 0;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+  }
+  
+  /* 移动端顶部导航栏 */
+  .mobile-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    background: hsl(var(--background));
+    border-bottom: 1px solid hsl(var(--border));
+    height: 56px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  
+  .mobile-menu-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border: none;
+    background: none;
+    cursor: pointer;
+    border-radius: 6px;
+    transition: background 0.2s ease;
+  }
+  
+  .mobile-menu-btn:hover {
+    background: hsl(var(--accent));
+  }
+  
+  .mobile-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: hsl(var(--foreground));
+  }
+  
+  /* 内容滚动区域 */
+  .mobile-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  /* 表单元素移动端优化 */
+  .form-control {
+    font-size: 16px; /* 防止移动端缩放 */
+    padding: 12px;
+    min-height: 44px; /* 移动端友好的触摸目标 */
+  }
+  
+  .btn {
+    min-height: 44px;
+    padding: 12px 16px;
+    font-size: 16px;
+  }
+  
+  /* 任务列表移动端优化 */
+  .task-item {
+    padding: 16px;
+    margin-bottom: 8px;
+    border-radius: 8px;
+  }
+  
+  /* 模态框移动端优化 */
+  .modal-content {
+    margin: 16px;
+    max-height: calc(100vh - 32px);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  
+  .modal-body {
+    max-height: calc(100vh - 120px);
+    padding: 16px;
+  }
+  
+  /* 隐藏桌面端特定元素 */
+  .desktop-only {
+    display: none !important;
+  }
+}
+
+/* 更小屏幕的额外优化 */
+@media (max-width: 480px) {
+  .mobile-header {
+    padding: 8px 12px;
+  }
+  
+  .mobile-content {
+    padding: 12px;
+  }
+  
+  .modal-content {
+    margin: 8px;
+    max-height: calc(100vh - 16px);
+  }
+  
+  .form-control,
+  .btn {
+    font-size: 16px; /* 保持一致，防止缩放 */
+  }
+}
+
+/* ===== 移动端功能简化设计（基于Context7 Bootstrap最佳实践）===== */
+/* 使用Bootstrap mobile-first方法，精确控制移动端显示内容 */
+@media (max-width: 767.98px) {
+  /* 移动端完全隐藏侧边栏，使用瀑布流显示 */
+  .sidebar {
+    display: none !important;
+  }
+  
+  /* 移动端主布局调整 - 侧边栏隐藏后主内容区域全宽 */
+  .app-layout {
+    display: none !important;
+  }
+  
+  /* 移动端任务瀑布流容器 */
+  .mobile-tasks-container {
+    display: block !important;
+    padding: 16px;
+    height: calc(100vh - var(--mobile-header-height));
+    overflow-y: auto;
+    background: hsl(var(--background));
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  /* 移动端任务列表 */
+  .mobile-tasks-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  
+  /* 移动端任务项样式 */
+  .mobile-tasks-list .task-item {
+    background: hsl(var(--card));
+    border: 1px solid hsl(var(--border));
+    border-radius: 12px;
+    padding: 16px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    transition: all 150ms ease;
+  }
+  
+  .mobile-tasks-list .task-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  }
+  
+  /* 移动端空任务状态 */
+  .mobile-tasks-list .empty-tasks {
+    text-align: center;
+    padding: 40px 20px;
+    color: hsl(var(--muted-foreground));
+  }
+  
+  .mobile-tasks-list .empty-tasks p {
+    font-size: 16px;
+    margin-bottom: 16px;
+  }
+  
+  .mobile-tasks-list .create-first-task-btn {
+    background: hsl(var(--primary));
+    color: hsl(var(--primary-foreground));
+    border: none;
+    border-radius: 8px;
+    padding: 12px 24px;
+    font-size: 16px;
+    cursor: pointer;
+    transition: all 150ms ease;
+  }
+  
+  .mobile-tasks-list .create-first-task-btn:hover {
+    background: hsl(var(--primary) / 0.9);
+  }
+  
+  /* 移动端任务项布局修复 - 覆盖全局flex布局 */
+  .mobile-tasks-list .task-item {
+    display: block !important;
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: stretch;
+  }
+  
+  /* 隐藏PC端专用功能 */
+  #task-manager-dashboard,
+  .session-tab-bar,
+  #files-drawer-btn,
+  #terminal-theme-toggle {
+    display: none !important;
+  }
+}
+
+/* 移动端PC功能提示按钮样式 */
+@media (max-width: 767.98px) {
+  .mobile-pc-hint-btn {
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    padding: 8px;
+    background: hsl(var(--muted));
+    color: hsl(var(--muted-foreground));
+    border: 1px solid hsl(var(--border));
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 150ms ease;
+    opacity: 0.7;
+  }
+  
+  .mobile-pc-hint-btn:hover {
+    background: hsl(var(--accent));
+    opacity: 1;
+  }
+  
+  /* PC功能提示图标 */
+  .pc-only-icon {
+    width: 16px;
+    height: 16px;
+    opacity: 0.6;
   }
 }
