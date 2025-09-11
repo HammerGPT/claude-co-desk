@@ -11,6 +11,7 @@ import shutil
 import subprocess
 import threading
 import logging
+import uuid
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Any, Optional
@@ -34,6 +35,7 @@ if not IS_WINDOWS:
 from claude_cli import claude_cli
 from projects_manager import ProjectManager
 from task_scheduler import TaskScheduler
+from tasks_storage import TasksStorage
 from config import Config
 from user_config import user_config_manager
 # Dynamic import to avoid hardcoded path dependencies
@@ -3665,24 +3667,161 @@ async def get_claude_info():
 # 任务管理API
 @app.get("/api/tasks")
 async def get_tasks():
-    """获取任务列表API"""
+    """获取统一任务列表API - 直接从统一存储读取所有任务"""
     try:
-        tasks = task_scheduler.get_scheduled_tasks()
+        # 直接从统一存储读取所有任务
+        tasks_storage = TasksStorage()
+        all_tasks_data = tasks_storage.load_tasks()
         
-        # 添加调试日志：检查返回的任务数据
-        logger.info(f"API returned task count: {len(tasks)}")
-        for task in tasks:
-            if task.get('sessionId'):
-                logger.info(f"Task {task['name']} contains sessionId: {task['sessionId']}")
+        pc_tasks = []
+        mobile_tasks = []
+        
+        # 按任务类型分类并格式化
+        for task_data in all_tasks_data:
+            # 跳过已删除的任务
+            if task_data.get('deleted', False):
+                continue
+                
+            # 判断是否为移动端任务
+            is_mobile = (
+                task_data.get('source') == 'mobile' or 
+                task_data.get('taskType') == 'mobile' or 
+                task_data.get('type') == 'mobile'
+            )
+            
+            if is_mobile:
+                # 格式化移动端任务
+                formatted_task = {
+                    "id": task_data.get('id'),
+                    "name": task_data.get('name', task_data.get('taskName', 'Unnamed Task')),
+                    "goal": task_data.get('goal', ''),
+                    "type": "mobile",
+                    "status": task_data.get('status', 'pending'),
+                    "sessionId": task_data.get('sessionId'),
+                    "hasResult": bool(task_data.get('sessionId')),
+                    "resultApi": f"/api/mobile/task-result/{task_data.get('id')}" if task_data.get('sessionId') else None,
+                    "createdAt": task_data.get('createdAt', ''),
+                    "lastRun": task_data.get('lastRun', ''),
+                    "role": task_data.get('role', ''),
+                    "workDirectory": task_data.get('workDirectory', ''),
+                    "exitCode": task_data.get('exitCode'),
+                    "hasOutput": bool(task_data.get('hasOutput')),
+                    "hasError": bool(task_data.get('hasError'))
+                }
+                mobile_tasks.append(formatted_task)
             else:
-                logger.info(f"Task {task['name']} has no sessionId")
+                # 格式化PC端任务
+                formatted_task = {
+                    "id": task_data.get('id'),
+                    "name": task_data.get('name', 'Unnamed Task'),
+                    "goal": task_data.get('goal', ''),
+                    "type": "pc",
+                    "status": task_data.get('status', 'pending'),
+                    "sessionId": task_data.get('sessionId'),
+                    "hasResult": bool(task_data.get('sessionId')),
+                    "resultApi": f"/api/task-files/{task_data.get('id')}" if task_data.get('sessionId') else None,
+                    "createdAt": task_data.get('createdAt', ''),
+                    "lastRun": task_data.get('lastRun', ''),
+                    "role": task_data.get('role', ''),
+                    "workDirectory": task_data.get('workDirectory', ''),
+                    "scheduleFrequency": task_data.get('scheduleFrequency', 'immediate'),
+                    "scheduleTime": task_data.get('scheduleTime', ''),
+                    "enabled": task_data.get('enabled', True)
+                }
+                pc_tasks.append(formatted_task)
         
-        return JSONResponse(content={"tasks": tasks})
+        # 合并任务
+        all_tasks = pc_tasks + mobile_tasks
+        
+        # 按最后运行时间排序（最新的在前）
+        all_tasks.sort(key=lambda x: x.get("lastRun") or x.get("createdAt") or "1970-01-01T00:00:00Z", reverse=True)
+        
+        # 优化的调试日志
+        logger.info(f"API returned total task count: {len(all_tasks)} (PC: {len(pc_tasks)}, Mobile: {len(mobile_tasks)})")
+        
+        return JSONResponse(content={"tasks": all_tasks})
     except Exception as e:
         logger.error(f"获取任务列表时出错: {e}")
         return JSONResponse(
             status_code=500,
             content={"error": "获取任务列表失败", "details": str(e)}
+        )
+
+@app.get("/api/tasks/{task_id}")
+async def get_task_by_id(task_id: str):
+    """获取单个任务的最新数据，确保sessionId是最新的"""
+    try:
+        # 直接从统一存储读取最新数据
+        tasks_storage = TasksStorage()
+        all_tasks_data = tasks_storage.load_tasks()
+        
+        # 查找指定任务
+        task_data = None
+        for task in all_tasks_data:
+            if task.get('id') == task_id and not task.get('deleted', False):
+                task_data = task
+                break
+        
+        if not task_data:
+            return JSONResponse(
+                status_code=404,
+                content={"error": "任务不存在", "task_id": task_id}
+            )
+        
+        # 判断任务类型并格式化返回
+        is_mobile = (
+            task_data.get('source') == 'mobile' or 
+            task_data.get('taskType') == 'mobile' or 
+            task_data.get('type') == 'mobile'
+        )
+        
+        if is_mobile:
+            # 格式化移动端任务
+            formatted_task = {
+                "id": task_data.get('id'),
+                "name": task_data.get('name', task_data.get('taskName', 'Unnamed Task')),
+                "goal": task_data.get('goal', ''),
+                "type": "mobile",
+                "status": task_data.get('status', 'pending'),
+                "sessionId": task_data.get('sessionId'),
+                "hasResult": bool(task_data.get('sessionId')),
+                "resultApi": f"/api/mobile/task-result/{task_data.get('id')}" if task_data.get('sessionId') else None,
+                "createdAt": task_data.get('createdAt', ''),
+                "lastRun": task_data.get('lastRun', ''),
+                "role": task_data.get('role', ''),
+                "workDirectory": task_data.get('workDirectory', ''),
+                "exitCode": task_data.get('exitCode'),
+                "hasOutput": bool(task_data.get('hasOutput')),
+                "hasError": bool(task_data.get('hasError'))
+            }
+        else:
+            # 格式化PC端任务
+            formatted_task = {
+                "id": task_data.get('id'),
+                "name": task_data.get('name', 'Unnamed Task'),
+                "goal": task_data.get('goal', ''),
+                "type": "pc",
+                "status": task_data.get('status', 'pending'),
+                "sessionId": task_data.get('sessionId'),
+                "hasResult": bool(task_data.get('sessionId')),
+                "resultApi": f"/api/task-files/{task_data.get('id')}" if task_data.get('sessionId') else None,
+                "createdAt": task_data.get('createdAt', ''),
+                "lastRun": task_data.get('lastRun', ''),
+                "role": task_data.get('role', ''),
+                "workDirectory": task_data.get('workDirectory', ''),
+                "scheduleFrequency": task_data.get('scheduleFrequency', 'immediate'),
+                "scheduleTime": task_data.get('scheduleTime', ''),
+                "enabled": task_data.get('enabled', True)
+            }
+        
+        logger.info(f"Single task API returned: {task_id} (type: {formatted_task['type']}, sessionId: {formatted_task.get('sessionId')})")
+        return JSONResponse(content=formatted_task)
+        
+    except Exception as e:
+        logger.error(f"获取单个任务时出错: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"error": "获取任务失败", "details": str(e)}
         )
 
 @app.get("/api/tasks/scheduler-status")
@@ -3865,10 +4004,39 @@ async def update_task(task_id: str, request: Request):
 
 @app.delete("/api/tasks/{task_id}")
 async def delete_task(task_id: str):
-    """删除任务API（软删除）"""
+    """删除任务API - 支持PC端和移动端任务完全删除"""
     try:
-        success = task_scheduler.delete_task(task_id)
-        if success:
+        task_deleted = False
+        
+        # First try to delete from task scheduler (PC tasks)
+        pc_success = task_scheduler.delete_task(task_id)
+        if pc_success:
+            task_deleted = True
+            logger.info(f"Deleted PC task from scheduler: {task_id}")
+        
+        # Also try to delete mobile task results
+        try:
+            mobile_success = mobile_task_handler.delete_mobile_task(task_id)
+            if mobile_success:
+                task_deleted = True
+                logger.info(f"Deleted mobile task result: {task_id}")
+        except Exception as e:
+            logger.warning(f"Failed to delete mobile task {task_id}: {e}")
+        
+        # Finally, remove from TasksStorage if it exists there
+        try:
+            tasks_storage = TasksStorage()
+            tasks = tasks_storage.load_tasks()
+            original_count = len(tasks)
+            tasks = [task for task in tasks if task.get('id') != task_id]
+            if len(tasks) < original_count:
+                tasks_storage.save_tasks(tasks)
+                task_deleted = True
+                logger.info(f"Deleted task from storage: {task_id}")
+        except Exception as e:
+            logger.warning(f"Failed to delete task from storage {task_id}: {e}")
+        
+        if task_deleted:
             return JSONResponse(content={"success": True, "message": "任务已删除"})
         else:
             return JSONResponse(
@@ -4871,6 +5039,686 @@ async def shell_websocket_endpoint(websocket: WebSocket):
             pass
 
 # PTY处理器已包含所有必要的输入输出处理功能
+
+# ==================== Mobile API Endpoints ====================
+# Mobile-specific API endpoints for headless task execution
+
+from mobile_task_handler import mobile_task_handler
+
+async def execute_mobile_task_async(task_data: dict):
+    """Execute mobile task asynchronously in background"""
+    try:
+        logger.info(f"Executing mobile task asynchronously: {task_data.get('name', task_data.get('goal', 'Unknown')[:50])}")
+        
+        # Execute task using mobile handler with all fields
+        result = await mobile_task_handler.execute_mobile_task(
+            goal=task_data.get('goal'),
+            role=task_data.get('role'),
+            name=task_data.get('name'),
+            description=task_data.get('description'),
+            goal_config=task_data.get('goal_config'),
+            resources=task_data.get('resources', []),
+            execution_mode=task_data.get('executionMode', 'immediate'),
+            schedule_settings=task_data.get('scheduleSettings'),
+            notification_settings=task_data.get('notificationSettings'),
+            work_directory=task_data.get('workDirectory'),
+            skip_permissions=task_data.get('skipPermissions', False),
+            verbose_logs=task_data.get('verboseLogs', False),
+            task_id=task_data.get('id')
+        )
+        
+        if 'error' in result:
+            logger.error(f"Mobile task {task_data['id']} execution failed: {result['error']}")
+        else:
+            logger.info(f"Mobile task {task_data['id']} executed successfully")
+            
+        # Update task with session_id if available
+        if 'session_id' in result:
+            # Update task in TasksStorage directly for mobile tasks
+            try:
+                tasks_storage = TasksStorage()
+                tasks = tasks_storage.load_tasks()
+                
+                # Find and update the task with sessionId (PC-compatible field name)
+                for task in tasks:
+                    if task.get('id') == task_data['id']:
+                        task['sessionId'] = result['session_id']  # Use sessionId for PC compatibility
+                        break
+                
+                tasks_storage.save_tasks(tasks)
+                logger.info(f"Updated mobile task {task_data['id']} with sessionId: {result['session_id']}")
+            except Exception as e:
+                logger.warning(f"Failed to update sessionId for mobile task {task_data['id']}: {e}")
+        
+    except Exception as e:
+        logger.error(f"Async mobile task execution failed for {task_data['id']}: {e}")
+
+@app.post("/api/mobile/tasks")
+async def create_mobile_task(request: Request):
+    """Create mobile task and execute asynchronously like PC tasks"""
+    try:
+        task_data = await request.json()
+        
+        # Validate required fields
+        if not task_data.get('goal'):
+            return JSONResponse(
+                status_code=400,
+                content={"error": "Missing required field: goal"}
+            )
+        
+        # Generate task ID and creation time like PC tasks
+        task_data['id'] = f"mobile_task_{int(datetime.now().timestamp())}_{uuid.uuid4().hex[:8]}"
+        task_data['createdAt'] = datetime.now().isoformat()
+        task_data['taskType'] = 'mobile'  # Mark as mobile task
+        task_data['type'] = 'mobile'  # Frontend compatibility field
+        
+        # Ensure data completeness like PC tasks
+        if 'enabled' not in task_data:
+            task_data['enabled'] = True
+        if 'resources' not in task_data:
+            task_data['resources'] = []
+        if 'skipPermissions' not in task_data:
+            task_data['skipPermissions'] = False  # Default false for mobile -p mode
+        if 'verboseLogs' not in task_data:
+            task_data['verboseLogs'] = False  # Default false for mobile -p mode
+        if 'role' not in task_data:
+            task_data['role'] = ''
+        if 'goal_config' not in task_data:
+            task_data['goal_config'] = task_data.get('goalConfig', '')
+        if 'executionMode' not in task_data:
+            task_data['executionMode'] = 'immediate'
+        
+        # Ensure notificationSettings are preserved
+        if 'notificationSettings' not in task_data:
+            task_data['notificationSettings'] = {}
+        
+        # Ensure taskName is set correctly (for display purposes)
+        if 'taskName' not in task_data:
+            task_data['taskName'] = task_data.get('goal', 'Unnamed Task')[:50]
+        
+        # Mobile tasks use separate storage system - don't add to scheduler to avoid duplication
+        # Directly store mobile task data using TasksStorage for consistency
+        try:
+            tasks_storage = TasksStorage()
+            mobile_tasks = tasks_storage.load_tasks()
+            mobile_tasks.append(task_data)
+            tasks_storage.save_tasks(mobile_tasks)
+            logger.info(f"Mobile task {task_data['id']} stored successfully")
+        except Exception as e:
+            logger.warning(f"Failed to store mobile task {task_data['id']}: {e}, continuing with execution")
+        
+        # For immediate execution mobile tasks, start async execution
+        if task_data.get('executionMode') == 'immediate':
+            # Start async execution without waiting
+            asyncio.create_task(execute_mobile_task_async(task_data))
+            logger.info(f"Mobile task {task_data['id']} started executing asynchronously")
+        
+        # Return task data immediately like PC tasks
+        return JSONResponse(content=task_data)
+        
+    except Exception as e:
+        logger.error(f"Mobile task creation failed: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"error": "Failed to create mobile task", "details": str(e)}
+        )
+
+@app.post("/api/mobile/conversations/{session_id}/continue")
+async def continue_mobile_conversation(session_id: str, request: Request):
+    """Continue conversation with existing session"""
+    try:
+        task_data = await request.json()
+        
+        # Validate required fields
+        if not task_data.get('goal'):
+            return JSONResponse(
+                status_code=400,
+                content={"error": "Missing required field: goal"}
+            )
+        
+        goal = task_data.get('goal')
+        notification_settings = task_data.get('notificationSettings')
+        
+        logger.info(f"Continuing conversation {session_id}: {goal[:50]}...")
+        
+        # Continue conversation using mobile handler
+        result = await mobile_task_handler.continue_conversation(
+            session_id=session_id,
+            goal=goal,
+            notification_settings=notification_settings
+        )
+        
+        if 'error' in result:
+            return JSONResponse(
+                status_code=500,
+                content={
+                    "error": "Conversation continuation failed",
+                    "details": result['error']
+                }
+            )
+        
+        return JSONResponse(content=result)
+        
+    except Exception as e:
+        logger.error(f"Mobile conversation continuation failed: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"error": "Failed to continue conversation", "details": str(e)}
+        )
+
+@app.get("/api/mobile/conversations/{session_id}")
+async def get_mobile_conversation(session_id: str):
+    """Get conversation history by session ID"""
+    try:
+        conversation = mobile_task_handler.get_conversation_history(session_id)
+        
+        if conversation is None:
+            return JSONResponse(
+                status_code=404,
+                content={"error": "Conversation not found"}
+            )
+        
+        return JSONResponse(content=conversation)
+        
+    except Exception as e:
+        logger.error(f"Failed to get conversation {session_id}: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"error": "Failed to get conversation", "details": str(e)}
+        )
+
+@app.get("/api/mobile/task-result/{task_id}")
+async def get_mobile_task_result(task_id: str):
+    """Get mobile task result by task ID"""
+    try:
+        result = mobile_task_handler.get_task_result(task_id)
+        
+        if result is None:
+            return JSONResponse(
+                status_code=404,
+                content={"error": "Task result not found"}
+            )
+        
+        return JSONResponse(content=result)
+        
+    except Exception as e:
+        logger.error(f"Failed to get task result {task_id}: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"error": "Failed to get task result", "details": str(e)}
+        )
+
+@app.get("/mobile/task-result/{task_id}")
+async def mobile_task_result_page(task_id: str):
+    """Mobile-friendly HTML page for task result"""
+    try:
+        result = mobile_task_handler.get_task_result(task_id)
+        
+        if result is None:
+            return HTMLResponse(
+                content="<html><body><h1>Task Result Not Found</h1><p>The requested task result does not exist.</p></body></html>",
+                status_code=404
+            )
+        
+        # Generate mobile-friendly HTML with Markdown rendering
+        html_content = f"""
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Task Result - {task_id}</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/5.2.0/github-markdown-light.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/5.1.1/marked.min.js"></script>
+    <style>
+        body {{
+            font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+            line-height: 1.6;
+            color: #24292f;
+            background-color: #ffffff;
+            margin: 0;
+            padding: 16px;
+            max-width: 100vw;
+            overflow-x: hidden;
+        }}
+        
+        .container {{
+            max-width: 100%;
+            margin: 0 auto;
+        }}
+        
+        .header {{
+            border-bottom: 1px solid #d0d7de;
+            padding-bottom: 16px;
+            margin-bottom: 24px;
+        }}
+        
+        .task-info {{
+            background-color: #f6f8fa;
+            border-radius: 6px;
+            padding: 16px;
+            margin-bottom: 24px;
+            font-size: 14px;
+        }}
+        
+        .task-info h3 {{
+            margin-top: 0;
+            margin-bottom: 12px;
+            color: #1f2328;
+        }}
+        
+        .task-info .info-item {{
+            margin: 8px 0;
+        }}
+        
+        .task-info .info-label {{
+            font-weight: 600;
+            color: #656d76;
+        }}
+        
+        .markdown-body {{
+            box-sizing: border-box;
+            width: 100%;
+            padding: 0;
+        }}
+        
+        .markdown-body pre {{
+            overflow-x: auto;
+            max-width: 100%;
+        }}
+        
+        .markdown-body table {{
+            display: block;
+            width: 100%;
+            overflow: auto;
+        }}
+        
+        .actions {{
+            margin-top: 24px;
+            padding-top: 16px;
+            border-top: 1px solid #d0d7de;
+        }}
+        
+        .btn {{
+            display: inline-block;
+            padding: 8px 16px;
+            font-size: 14px;
+            font-weight: 500;
+            line-height: 20px;
+            white-space: nowrap;
+            vertical-align: middle;
+            cursor: pointer;
+            user-select: none;
+            border: 1px solid;
+            border-radius: 6px;
+            text-decoration: none;
+            margin-right: 8px;
+            margin-bottom: 8px;
+        }}
+        
+        .btn-primary {{
+            color: #ffffff;
+            background-color: #2da44e;
+            border-color: #2da44e;
+        }}
+        
+        .btn-secondary {{
+            color: #24292f;
+            background-color: #f6f8fa;
+            border-color: #d0d7de;
+        }}
+        
+        @media (max-width: 768px) {{
+            body {{
+                padding: 12px;
+                font-size: 16px;
+            }}
+            
+            .task-info {{
+                padding: 12px;
+                font-size: 13px;
+            }}
+            
+            .btn {{
+                padding: 10px 16px;
+                font-size: 16px;
+                display: block;
+                width: 100%;
+                text-align: center;
+                margin-right: 0;
+                margin-bottom: 12px;
+            }}
+        }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Task Result</h1>
+            <p style="color: #656d76; margin: 0;">Task ID: {task_id}</p>
+        </div>
+        
+        <div class="task-info">
+            <h3>Task Information</h3>
+            <div class="info-item">
+                <span class="info-label">Goal:</span> {result.get('goal', 'N/A')}
+            </div>
+            <div class="info-item">
+                <span class="info-label">Status:</span> {'✅ Completed' if result.get('exit_code') == 0 else '❌ Failed'}
+            </div>
+            <div class="info-item">
+                <span class="info-label">Completed:</span> {result.get('completed_at', 'N/A')}
+            </div>
+            {'<div class="info-item"><span class="info-label">Role:</span> ' + result.get('role', '') + '</div>' if result.get('role') else ''}
+            {'<div class="info-item"><span class="info-label">Session ID:</span> ' + result.get('session_id', 'N/A') + '</div>' if result.get('session_id') else ''}
+        </div>
+        
+        <div class="markdown-body" id="content">
+            {result.get('output', 'No output available')}
+        </div>
+        
+        {'<div class="markdown-body" style="color: #cf222e; background-color: #ffebe9; padding: 16px; border-radius: 6px; margin-top: 16px;"><h4>Error Output:</h4><pre>' + result.get('error', '') + '</pre></div>' if result.get('error') else ''}
+        
+        <div class="actions">
+            <a href="javascript:history.back()" class="btn btn-secondary">← Back</a>
+            <a href="javascript:copyToClipboard()" class="btn btn-primary">📋 Copy Result</a>
+            {'<a href="/mobile/conversation/' + result.get('session_id', '') + '" class="btn btn-secondary">💬 View Conversation</a>' if result.get('session_id') else ''}
+        </div>
+    </div>
+    
+    <script>
+        // Render markdown content
+        document.addEventListener('DOMContentLoaded', function() {{
+            const content = document.getElementById('content');
+            const markdownText = content.textContent || content.innerText;
+            content.innerHTML = marked.parse(markdownText);
+            
+            // Highlight code blocks
+            hljs.highlightAll();
+        }});
+        
+        function copyToClipboard() {{
+            const content = document.getElementById('content');
+            const text = content.textContent || content.innerText;
+            
+            if (navigator.clipboard) {{
+                navigator.clipboard.writeText(text).then(function() {{
+                    alert('Result copied to clipboard!');
+                }});
+            }} else {{
+                // Fallback for older browsers
+                const textArea = document.createElement('textarea');
+                textArea.value = text;
+                document.body.appendChild(textArea);
+                textArea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textArea);
+                alert('Result copied to clipboard!');
+            }}
+        }}
+    </script>
+</body>
+</html>
+        """
+        
+        return HTMLResponse(content=html_content)
+        
+    except Exception as e:
+        logger.error(f"Failed to render mobile task result page for {task_id}: {e}")
+        return HTMLResponse(
+            content=f"<html><body><h1>Error</h1><p>Failed to load task result: {str(e)}</p></body></html>",
+            status_code=500
+        )
+
+@app.get("/mobile/conversation/{session_id}")
+async def mobile_conversation_page(session_id: str):
+    """Mobile-friendly HTML page for conversation history"""
+    try:
+        conversation = mobile_task_handler.get_conversation_history(session_id)
+        
+        if conversation is None:
+            return HTMLResponse(
+                content="<html><body><h1>Conversation Not Found</h1><p>The requested conversation does not exist.</p></body></html>",
+                status_code=404
+            )
+        
+        # Generate tasks HTML
+        tasks_html = ""
+        for i, task in enumerate(conversation.get('tasks', [])):
+            task_result = mobile_task_handler.get_task_result(task['task_id'])
+            output_preview = (task_result.get('output', '')[:200] + '...') if task_result and len(task_result.get('output', '')) > 200 else task_result.get('output', 'No output') if task_result else 'No output'
+            
+            tasks_html += f"""
+            <div class="task-item">
+                <div class="task-header">
+                    <h3>{'💬 Follow-up' if task.get('is_continuation') else '🎯 Initial Task'} #{i+1}</h3>
+                    <span class="task-status {'success' if task.get('status') == 'completed' else 'failed'}">{task.get('status', 'unknown')}</span>
+                </div>
+                <div class="task-goal">
+                    <strong>Goal:</strong> {task.get('goal', 'N/A')}
+                </div>
+                <div class="task-time">
+                    <strong>Completed:</strong> {task.get('completed_at', 'N/A')}
+                </div>
+                <div class="task-preview">
+                    <strong>Output Preview:</strong>
+                    <div class="preview-content">{output_preview}</div>
+                </div>
+                <div class="task-actions">
+                    <a href="/mobile/task-result/{task['task_id']}" class="btn btn-primary">View Full Result</a>
+                </div>
+            </div>
+            """
+        
+        html_content = f"""
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Conversation - {session_id}</title>
+    <style>
+        body {{
+            font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+            line-height: 1.6;
+            color: #24292f;
+            background-color: #f6f8fa;
+            margin: 0;
+            padding: 16px;
+        }}
+        
+        .container {{
+            max-width: 100%;
+            margin: 0 auto;
+        }}
+        
+        .header {{
+            background-color: #ffffff;
+            border-radius: 6px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }}
+        
+        .header h1 {{
+            margin: 0 0 8px 0;
+            color: #1f2328;
+        }}
+        
+        .session-info {{
+            color: #656d76;
+            font-size: 14px;
+        }}
+        
+        .task-item {{
+            background-color: #ffffff;
+            border-radius: 6px;
+            padding: 20px;
+            margin-bottom: 16px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }}
+        
+        .task-header {{
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }}
+        
+        .task-header h3 {{
+            margin: 0;
+            color: #1f2328;
+        }}
+        
+        .task-status {{
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }}
+        
+        .task-status.success {{
+            background-color: #dcfce7;
+            color: #166534;
+        }}
+        
+        .task-status.failed {{
+            background-color: #fecaca;
+            color: #991b1b;
+        }}
+        
+        .task-goal, .task-time {{
+            margin: 8px 0;
+            font-size: 14px;
+        }}
+        
+        .task-preview {{
+            margin: 12px 0;
+            font-size: 14px;
+        }}
+        
+        .preview-content {{
+            background-color: #f6f8fa;
+            border-radius: 4px;
+            padding: 12px;
+            margin-top: 8px;
+            font-family: SFMono-Regular,Consolas,"Liberation Mono",Menlo,monospace;
+            font-size: 13px;
+            white-space: pre-wrap;
+            max-height: 200px;
+            overflow: hidden;
+        }}
+        
+        .task-actions {{
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid #d0d7de;
+        }}
+        
+        .btn {{
+            display: inline-block;
+            padding: 8px 16px;
+            font-size: 14px;
+            font-weight: 500;
+            line-height: 20px;
+            white-space: nowrap;
+            vertical-align: middle;
+            cursor: pointer;
+            user-select: none;
+            border: 1px solid;
+            border-radius: 6px;
+            text-decoration: none;
+            margin-right: 8px;
+            margin-bottom: 8px;
+        }}
+        
+        .btn-primary {{
+            color: #ffffff;
+            background-color: #2da44e;
+            border-color: #2da44e;
+        }}
+        
+        .btn-secondary {{
+            color: #24292f;
+            background-color: #f6f8fa;
+            border-color: #d0d7de;
+        }}
+        
+        .actions {{
+            background-color: #ffffff;
+            border-radius: 6px;
+            padding: 20px;
+            margin-top: 20px;
+            text-align: center;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }}
+        
+        @media (max-width: 768px) {{
+            body {{
+                padding: 12px;
+            }}
+            
+            .header, .task-item, .actions {{
+                padding: 16px;
+            }}
+            
+            .task-header {{
+                flex-direction: column;
+                align-items: flex-start;
+            }}
+            
+            .task-status {{
+                margin-top: 8px;
+            }}
+            
+            .btn {{
+                display: block;
+                width: 100%;
+                text-align: center;
+                margin-right: 0;
+                margin-bottom: 12px;
+            }}
+        }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📱 Conversation History</h1>
+            <div class="session-info">
+                <p><strong>Session ID:</strong> {session_id}</p>
+                <p><strong>Created:</strong> {conversation.get('created_at', 'N/A')}</p>
+                <p><strong>Last Updated:</strong> {conversation.get('updated_at', 'N/A')}</p>
+                <p><strong>Total Tasks:</strong> {len(conversation.get('tasks', []))}</p>
+            </div>
+        </div>
+        
+        {tasks_html or '<div class="task-item"><p>No tasks found in this conversation.</p></div>'}
+        
+        <div class="actions">
+            <a href="javascript:history.back()" class="btn btn-secondary">← Back</a>
+            <p style="margin-top: 16px; color: #656d76; font-size: 14px;">
+                You can continue this conversation by creating a new task with session ID: <code>{session_id}</code>
+            </p>
+        </div>
+    </div>
+</body>
+</html>
+        """
+        
+        return HTMLResponse(content=html_content)
+        
+    except Exception as e:
+        logger.error(f"Failed to render mobile conversation page for {session_id}: {e}")
+        return HTMLResponse(
+            content=f"<html><body><h1>Error</h1><p>Failed to load conversation: {str(e)}</p></body></html>",
+            status_code=500
+        )
+
+# ==================== End Mobile API Endpoints ====================
 
 if __name__ == "__main__":
     print("Starting Claude Co-Desk...")

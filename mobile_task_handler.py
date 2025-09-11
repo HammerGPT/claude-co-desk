@@ -15,6 +15,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Any
 from config import Config
+from tasks_storage import TasksStorage
 
 logger = logging.getLogger(__name__)
 
@@ -82,6 +83,88 @@ class MobileTaskHandler:
         
         raise RuntimeError("Claude CLI not found. Please install Claude CLI first.")
     
+    def _save_task_to_unified_storage(self, task_data: Dict[str, Any], status: str = "pending") -> bool:
+        """Save mobile task to unified tasks storage (PC-compatible)"""
+        try:
+            from tasks_storage import TasksStorage
+            
+            # Create PC-compatible task structure with correct field names
+            unified_task = {
+                "id": task_data["task_id"],  # Use 'id' not 'task_id' for PC compatibility
+                "name": task_data.get("name", "Mobile Task"),
+                "goal": task_data.get("goal", ""),
+                "role": task_data.get("role", ""),
+                "goal_config": task_data.get("goal_config", ""),
+                "skipPermissions": task_data.get("skip_permissions", False),
+                "verboseLogs": task_data.get("verbose_logs", False),
+                "resources": task_data.get("resources", []),
+                "scheduleFrequency": "immediate",
+                "scheduleTime": "",
+                "enabled": True,
+                "createdAt": task_data.get("created_at", datetime.now().isoformat()),
+                "lastRun": None,
+                "workDirectory": task_data.get("work_directory", ""),
+                "deleted": False,
+                "executionMode": "immediate",
+                "sessionId": task_data.get("session_id") or task_data.get("sessionId"),  # Use 'sessionId' for PC compatibility
+                "status": status,
+                "source": "mobile",  # Mark as mobile task
+                "taskType": "mobile",  # Additional mobile identifier
+                "type": "mobile",  # Additional mobile identifier
+                "taskName": task_data.get("name", "Mobile Task"),  # Mobile compatibility field
+                "notificationSettings": task_data.get("notification_settings", {"enabled": False, "methods": []})
+            }
+            
+            # Load existing tasks and add new mobile task
+            storage = TasksStorage()
+            existing_tasks = storage.load_tasks()
+            
+            # Check if task already exists (avoid duplicates)
+            task_exists = any(task.get("id") == unified_task["id"] for task in existing_tasks)
+            if not task_exists:
+                existing_tasks.append(unified_task)
+                storage.save_tasks(existing_tasks)
+                logger.info(f"Successfully saved mobile task {unified_task['id']} to unified storage with status: {status}")
+                return True
+            else:
+                logger.info(f"Mobile task {unified_task['id']} already exists in storage, skipping")
+                return False
+            
+        except Exception as e:
+            logger.error(f"Failed to save mobile task to unified storage: {e}")
+            logger.debug(f"Error details: {e}", exc_info=True)
+            return False
+    
+    def _update_task_status_in_unified_storage(self, task_id: str, status: str, additional_data: Dict[str, Any] = None) -> bool:
+        """Update mobile task status in unified storage"""
+        try:
+            from tasks_storage import TasksStorage
+            
+            storage = TasksStorage()
+            existing_tasks = storage.load_tasks()
+            
+            # Find and update the task
+            for task in existing_tasks:
+                if task.get("id") == task_id:
+                    task["status"] = status
+                    task["lastRun"] = datetime.now().isoformat()
+                    
+                    # Update additional data if provided
+                    if additional_data:
+                        task.update(additional_data)
+                    
+                    storage.save_tasks(existing_tasks)
+                    logger.info(f"Updated mobile task {task_id} status to: {status}")
+                    return True
+            
+            logger.warning(f"Mobile task {task_id} not found for status update")
+            return False
+            
+        except Exception as e:
+            logger.error(f"Failed to update mobile task status: {e}")
+            logger.debug(f"Error details: {e}", exc_info=True)
+            return False
+    
     def _generate_task_id(self) -> str:
         """Generate unique task ID for mobile tasks"""
         timestamp = int(datetime.now().timestamp())
@@ -122,18 +205,43 @@ class MobileTaskHandler:
         notification_settings: Optional[Dict] = None,
         work_directory: Optional[str] = None,
         skip_permissions: bool = False,
-        verbose_logs: bool = False
+        verbose_logs: bool = False,
+        task_id: Optional[str] = None
     ) -> Dict[str, Any]:
         """Execute mobile task using Claude CLI headless mode"""
         
         try:
-            task_id = self._generate_task_id()
+            # Use provided task_id or generate new one if not provided
+            if task_id is None:
+                task_id = self._generate_task_id()
             # Generate UUID session ID for conversation continuity
             session_id = str(uuid.uuid4())
             
             # Prepare command for Claude CLI
             if work_directory is None:
                 work_directory = str(Config.get_user_home())
+            
+            # Save task to unified storage IMMEDIATELY (before execution)
+            # This ensures the task is saved regardless of notification configuration
+            current_time = datetime.now().isoformat()
+            task_data = {
+                "task_id": task_id,
+                "name": name or "Mobile Task",
+                "goal": goal,
+                "role": role or "",
+                "goal_config": goal_config or "",
+                "skip_permissions": skip_permissions,
+                "verbose_logs": verbose_logs,
+                "resources": resources or [],
+                "work_directory": work_directory,
+                "session_id": session_id,
+                "created_at": current_time,
+                "notification_settings": notification_settings or {"enabled": False, "methods": []}
+            }
+            
+            # Save to unified storage with "running" status
+            self._save_task_to_unified_storage(task_data, status="running")
+            logger.info(f"Mobile task {task_id} saved to unified storage before execution")
             
             # Build enhanced goal using PC-side intelligent agent system
             _import_pc_functions()  # Ensure PC functions are imported
@@ -182,27 +290,28 @@ class MobileTaskHandler:
                         notification_cmd = f"After task completion, send the complete detailed results and all generated content to me using {' and '.join(notification_types)} tools. Include all detailed analysis, findings, data, and generated materials directly in the notification content itself - do not just send a summary that requires me to check local files."
                         enhanced_goal = f"{enhanced_goal}\n\n{notification_cmd}"
             
-            # Execute Claude CLI in headless mode with generated session ID
-            cmd = [
-                self.claude_executable,
-                "-p", enhanced_goal,
-                "--session-id", session_id
-            ]
+            # Build shell command string using PC-side PTY Shell approach (bash -c method)
+            # This ensures proper handling of long text with newlines and special characters
+            shell_command_parts = [f'"{self.claude_executable}"', '-p', f'"{enhanced_goal}"', '--session-id', session_id]
             
             # Add permission handling based on mobile settings
             if skip_permissions:
-                cmd.append("--dangerously-skip-permissions")
+                shell_command_parts.append("--dangerously-skip-permissions")
             
             # Add verbose logging if requested
             if verbose_logs:
-                cmd.append("--verbose")
+                shell_command_parts.append("--verbose")
             
-            logger.info(f"Executing mobile task {task_id} with command: {' '.join(cmd)}")
+            # Construct complete shell command (similar to PC PTY Shell logic)
+            claude_command = ' '.join(shell_command_parts)
+            shell_command = f'cd "{work_directory}" && {claude_command}'
             
-            # Run Claude CLI
+            logger.info(f"Executing mobile task {task_id} with shell command: {shell_command}")
+            logger.info(f"Enhanced goal length: {len(enhanced_goal)} characters")
+            
+            # Run Claude CLI using bash -c (same as PC PTY Shell)
             process = await asyncio.create_subprocess_exec(
-                *cmd,
-                cwd=work_directory,
+                'bash', '-c', shell_command,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE
             )
@@ -232,7 +341,7 @@ class MobileTaskHandler:
                 "work_directory": work_directory,
                 "skip_permissions": skip_permissions,
                 "verbose_logs": verbose_logs,
-                "command_executed": ' '.join(cmd),
+                "command_executed": shell_command,
                 "output": output_text,
                 "error": error_text if error_text else None,
                 "exit_code": process.returncode,
@@ -242,15 +351,23 @@ class MobileTaskHandler:
                 "viewable_on": ["mobile", "pc"]
             }
             
-            # Save result to file
-            result_file = self.results_dir / f"{task_id}.json"
-            with open(result_file, 'w', encoding='utf-8') as f:
-                json.dump(task_result, f, indent=2, ensure_ascii=False)
-            
-            # Update conversation tracking
-            await self._update_conversation_history(session_id, task_result)
+            # Results are now saved in unified storage only - no separate files needed
             
             logger.info(f"Mobile task {task_id} completed successfully")
+            
+            # Update task status in unified storage (completed successfully)
+            completion_status = "completed" if process.returncode == 0 else "failed"
+            completion_data = {
+                "completed_at": datetime.now().isoformat(),
+                "exit_code": process.returncode,
+                "output": output_text[:500] if output_text else None,  # Store first 500 chars for preview
+                "error": error_text[:500] if error_text else None  # Store first 500 chars for preview
+            }
+            self._update_task_status_in_unified_storage(task_id, completion_status, completion_data)
+            logger.info(f"Mobile task {task_id} status updated to: {completion_status}")
+            
+            # Send WebSocket notification for real-time task list update
+            await self._notify_task_completed(task_id, task_result)
             
             return {
                 "task_id": task_id,
@@ -265,6 +382,16 @@ class MobileTaskHandler:
             
         except Exception as e:
             logger.error(f"Failed to execute mobile task: {e}")
+            
+            # Update task status to failed in unified storage if task_id exists
+            if 'task_id' in locals():
+                failure_data = {
+                    "completed_at": datetime.now().isoformat(),
+                    "error": str(e)[:500]  # Store first 500 chars of error
+                }
+                self._update_task_status_in_unified_storage(task_id, "failed", failure_data)
+                logger.info(f"Mobile task {task_id} status updated to: failed")
+            
             return {
                 "error": str(e),
                 "status": "failed"
@@ -307,20 +434,19 @@ class MobileTaskHandler:
                         notification_cmd = f"After completing this follow-up request, send the complete results using {' and '.join(notification_types)} tools."
                         enhanced_goal = f"{enhanced_goal}\n\n{notification_cmd}"
             
-            # Execute Claude CLI with resume
-            cmd = [
-                self.claude_executable,
-                "--resume", session_id,
-                "-p", enhanced_goal,
-                "--dangerously-skip-permissions"
-            ]
+            # Build shell command string using PC-side PTY Shell approach (bash -c method)
+            shell_command_parts = [f'"{self.claude_executable}"', '--resume', session_id, '-p', f'"{enhanced_goal}"', '--dangerously-skip-permissions']
+            
+            # Construct complete shell command (similar to PC PTY Shell logic)
+            claude_command = ' '.join(shell_command_parts)
+            shell_command = f'cd "{work_directory}" && {claude_command}'
             
             logger.info(f"Continuing conversation {session_id} with task {task_id}")
+            logger.info(f"Continue conversation shell command: {shell_command}")
             
-            # Run Claude CLI
+            # Run Claude CLI using bash -c (same as PC PTY Shell)
             process = await asyncio.create_subprocess_exec(
-                *cmd,
-                cwd=work_directory,
+                'bash', '-c', shell_command,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE
             )
@@ -338,7 +464,7 @@ class MobileTaskHandler:
                 "source": "mobile",
                 "goal": goal,
                 "work_directory": work_directory,
-                "command_executed": ' '.join(cmd),
+                "command_executed": shell_command,
                 "output": output_text,
                 "error": error_text if error_text else None,
                 "exit_code": process.returncode,
@@ -349,13 +475,7 @@ class MobileTaskHandler:
                 "is_continuation": True
             }
             
-            # Save result to file
-            result_file = self.results_dir / f"{task_id}.json"
-            with open(result_file, 'w', encoding='utf-8') as f:
-                json.dump(task_result, f, indent=2, ensure_ascii=False)
-            
-            # Update conversation tracking
-            await self._update_conversation_history(session_id, task_result)
+            # Results are now saved in unified storage only - no separate files needed
             
             logger.info(f"Conversation {session_id} continued with task {task_id}")
             
@@ -443,55 +563,139 @@ class MobileTaskHandler:
     def get_all_mobile_tasks(self) -> List[Dict]:
         """Get all mobile tasks for unified task list"""
         mobile_tasks = []
+        task_ids_seen = set()  # To avoid duplicates
         
         try:
-            # Get all result files
-            if not self.results_dir.exists():
-                return mobile_tasks
-                
-            for result_file in self.results_dir.glob("*.json"):
-                task_id = result_file.stem
-                
-                try:
-                    with open(result_file, 'r', encoding='utf-8') as f:
-                        task_result = json.load(f)
+            # First, get mobile tasks from unified storage (tasks.json)
+            tasks_storage = TasksStorage()
+            all_unified_tasks = tasks_storage.load_tasks()
+            
+            for task in all_unified_tasks:
+                # Check if it's a mobile task
+                if (task.get("source") == "mobile" or 
+                    task.get("taskType") == "mobile" or 
+                    task.get("type") == "mobile"):
                     
-                    # Convert mobile task result to unified format
-                    unified_task = {
-                        "id": task_id,
-                        "name": task_result.get("name", task_result.get("goal", "")[:50] + "..." if len(task_result.get("goal", "")) > 50 else task_result.get("goal", "Unnamed Task")),
-                        "goal": task_result.get("goal", ""),
-                        "type": "mobile",
-                        "status": "completed" if task_result.get("exit_code") == 0 else "failed",
-                        "sessionId": task_result.get("session_id"),
-                        "session_id": task_result.get("session_id"),  # Keep for backward compatibility
-                        "hasResult": bool(task_result.get("output")),
-                        "resultApi": f"/api/mobile/task-result/{task_id}",
-                        "createdAt": task_result.get("started_at", task_result.get("completed_at")),
-                        "lastRun": task_result.get("completed_at"),
-                        "role": task_result.get("role"),
-                        "workDirectory": task_result.get("work_directory"),
-                        "exitCode": task_result.get("exit_code"),
-                        "hasOutput": bool(task_result.get("output")),
-                        "hasError": bool(task_result.get("error")),
-                        # Mobile-specific fields
-                        "isContinuation": task_result.get("is_continuation", False),
-                        "originalGoal": task_result.get("original_goal")
-                    }
+                    task_id = task.get("id")
+                    if task_id:
+                        task_ids_seen.add(task_id)
+                        
+                        # Convert unified storage task to display format
+                        unified_task = {
+                            "id": task_id,
+                            "name": task.get("name", task.get("goal", "")[:50] + "..." if len(task.get("goal", "")) > 50 else task.get("goal", "Unnamed Task")),
+                            "goal": task.get("goal", ""),
+                            "type": "mobile",
+                            "status": task.get("status", "pending"),
+                            "sessionId": task.get("sessionId"),
+                            "session_id": task.get("sessionId"),  # Keep for backward compatibility
+                            "hasResult": bool(task.get("sessionId")),
+                            "resultApi": f"/api/mobile/task-result/{task_id}" if task.get("sessionId") else None,
+                            "createdAt": task.get("createdAt", task.get("created", "")),
+                            "lastRun": task.get("lastRun", task.get("completed_at", "")),
+                            "role": task.get("role"),
+                            "workDirectory": task.get("workDirectory", task.get("work_directory")),
+                            "exitCode": task.get("exitCode"),
+                            "hasOutput": bool(task.get("hasOutput")),
+                            "hasError": bool(task.get("hasError")),
+                            # Mobile-specific fields
+                            "isContinuation": task.get("is_continuation", False),
+                            "originalGoal": task.get("original_goal")
+                        }
+                        
+                        mobile_tasks.append(unified_task)
+            
+            # Then, get additional mobile tasks from result files (legacy completed tasks)
+            if self.results_dir.exists():
+                for result_file in self.results_dir.glob("*.json"):
+                    task_id = result_file.stem
                     
-                    mobile_tasks.append(unified_task)
-                    
-                except Exception as e:
-                    logger.error(f"Failed to load mobile task {task_id}: {e}")
-                    continue
+                    # Skip if already processed from unified storage
+                    if task_id in task_ids_seen:
+                        continue
+                        
+                    try:
+                        with open(result_file, 'r', encoding='utf-8') as f:
+                            task_result = json.load(f)
+                        
+                        # Convert mobile task result to unified format
+                        unified_task = {
+                            "id": task_id,
+                            "name": task_result.get("name", task_result.get("goal", "")[:50] + "..." if len(task_result.get("goal", "")) > 50 else task_result.get("goal", "Unnamed Task")),
+                            "goal": task_result.get("goal", ""),
+                            "type": "mobile",
+                            "status": "completed" if task_result.get("exit_code") == 0 else "failed",
+                            "sessionId": task_result.get("session_id"),
+                            "session_id": task_result.get("session_id"),  # Keep for backward compatibility
+                            "hasResult": bool(task_result.get("output")),
+                            "resultApi": f"/api/mobile/task-result/{task_id}",
+                            "createdAt": task_result.get("started_at", task_result.get("completed_at")),
+                            "lastRun": task_result.get("completed_at"),
+                            "role": task_result.get("role"),
+                            "workDirectory": task_result.get("work_directory"),
+                            "exitCode": task_result.get("exit_code"),
+                            "hasOutput": bool(task_result.get("output")),
+                            "hasError": bool(task_result.get("error")),
+                            # Mobile-specific fields
+                            "isContinuation": task_result.get("is_continuation", False),
+                            "originalGoal": task_result.get("original_goal")
+                        }
+                        
+                        mobile_tasks.append(unified_task)
+                        
+                    except Exception as e:
+                        logger.error(f"Failed to load mobile task {task_id}: {e}")
+                        continue
                     
         except Exception as e:
             logger.error(f"Failed to get mobile tasks: {e}")
             
         # Sort by completion time (newest first)
-        mobile_tasks.sort(key=lambda x: x.get("lastRun", ""), reverse=True)
+        mobile_tasks.sort(key=lambda x: x.get("lastRun", "") or x.get("createdAt", ""), reverse=True)
         
         return mobile_tasks
+    
+    async def _notify_task_completed(self, task_id: str, task_result: Dict) -> None:
+        """Send WebSocket notification when mobile task is completed"""
+        try:
+            # Import WebSocket manager to send notifications
+            from app import manager
+            
+            # Prepare notification message
+            notification_message = {
+                "type": "mobile_task_completed",
+                "task_id": task_id,
+                "task_name": task_result.get("name", task_result.get("goal", "")[:50] + "..." if len(task_result.get("goal", "")) > 50 else task_result.get("goal", "Unnamed Task")),
+                "status": "completed" if task_result.get("exit_code") == 0 else "failed",
+                "session_id": task_result.get("session_id"),
+                "has_output": bool(task_result.get("output")),
+                "has_error": bool(task_result.get("error")),
+                "completed_at": task_result.get("completed_at"),
+                "timestamp": datetime.now().isoformat()
+            }
+            
+            # Broadcast to all WebSocket connections
+            await manager.broadcast(notification_message)
+            logger.info(f"Sent mobile task completion notification for task {task_id}")
+            
+        except Exception as e:
+            logger.warning(f"Failed to send WebSocket notification for mobile task {task_id}: {e}")
+            # Don't fail the task execution if notification fails
+    
+    def delete_mobile_task(self, task_id: str) -> bool:
+        """Delete mobile task result file"""
+        try:
+            result_file = self.results_dir / f"{task_id}.json"
+            if result_file.exists():
+                result_file.unlink()
+                logger.info(f"Deleted mobile task result file: {result_file}")
+                return True
+            else:
+                logger.warning(f"Mobile task result file not found: {result_file}")
+                return False
+        except Exception as e:
+            logger.error(f"Failed to delete mobile task {task_id}: {e}")
+            return False
 
 # Global instance
 mobile_task_handler = MobileTaskHandler()

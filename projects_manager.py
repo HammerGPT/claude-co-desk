@@ -702,6 +702,79 @@ class SystemProjectManager:
             status['default_agents'] = []
             status['all_agents_deployed'] = False
         
+        # 集成移动端和PC端任务列表（只在返回时合并显示，不创建新任务）
+        try:
+            # 获取PC端任务
+            pc_tasks = []
+            try:
+                from tasks_storage import TasksStorage
+                tasks_storage = TasksStorage()
+                pc_tasks = tasks_storage.load_tasks()
+                logger.info(f"Loaded {len(pc_tasks)} PC tasks")
+            except Exception as e:
+                logger.warning(f"Failed to load PC tasks: {e}")
+            
+            # 获取移动端任务
+            mobile_tasks = []
+            try:
+                from mobile_task_handler import mobile_task_handler
+                mobile_tasks = mobile_task_handler.get_all_mobile_tasks()
+                logger.info(f"Loaded {len(mobile_tasks)} mobile tasks")
+            except Exception as e:
+                logger.warning(f"Failed to load mobile tasks: {e}")
+            
+            # 合并和去重任务列表（防止PC和移动端重复显示）
+            all_tasks = []
+            task_signatures = set()  # 用于去重的任务签名
+            duplicate_count = 0  # 重复任务计数器
+            
+            # 首先添加移动端任务（优先显示）
+            for task in mobile_tasks:
+                # 强化去重逻辑：使用任务名称、目标内容和创建时间
+                task_name = task.get('name', task.get('goal', 'Unnamed Task'))
+                task_content = str(task.get('goal', ''))[:100]  # 前100字符
+                created_time = task.get('createdAt', task.get('lastRun', ''))[:10]  # 只取日期部分
+                task_signature = f"{task_name}_{task_content}_{created_time}_mobile"
+                
+                if task_signature not in task_signatures:
+                    task_signatures.add(task_signature)
+                    all_tasks.append(task)
+                    logger.info(f"Task [mobile] {task_name} - SessionId: {bool(task.get('session_id'))}")
+                else:
+                    duplicate_count += 1
+                    logger.warning(f"Skipped duplicate mobile task: {task_name}")
+            
+            # 然后添加PC端任务（跳过重复）
+            for task in pc_tasks:
+                # 强化去重逻辑：使用任务名称、目标内容和创建时间
+                task_name = task.get('name', task.get('goal', 'Unnamed Task'))
+                task_content = str(task.get('goal', ''))[:100]  # 前100字符
+                created_time = task.get('createdAt', task.get('lastRun', ''))[:10]  # 只取日期部分
+                task_signature = f"{task_name}_{task_content}_{created_time}_pc"
+                
+                # 额外检查：防止与移动端任务重复（名称相同的情况）
+                mobile_equivalent_signature = f"{task_name}_{task_content}_{created_time}_mobile"
+                
+                if task_signature not in task_signatures and mobile_equivalent_signature not in task_signatures:
+                    task_signatures.add(task_signature)
+                    all_tasks.append(task)
+                    logger.info(f"Task [pc] {task_name} - SessionId: {bool(task.get('session_id'))}")
+                else:
+                    duplicate_count += 1
+                    logger.warning(f"Skipped duplicate PC task: {task_name} (may be duplicate of mobile task)")
+            
+            # 按时间排序（最新的在前）
+            all_tasks.sort(key=lambda x: x.get('lastRun', x.get('createdAt', '')), reverse=True)
+            
+            status['tasks'] = all_tasks
+            status['task_count'] = len(all_tasks)
+            logger.info(f"API returned total task count: {len(all_tasks)} (PC: {len(pc_tasks)}, Mobile: {len(mobile_tasks)})")
+            
+        except Exception as e:
+            logger.error(f"Failed to load task lists: {e}")
+            status['tasks'] = []
+            status['task_count'] = 0
+        
         return status
     
     @staticmethod

@@ -96,6 +96,7 @@ class TaskManager {
         this.currentEditingTask = null;
         this.systemConfig = null; // 存储系统配置
         this.notificationStatus = null; // 存储通知配置状态
+        this.isSubmittingTask = false; // 防止重复提交标志
         
         this.initElements();
         this.initEventListeners();
@@ -586,7 +587,7 @@ class TaskManager {
                 
                 // 详细检查每个任务的sessionId
                 this.tasks.forEach((task, index) => {
-                    console.log(`🔍 任务${index + 1} [${task.id}] ${task.name}:`, {
+                    console.log(`Task debug ${index + 1} [${task.id}] ${task.name}:`, {
                         sessionId: task.sessionId,
                         hasSessionId: !!task.sessionId,
                         lastRun: task.lastRun,
@@ -781,11 +782,11 @@ class TaskManager {
                 this.loadTasks();
             } else {
                 const errorData = await response.json();
-                console.error('❌ 删除任务失败:', errorData.error);
+                console.error('Delete task failed:', errorData.error);
                 alert(`删除失败: ${errorData.error}`);
             }
         } catch (error) {
-            console.error('❌ 删除任务出错:', error);
+            console.error('Delete task error:', error);
             alert(t('task.networkError'));
         }
     }
@@ -798,7 +799,7 @@ class TaskManager {
         
         this.tasksList.innerHTML = `
             <div class="empty-tasks">
-                <div class="empty-icon">📝</div>
+                <div class="empty-icon">Edit</div>
                 <p>尚未设置任何任务</p>
                 <p class="text-muted">${t('task.addFirst')}</p>
             </div>
@@ -854,7 +855,7 @@ class TaskManager {
                     '<span class="task-type-indicator pc" title="PC Task">PC</span>';
 
                 return `
-                    <div class="task-item task-type-${safeTask.type}" data-task-id="${safeTask.id}" onclick="window.taskManager && window.taskManager.showTaskDetails('${safeTask.id}')">
+                    <div class="task-item task-type-${safeTask.type}" data-task-id="${safeTask.id}" onclick="window.taskManager && window.taskManager.handleTaskClick('${safeTask.id}', '${safeTask.type}')">
                         <div class="task-item-header">
                             <div class="task-item-name">
                                 ${typeIndicator}
@@ -1473,14 +1474,14 @@ class TaskManager {
     async executeSelectedTask() {
         const task = this.tasks.find(t => t.id === this.selectedTaskId);
         if (!task) {
-            console.error('❌ 任务不存在:', this.selectedTaskId);
+            console.error('Task not found:', this.selectedTaskId);
             alert(t('task.taskNotFound'));
             return;
         }
         
         // 检查任务是否启用
         if (!task.enabled) {
-            console.warn('⚠️ 尝试执行已禁用的任务:', task.name);
+            console.warn('Attempting to execute disabled task:', task.name);
             if (!confirm(`任务"${task.name}"当前已禁用，是否要启用并执行？`)) {
                 return;
             }
@@ -1496,7 +1497,7 @@ class TaskManager {
         
         // 检查WebSocket连接
         if (!window.websocketManager || !window.websocketManager.isConnected) {
-            console.error('❌ WebSocket连接未建立');
+            console.error('WebSocket connection not established');
             alert(t('task.systemConnectionError'));
             return;
         }
@@ -1509,7 +1510,7 @@ class TaskManager {
             
             // 构建Claude CLI命令
             const command = this.buildClaudeCommand(task);
-            console.log('📝 构建的命令:', command);
+            console.log('Built command:', command);
             
             // 通过WebSocket通知后端创建新页签执行任务
             const sessionData = {
@@ -1524,8 +1525,8 @@ class TaskManager {
                 resources: task.resources
             };
             
-            console.log('📡 发送任务执行请求:', sessionData);
-            console.log('🔔 WebSocket发送的完整命令:', sessionData.command);
+            console.log('Sending task execution request:', sessionData);
+            console.log('WebSocket sending complete command:', sessionData.command);
             window.websocketManager.sendMessage(sessionData);
             
             // 显示执行反馈
@@ -1535,7 +1536,7 @@ class TaskManager {
             this.closeModal();
             
         } catch (error) {
-            console.error('❌ 任务执行失败:', error);
+            console.error('Task execution failed:', error);
             alert(t('task.executionFailedWithError') + error.message);
         }
     }
@@ -1686,13 +1687,98 @@ class TaskManager {
     }
 
     /**
+     * Fetch latest task data from server to ensure sessionId is up to date
+     */
+    async fetchLatestTaskData(taskId) {
+        try {
+            console.log(`Fetching latest data for task: ${taskId}`);
+            const response = await fetch(`/api/tasks/${taskId}`);
+            
+            if (response.ok) {
+                const latestTask = await response.json();
+                console.log(`Latest task data fetched:`, {
+                    id: latestTask.id,
+                    name: latestTask.name,
+                    type: latestTask.type,
+                    sessionId: latestTask.sessionId
+                });
+                
+                // Update local cache with latest data
+                const index = this.tasks.findIndex(t => t.id === taskId);
+                if (index !== -1) {
+                    this.tasks[index] = latestTask;
+                    console.log(`Updated local cache for task: ${taskId}`);
+                }
+                
+                return latestTask;
+            } else {
+                console.warn(`Failed to fetch latest task data: ${response.status}`);
+                // Fallback to cached data
+                return this.tasks.find(t => t.id === taskId);
+            }
+        } catch (error) {
+            console.error('Failed to fetch latest task data:', error);
+            // Fallback to cached data
+            return this.tasks.find(t => t.id === taskId);
+        }
+    }
+
+    /**
+     * 处理任务点击事件 - 根据任务类型决定显示内容
+     */
+    async handleTaskClick(taskId, taskType) {
+        console.log('Handle task click:', taskId, taskType);
+        
+        // 重新获取最新的任务数据，确保sessionId是最新的
+        const latestTask = await this.fetchLatestTaskData(taskId);
+        if (!latestTask) {
+            console.warn('Task not found:', taskId);
+            return;
+        }
+        
+        const isMobile = this.isMobileDevice() || this.isMobileInterface();
+        
+        if (isMobile) {
+            // 移动端环境：所有任务都尝试加载会话历史
+            if (this.hasConversationData(latestTask)) {
+                console.log('Mobile environment: task with conversation data, showing conversation');
+                this.showMobileConversation(taskId, latestTask);
+            } else {
+                console.log('Mobile environment: task without sessionId, showing missing dialog');
+                this.showMobileSessionMissingDialog(latestTask);
+            }
+        } else {
+            // PC环境：显示传统任务详情
+            console.log('PC environment: showing task details');
+            this.showTaskDetails(taskId, latestTask);
+        }
+    }
+
+    /**
+     * Show mobile conversation for a task (called by handleTaskClick)
+     */
+    showMobileConversation(taskId, latestTask = null) {
+        console.log('Show mobile conversation for task:', taskId);
+        
+        // Use provided latest task data or fallback to cached data
+        const task = latestTask || this.tasks.find(t => t.id === taskId);
+        if (!task) {
+            console.warn('Task not found for mobile conversation:', taskId);
+            return;
+        }
+        
+        // Delegate to the full mobile task conversation method
+        this.showMobileTaskConversation(task);
+    }
+
+    /**
      * 显示任务详情（从侧边栏触发）- 重构版本
      */
-    showTaskDetails(taskId) {
+    showTaskDetails(taskId, latestTask = null) {
         console.log('Show task details:', taskId);
         
-        // 查找任务数据
-        const task = this.tasks.find(t => t.id === taskId);
+        // Use provided latest task data or fallback to cached data
+        const task = latestTask || this.tasks.find(t => t.id === taskId);
         if (!task) {
             console.warn('任务不存在:', taskId);
             return;
@@ -1858,7 +1944,7 @@ class TaskManager {
         const executeBtn = document.getElementById('standalone-execute-task-btn');
         if (executeBtn) {
             // 添加详细调试日志
-            console.log('🔍 按钮更新调试:', {
+            console.log('Button update debug:', {
                 taskId: task.id,
                 taskName: task.name,
                 originalSessionId: task.sessionId,
@@ -2107,13 +2193,21 @@ class TaskManager {
      * 保存独立新建任务
      */
     async saveStandaloneTask() {
+        // Prevent duplicate submissions
+        if (this.isSubmittingTask) {
+            console.log('Task submission already in progress, skipping duplicate request');
+            return;
+        }
+        
         const taskData = this.collectStandaloneTaskData();
         if (!taskData) return;
+        
+        this.isSubmittingTask = true;
         
         try {
             // Determine API endpoint based on device type
             const apiEndpoint = this.isMobile() ? '/api/mobile/tasks' : '/api/tasks';
-            console.log(`📱 Device detection: ${this.isMobile() ? 'Mobile' : 'PC'} - Using API: ${apiEndpoint}`);
+            console.log(`Device detection: ${this.isMobile() ? 'Mobile' : 'PC'} - Using API: ${apiEndpoint}`);
             
             const response = await fetch(apiEndpoint, {
                 method: 'POST',
@@ -2127,9 +2221,6 @@ class TaskManager {
                 const savedTask = await response.json();
                 console.log('任务保存成功:', savedTask);
                 
-                // 关闭弹窗
-                this.closeStandaloneAddModal();
-                
                 // 刷新任务列表
                 this.loadTasks();
                 
@@ -2138,11 +2229,16 @@ class TaskManager {
                 
             } else {
                 const error = await response.json();
+                console.error('任务创建失败:', error);
                 alert(t('task.saveFailed') + ': ' + (error.error || t('error.unknown')));
             }
         } catch (error) {
             console.error('保存任务失败:', error);
             alert(t('task.saveFailed') + ': ' + error.message);
+        } finally {
+            // Reset submission flag and close modal
+            this.isSubmittingTask = false;
+            this.closeStandaloneAddModal();
         }
     }
 
@@ -2223,7 +2319,7 @@ class TaskManager {
         const notificationMethods = notificationEnabled ? [notificationType] : [];
         
         // Debug logging for role and goal_config collection
-        console.log('🔍 Task data collection debug:', {
+        console.log('Task data collection debug:', {
             name: name,
             description: description,
             selectedRole: selectedRole,
@@ -2292,7 +2388,7 @@ class TaskManager {
         const notificationMethods = notificationEnabled ? [notificationType] : [];
         
         // Debug logging
-        console.log('🔔 Edit notification data collection:', {
+        console.log('Edit notification data collection:', {
             notificationTypeRadio,
             notificationType,
             notificationEnabled,
@@ -2354,12 +2450,12 @@ class TaskManager {
             if (task.sessionId) {
                 if (this.isMobile()) {
                     // Mobile: Use follow-up conversation API (追问逻辑)
-                    console.log('📱 移动端追问，使用session_id:', task.sessionId);
+                    console.log('Mobile follow-up, using session_id:', task.sessionId);
                     await this.handleMobileContinueConversation(task);
                     return; // Exit early for mobile
                 } else {
                     // PC: Use session resume mechanism (恢复会话)
-                    console.log('🖥️ PC端继续任务，使用session_id:', task.sessionId);
+                    console.log('PC continue task, using session_id:', task.sessionId);
                     sessionData = {
                         type: 'resume-task-session',
                         taskId: task.id,
@@ -2373,7 +2469,7 @@ class TaskManager {
                 // 重新执行：使用原有逻辑
                 console.log(' 重新执行任务');
                 const command = this.buildClaudeCommand(task);
-                console.log('📝 构建的命令:', command);
+                console.log('Built command:', command);
                 
                 sessionData = {
                     type: 'new-task-session',
@@ -2389,20 +2485,20 @@ class TaskManager {
                 this.showExecutionFeedback(t('task.reExecutingTask') + task.name);
             }
             
-            console.log('📡 发送任务执行请求:', sessionData);
-            console.log('🔔 WebSocket发送的完整命令(重新执行):', sessionData.command);
+            console.log('Sending task execution request:', sessionData);
+            console.log('WebSocket sending complete command (re-execution):', sessionData.command);
             window.websocketManager.sendMessage(sessionData);
             
             // 延迟刷新任务数据，以便获取更新后的session_id
             setTimeout(async () => {
-                console.log('🔄 刷新任务数据以获取最新session_id');
+                console.log('Refreshing task data to get latest session_id');
                 await this.loadTasks();
                 
                 // 如果当前显示的就是这个任务，重新显示详情以更新按钮状态
                 if (this.selectedTaskId === task.id) {
                     const updatedTask = this.tasks.find(t => t.id === task.id);
                     if (updatedTask) {
-                        console.log('🔄 更新任务详情显示，sessionId:', updatedTask.sessionId);
+                        console.log('Update task details display, sessionId:', updatedTask.sessionId);
                         this.showStandaloneTaskDetail(updatedTask);
                     }
                 }
@@ -2412,7 +2508,7 @@ class TaskManager {
             this.closeStandaloneDetailModal();
             
         } catch (error) {
-            console.error('❌ 任务执行失败:', error);
+            console.error('Task execution failed:', error);
             alert(t('task.executionFailedWithError') + error.message);
         }
     }
@@ -3620,7 +3716,7 @@ class TaskManager {
                 return; // User cancelled
             }
             
-            console.log('📱 Mobile follow-up question:', followUpQuestion);
+            console.log('Mobile follow-up question:', followUpQuestion);
             
             // Call mobile continue conversation API
             const response = await fetch(`/api/mobile/conversations/${task.sessionId}/continue`, {
@@ -3639,7 +3735,7 @@ class TaskManager {
             
             if (response.ok) {
                 const result = await response.json();
-                console.log('✅ Mobile conversation continued:', result);
+                console.log('Mobile conversation continued:', result);
                 
                 // Show success feedback
                 this.showExecutionFeedback(`已发送追问: ${followUpQuestion.substring(0, 30)}${followUpQuestion.length > 30 ? '...' : ''}`);
@@ -3658,7 +3754,7 @@ class TaskManager {
             }
             
         } catch (error) {
-            console.error('❌ Mobile follow-up failed:', error);
+            console.error('Mobile follow-up failed:', error);
             alert(`移动端追问失败: ${error.message}`);
         }
     }
@@ -3912,6 +4008,32 @@ class TaskManager {
         }
     }
 
+    /**
+     * Show mobile session missing dialog for tasks without sessionId
+     */
+    showMobileSessionMissingDialog(task) {
+        console.log('Showing mobile session missing dialog for task:', task.name);
+        
+        // Create message with internationalization
+        const message = t('mobile.sessionMissing', 'Task conversation information is missing, please try again later');
+        const title = t('mobile.sessionMissingTitle', 'Conversation Not Available');
+        
+        // Show mobile notification or simple alert
+        this.showMobileNotification(title, message, 'warning');
+    }
+
+    /**
+     * Show mobile notification (toast or dialog)
+     */
+    showMobileNotification(title, message, type = 'info') {
+        // Simple alert implementation for now
+        // Can be enhanced with custom toast or modal later
+        const fullMessage = `${title}\n\n${message}`;
+        alert(fullMessage);
+        
+        console.log(`Mobile notification shown: [${type}] ${title}: ${message}`);
+    }
+
     // ===== Mobile Task Conversation History Feature =====
 
     /**
@@ -3980,7 +4102,8 @@ class TaskManager {
         // 根据任务类型确定项目路径
         let projectName;
         if (task.type === 'mobile') {
-            projectName = 'task-execution'; // 移动端任务使用task-execution项目
+            // 移动端任务执行在用户家目录，会话文件在用户家目录项目中
+            projectName = userHomeProjectName; 
         } else {
             // PC任务使用用户家目录项目路径
             projectName = userHomeProjectName;
@@ -3994,9 +4117,11 @@ class TaskManager {
                 console.warn(`Failed to load from ${projectName}, trying fallback paths`);
                 
                 // 如果失败，尝试其他可能的路径
-                const fallbackPaths = ['task-execution', userHomeProjectName, 'default'];
+                const fallbackPaths = task.type === 'mobile' 
+                    ? ['task-execution', userHomeProjectName, 'default']  // 移动端可能在task-execution中
+                    : [userHomeProjectName, 'default'];  // PC端主要在用户家目录
                 for (const fallbackPath of fallbackPaths) {
-                    if (fallbackPath === projectName) continue; // 跳过已试过的路径
+                    if (fallbackPath === projectName || !fallbackPath) continue; // 跳过已试过的路径和空路径
                     
                     console.log('Trying fallback path:', fallbackPath);
                     const fallbackResponse = await fetch(`/api/projects/${fallbackPath}/sessions/${sessionId}/messages`);

@@ -440,9 +440,20 @@ class TaskScheduler:
             tasks_data = self.storage.load_tasks()
             loaded_count = 0
             scheduled_count = 0
+            mobile_skipped_count = 0
             
             for task_data in tasks_data:
                 try:
+                    # 跳过移动端任务（只加载PC任务到调度器）
+                    is_mobile = (
+                        task_data.get('source') == 'mobile' or 
+                        task_data.get('taskType') == 'mobile' or 
+                        task_data.get('type') == 'mobile'
+                    )
+                    if is_mobile:
+                        mobile_skipped_count += 1
+                        continue
+                    
                     # 重建任务对象
                     task = ScheduledTask(
                         id=task_data['id'],
@@ -464,11 +475,8 @@ class TaskScheduler:
                         goal_config=task_data.get('goal_config', '')
                     )
                     
-                    # 添加调试日志
-                    if task.session_id:
-                        logger.info(f"Loading task from storage {task.name}, contains session_id: {task.session_id}")
-                    else:
-                        logger.debug(f"Loading task from storage {task.name}, no session_id")
+                    # 优化调试日志
+                    logger.debug(f"Loaded PC task: {task.id} - {task.name} (sessionId: {task.session_id or 'None'})")
                     
                     # 添加到all_tasks
                     self.all_tasks[task.id] = task
@@ -483,7 +491,7 @@ class TaskScheduler:
                 except Exception as e:
                     logger.error(f"Failed to load task: {task_data.get('name', 'Unknown')} - {e}")
                     
-            logger.info(f"Restored {loaded_count} tasks from storage file, {scheduled_count} scheduled tasks")
+            logger.info(f"Task scheduler loaded {loaded_count} PC tasks from storage ({scheduled_count} scheduled, {mobile_skipped_count} mobile tasks skipped)")
             
         except Exception as e:
             logger.error(f"Failed to load task data: {e}")
