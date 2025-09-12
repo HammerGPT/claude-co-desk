@@ -777,12 +777,33 @@ class App {
         // 如果TaskManager已经加载，立即初始化移动端任务显示
         if (window.taskManager) {
             this.setupMobileTasksSync();
+            
+            // 移动端兜底同步机制
+            if (this.isMobile) {
+                // 立即尝试同步
+                this.syncTasksToMobile();
+                
+                // 多重延迟重试，确保在各种加载时序下都能同步
+                setTimeout(() => this.syncTasksToMobile(), 100);
+                setTimeout(() => this.syncTasksToMobile(), 300);
+                setTimeout(() => this.syncTasksToMobile(), 500);
+            }
         } else {
             // 等待TaskManager加载完成
             const checkTaskManager = setInterval(() => {
                 if (window.taskManager) {
                     clearInterval(checkTaskManager);
                     this.setupMobileTasksSync();
+                    
+                    // 移动端兜底同步机制
+                    if (this.isMobile) {
+                        // TaskManager刚加载完成，立即同步
+                        this.syncTasksToMobile();
+                        
+                        // 延迟重试确保数据已加载
+                        setTimeout(() => this.syncTasksToMobile(), 200);
+                        setTimeout(() => this.syncTasksToMobile(), 500);
+                    }
                 }
             }, 100);
         }
@@ -795,12 +816,12 @@ class App {
         // 立即执行一次初始同步
         this.syncTasksToMobile();
         
-        // 监听任务列表变化，同步到移动端容器
-        const originalRenderTasks = window.taskManager.renderTasks;
-        if (originalRenderTasks) {
-            window.taskManager.renderTasks = function() {
+        // 监听任务列表变化，同步到移动端容器 - 修正方法名
+        const originalRenderTasksList = window.taskManager.renderTasksList;
+        if (originalRenderTasksList) {
+            window.taskManager.renderTasksList = function() {
                 // 调用原方法
-                originalRenderTasks.call(this);
+                originalRenderTasksList.call(this);
                 
                 // 同步到移动端
                 if (window.app && window.app.isMobile) {
@@ -818,27 +839,55 @@ class App {
                 
                 // 加载完成后同步到移动端
                 if (window.app && window.app.isMobile) {
-                    // 使用延迟确保DOM更新完成
+                    // 减少延迟时间，提高响应性
                     setTimeout(() => {
                         window.app.syncTasksToMobile();
-                    }, 100);
+                    }, 50);
                 }
                 
                 return result;
             };
         }
+        
+        // 增加事件驱动的同步机制（最可靠的方式）
+        document.addEventListener('tasksUpdated', (event) => {
+            if (window.app && window.app.isMobile) {
+                // 确保DOM更新完成后再同步
+                requestAnimationFrame(() => {
+                    window.app.syncTasksToMobile();
+                });
+            }
+        });
     }
 
     /**
      * Sync tasks to mobile container
      */
     syncTasksToMobile() {
+        // 只在移动端模式下执行同步
+        if (!this.isMobile) return;
+        
         const mobileTasksList = document.getElementById('mobile-tasks-list');
         const sidebarTasksList = document.getElementById('tasks-list');
         
         if (mobileTasksList && sidebarTasksList) {
-            // 复制侧边栏任务列表到移动端
-            mobileTasksList.innerHTML = sidebarTasksList.innerHTML;
+            // 检查源容器是否有内容，避免清空已有内容
+            if (sidebarTasksList.innerHTML.trim()) {
+                // 复制侧边栏任务列表到移动端
+                mobileTasksList.innerHTML = sidebarTasksList.innerHTML;
+                console.log('Mobile tasks synced successfully, source has content');
+            } else if (sidebarTasksList.innerHTML.includes('empty-tasks')) {
+                // 源容器显示空状态，也同步空状态到移动端
+                mobileTasksList.innerHTML = sidebarTasksList.innerHTML;
+                console.log('Mobile tasks synced: empty state');
+            } else {
+                console.log('Mobile sync skipped: source container has no content yet');
+            }
+        } else {
+            console.log('Mobile sync failed: containers not found', {
+                mobileTasksList: !!mobileTasksList,
+                sidebarTasksList: !!sidebarTasksList
+            });
         }
     }
 

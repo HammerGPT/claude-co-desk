@@ -165,6 +165,58 @@ class MobileTaskHandler:
             logger.debug(f"Error details: {e}", exc_info=True)
             return False
     
+    def _update_task_session_id_by_old_session(self, old_session_id: str, new_session_id: str) -> bool:
+        """Update task sessionId from old session to new session ID"""
+        try:
+            from tasks_storage import TasksStorage
+            
+            storage = TasksStorage()
+            existing_tasks = storage.load_tasks()
+            
+            # Find tasks with old session ID and update to new session ID
+            updated_count = 0
+            for task in existing_tasks:
+                if task.get("sessionId") == old_session_id:
+                    task["sessionId"] = new_session_id
+                    task["lastRun"] = datetime.now().isoformat()
+                    updated_count += 1
+                    logger.info(f"Updated task {task.get('id')} sessionId: {old_session_id} -> {new_session_id}")
+            
+            if updated_count > 0:
+                storage.save_tasks(existing_tasks)
+                logger.info(f"Successfully updated {updated_count} tasks with new session ID")
+                return True
+            else:
+                logger.warning(f"No tasks found with old session ID: {old_session_id}")
+                return False
+            
+        except Exception as e:
+            logger.error(f"Failed to update task session ID: {e}")
+            logger.debug(f"Error details: {e}", exc_info=True)
+            return False
+    
+    def _find_task_by_session_id(self, session_id: str) -> Optional[str]:
+        """Find original task ID by session ID"""
+        try:
+            from tasks_storage import TasksStorage
+            
+            storage = TasksStorage()
+            existing_tasks = storage.load_tasks()
+            
+            # Find task with matching session ID
+            for task in existing_tasks:
+                if task.get("sessionId") == session_id:
+                    task_id = task.get("id")
+                    logger.info(f"Found original task {task_id} for session {session_id}")
+                    return task_id
+            
+            logger.warning(f"No task found for session ID: {session_id}")
+            return None
+            
+        except Exception as e:
+            logger.error(f"Failed to find task by session ID: {e}")
+            return None
+    
     def _generate_task_id(self) -> str:
         """Generate unique task ID for mobile tasks"""
         timestamp = int(datetime.now().timestamp())
@@ -190,6 +242,56 @@ class MobileTaskHandler:
         # If no session ID found in output, we cannot continue conversations
         # Return None to indicate no session available for resume
         logger.warning(f"No UUID session ID found in Claude output")
+        return None
+    
+    def _parse_json_response(self, output_text: str) -> Dict[str, Any]:
+        """Parse JSON response from Claude CLI"""
+        try:
+            # Claude CLI JSON output may contain multiple lines, try to find JSON content
+            lines = output_text.strip().split('\n')
+            for line in lines:
+                line = line.strip()
+                if line.startswith('{') and line.endswith('}'):
+                    json_data = json.loads(line)
+                    logger.info(f"Successfully parsed JSON response")
+                    return json_data
+            
+            # If no JSON line found, try parsing entire output
+            json_data = json.loads(output_text.strip())
+            logger.info(f"Successfully parsed entire output as JSON")
+            return json_data
+            
+        except json.JSONDecodeError as e:
+            logger.warning(f"Failed to parse JSON response: {e}")
+            return {}
+    
+    def _extract_session_from_json(self, json_response: Dict[str, Any]) -> Optional[str]:
+        """Extract session ID from JSON response"""
+        if not json_response:
+            return None
+            
+        # Try multiple possible field names for session ID
+        session_fields = ['session_id', 'sessionId', 'id', 'conversation_id', 'conversationId']
+        
+        for field in session_fields:
+            if field in json_response:
+                session_id = json_response[field]
+                if isinstance(session_id, str) and len(session_id) > 0:
+                    logger.info(f"Found session ID in JSON field '{field}': {session_id}")
+                    return session_id
+        
+        # Try nested structures
+        if 'metadata' in json_response:
+            metadata = json_response['metadata']
+            if isinstance(metadata, dict):
+                for field in session_fields:
+                    if field in metadata:
+                        session_id = metadata[field]
+                        if isinstance(session_id, str) and len(session_id) > 0:
+                            logger.info(f"Found session ID in metadata.{field}: {session_id}")
+                            return session_id
+        
+        logger.warning("No session ID found in JSON response")
         return None
     
     async def execute_mobile_task(
@@ -406,7 +508,12 @@ class MobileTaskHandler:
         """Continue conversation with existing session"""
         
         try:
-            task_id = self._generate_task_id()
+            # Find original task ID by session ID - do NOT generate new task ID
+            task_id = self._find_task_by_session_id(session_id)
+            if not task_id:
+                raise Exception(f"No original task found for session {session_id}")
+            
+            logger.info(f"Using original task ID {task_id} for session continuation")
             
             # Get conversation history to determine work directory
             conversation_file = self.conversations_dir / f"{session_id}.json"
@@ -435,7 +542,8 @@ class MobileTaskHandler:
                         enhanced_goal = f"{enhanced_goal}\n\n{notification_cmd}"
             
             # Build shell command string using PC-side PTY Shell approach (bash -c method)
-            shell_command_parts = [f'"{self.claude_executable}"', '--resume', session_id, '-p', f'"{enhanced_goal}"', '--dangerously-skip-permissions']
+            # Use JSON output format to get structured response with session information
+            shell_command_parts = [f'"{self.claude_executable}"', '--resume', session_id, '-p', f'"{enhanced_goal}"', '--output-format', 'json']
             
             # Construct complete shell command (similar to PC PTY Shell logic)
             claude_command = ' '.join(shell_command_parts)
@@ -457,6 +565,27 @@ class MobileTaskHandler:
             output_text = stdout.decode('utf-8', errors='replace') if stdout else ""
             error_text = stderr.decode('utf-8', errors='replace') if stderr else ""
             
+            # Extract new session ID from JSON response
+            new_session_id = None
+            json_response = {}
+            
+            # Try to parse JSON response first
+            if output_text:
+                json_response = self._parse_json_response(output_text)
+                if json_response:
+                    new_session_id = self._extract_session_from_json(json_response)
+            
+            # Fallback: use existing UUID extraction method
+            if not new_session_id:
+                new_session_id = self._extract_session_id(output_text)
+                
+            # Final fallback: use original session_id
+            if not new_session_id:
+                new_session_id = session_id
+                logger.info(f"No new session ID found, using original: {session_id}")
+            else:
+                logger.info(f"Session progression: {session_id} -> {new_session_id}")
+            
             # Prepare task result
             task_result = {
                 "task_id": task_id,
@@ -475,20 +604,30 @@ class MobileTaskHandler:
                 "is_continuation": True
             }
             
-            # Results are now saved in unified storage only - no separate files needed
+            # Do NOT create new task for continue conversation - only update sessionId
+            # The conversation continuation should only update the original task's sessionId
+            
+            # Update original task's session ID if session changed
+            if new_session_id != session_id:
+                self._update_task_session_id_by_old_session(session_id, new_session_id)
+            else:
+                logger.info(f"Session ID unchanged, no task update needed: {session_id}")
             
             logger.info(f"Conversation {session_id} continued with task {task_id}")
             
             return {
                 "task_id": task_id,
-                "session_id": session_id,
+                "session_id": new_session_id,  # Return the new session ID
+                "original_session_id": session_id,  # Keep original for reference
                 "status": "completed" if process.returncode == 0 else "failed",
                 "result_url": f"/mobile/task-result/{task_id}",
-                "conversation_url": f"/mobile/conversation/{session_id}",
+                "conversation_url": f"/mobile/conversation/{new_session_id}",  # Use new session ID for URL
                 "exit_code": process.returncode,
                 "has_output": bool(output_text),
                 "has_error": bool(error_text),
-                "continued": True
+                "continued": True,
+                "session_changed": new_session_id != session_id,  # Flag indicating session change
+                "json_response": json_response  # Include parsed JSON for debugging
             }
             
         except Exception as e:

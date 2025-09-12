@@ -763,8 +763,20 @@ class SystemProjectManager:
                     duplicate_count += 1
                     logger.warning(f"Skipped duplicate PC task: {task_name} (may be duplicate of mobile task)")
             
-            # 按时间排序（最新的在前）
-            all_tasks.sort(key=lambda x: x.get('lastRun', x.get('createdAt', '')), reverse=True)
+            # 按时间排序（最新的在前）- 安全的None值处理
+            def safe_sort_key(task):
+                """Safe sorting key that handles None values"""
+                last_run = task.get('lastRun')
+                created_at = task.get('createdAt')
+                
+                # Return the first non-None value, or empty string if both are None
+                return last_run or created_at or ''
+            
+            try:
+                all_tasks.sort(key=safe_sort_key, reverse=True)
+            except Exception as sort_error:
+                logger.warning(f"Task sorting failed: {sort_error}, using unsorted list")
+                # If sorting fails, at least return the tasks unsorted rather than failing completely
             
             status['tasks'] = all_tasks
             status['task_count'] = len(all_tasks)

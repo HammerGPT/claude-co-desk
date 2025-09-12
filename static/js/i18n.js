@@ -341,6 +341,13 @@ const TEXTS = {
         'mobile.serverError': 'Failed to send request to server',
         'mobile.sessionMissing': 'Task conversation information is missing, please try again later',
         'mobile.sessionMissingTitle': 'Conversation Not Available',
+        'mobile.continueConversationPlaceholder': 'Continue conversation...',
+        'mobile.sendingMessage': 'Sending...',
+        'mobile.messageSentFailed': 'Failed to send message',
+        'mobile.retryMessage': 'Retry',
+        'mobile.loadingConversation': 'Loading conversation history...',
+        'mobile.noConversationHistory': 'No conversation history',
+        'mobile.noConversationDescription': 'This task hasn\'t generated any conversation records yet',
         
         // 错误消息
         'error.networkError': 'Network error',
@@ -892,6 +899,13 @@ const TEXTS = {
         'mobile.serverError': '发送请求到服务器失败',
         'mobile.sessionMissing': '任务会话信息缺失，请稍后再试',
         'mobile.sessionMissingTitle': '会话不可用',
+        'mobile.continueConversationPlaceholder': '继续对话...',
+        'mobile.sendingMessage': '发送中...',
+        'mobile.messageSentFailed': '消息发送失败',
+        'mobile.retryMessage': '重试',
+        'mobile.loadingConversation': '正在加载对话历史...',
+        'mobile.noConversationHistory': '暂无对话历史',
+        'mobile.noConversationDescription': '该任务还没有生成对话记录',
         
         // 错误消息
         'error.networkError': '网络错误',

@@ -4731,6 +4731,13 @@ div.session-header div.session-actions button.action-btn:hover {
   #standalone-task-detail-modal .modal-footer {
     padding: 12px 20px;
   }
+  
+  /* 移动端隐藏全自动模式和任务日志选项 */
+  #standalone-add-task-modal .toggle-switch,
+  #standalone-task-detail-modal .toggle-switch,
+  #daily-tasks-modal .toggle-switch {
+    display: none !important;
+  }
 }
 
 /* 智能体管理弹窗样式 */

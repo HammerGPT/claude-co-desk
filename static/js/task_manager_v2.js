@@ -4042,6 +4042,10 @@ class TaskManager {
     async showMobileTaskConversation(task) {
         console.log('Showing mobile task conversation history:', task);
 
+        // Set current mobile task for follow-up functionality
+        this.currentMobileTask = task;
+        console.log('Set currentMobileTask:', this.currentMobileTask);
+
         // 显示加载状态
         this.showMobileConversationLoader(task);
 
@@ -4155,6 +4159,14 @@ class TaskManager {
      * Show mobile conversation loader
      */
     showMobileConversationLoader(task) {
+        // CRITICAL: Clean up any existing overlay to prevent duplicates
+        const existingOverlay = document.getElementById('mobile-conversation-overlay');
+        if (existingOverlay) {
+            console.log('Removing existing mobile conversation overlay');
+            existingOverlay.remove();
+        }
+        
+        const loadingText = this.getText('mobile.loadingConversation');
         const loaderHtml = `
             <div id="mobile-conversation-overlay" class="mobile-conversation-overlay">
                 <div class="mobile-conversation-container">
@@ -4172,7 +4184,7 @@ class TaskManager {
                     <div class="mobile-conversation-content">
                         <div class="mobile-conversation-loading">
                             <div class="loading-spinner"></div>
-                            <p>正在加载对话历史...</p>
+                            <p>${loadingText}</p>
                         </div>
                     </div>
                 </div>
@@ -4180,6 +4192,7 @@ class TaskManager {
         `;
         
         document.body.insertAdjacentHTML('beforeend', loaderHtml);
+        console.log('Created new mobile conversation overlay');
     }
 
     /**
@@ -4212,21 +4225,33 @@ class TaskManager {
      * Render mobile conversation page with messages
      */
     renderMobileConversationPage(task, messages) {
+        console.log('renderMobileConversationPage called with:', { task: task?.name, messagesCount: messages?.length });
+        
         const overlay = document.getElementById('mobile-conversation-overlay');
-        if (!overlay) return;
+        if (!overlay) {
+            console.error('mobile-conversation-overlay not found');
+            return;
+        }
         
         const content = overlay.querySelector('.mobile-conversation-content');
-        if (!content) return;
+        if (!content) {
+            console.error('mobile-conversation-content not found');
+            return;
+        }
+        
+        console.log('Found overlay and content, proceeding with render');
         
         // 如果没有消息，显示空状态
         if (!messages || messages.length === 0) {
+            const noHistoryTitle = this.getText('mobile.noConversationHistory');
+            const noHistoryDesc = this.getText('mobile.noConversationDescription');
             content.innerHTML = `
                 <div class="mobile-conversation-empty">
                     <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="1.5">
                         <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
                     </svg>
-                    <h3>暂无对话历史</h3>
-                    <p>该任务还没有生成对话记录</p>
+                    <h3>${noHistoryTitle}</h3>
+                    <p>${noHistoryDesc}</p>
                 </div>
             `;
             return;
@@ -4238,6 +4263,7 @@ class TaskManager {
         
         const sessionId = task.sessionId || task.session_id;
         const hasSession = sessionId && sessionId.length > 0;
+        const placeholderText = this.getText('mobile.continueConversationPlaceholder');
         
         content.innerHTML = `
             <div class="mobile-conversation-messages" id="mobile-conversation-messages">
@@ -4248,7 +4274,7 @@ class TaskManager {
                     <div class="mobile-input-container">
                         <textarea 
                             id="mobile-conversation-textarea" 
-                            placeholder="继续对话..." 
+                            placeholder="${placeholderText}" 
                             rows="1"
                         ></textarea>
                         <button 
@@ -4274,6 +4300,8 @@ class TaskManager {
         if (textarea) {
             textarea.addEventListener('input', () => this.autoResizeMobileTextarea(textarea));
         }
+        
+        console.log('renderMobileConversationPage completed successfully');
     }
 
     /**
@@ -4326,11 +4354,28 @@ class TaskManager {
                 } else if (Array.isArray(rawContent)) {
                     // Claude Code format: content is an array of objects
                     content = rawContent.map(item => {
+                        // Check multiple possible content structures
                         if (item.type === 'text' && item.text) {
                             return item.text;
                         }
+                        // Additional fallback for different structures
+                        if (typeof item === 'string') {
+                            return item;
+                        }
+                        if (item.content) {
+                            return item.content;
+                        }
+                        // Debug log for unknown structures
+                        console.log('Unknown item structure:', item);
                         return '';
                     }).filter(text => text.trim()).join('\n\n');
+                    
+                    // Debug log for content processing
+                    console.log('Processed array content:', { 
+                        originalLength: rawContent.length, 
+                        processedLength: content.length,
+                        firstItem: rawContent[0]
+                    });
                 }
                 
                 if (content && content.trim()) {
@@ -4496,6 +4541,7 @@ class TaskManager {
         sendBtn.disabled = true;
         sendBtn.innerHTML = `
             <div class="mobile-sending-spinner"></div>
+            <span style="margin-left: 8px; font-size: 12px;">${this.getText('mobile.sendingMessage')}</span>
         `;
         
         // 添加用户消息到界面
@@ -4506,13 +4552,60 @@ class TaskManager {
         this.autoResizeMobileTextarea(textarea);
         
         try {
-            // 这里可以集成现有的继续对话逻辑
-            // 暂时显示"功能开发中"的消息
-            await this.simulateMobileContinueResponse();
+            // 调用真实的API继续对话
+            const response = await fetch(`/api/mobile/conversations/${sessionId}/continue`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    goal: message,
+                    notificationSettings: {
+                        enabled: false,
+                        methods: []
+                    }
+                })
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.error || this.getText('mobile.serverError'));
+            }
+
+            const result = await response.json();
+            
+            // Handle session ID changes
+            const newSessionId = result.session_id;
+            const sessionChanged = result.session_changed || (newSessionId !== sessionId);
+            
+            if (sessionChanged) {
+                console.log(`Session ID updated: ${sessionId} -> ${newSessionId}`);
+                // Add success message with session update info
+                this.addMobileAssistantMessage(this.getText('mobile.sessionContinued'));
+                
+                // Refresh the conversation with new session ID
+                await this.refreshMobileConversationWithNewSession(newSessionId, sessionId);
+            } else {
+                // No session change, add response normally
+                if (result.has_output) {
+                    this.addMobileContinueResponse(message, sessionId);
+                } else {
+                    this.addMobileAssistantMessage(this.getText('mobile.sessionContinued'));
+                    
+                    // Still refresh to show latest conversation
+                    setTimeout(async () => {
+                        try {
+                            await this.refreshMobileConversation(sessionId);
+                        } catch (error) {
+                            console.warn('Failed to refresh conversation:', error);
+                        }
+                    }, 1000);
+                }
+            }
             
         } catch (error) {
-            console.error('发送消息失败:', error);
-            this.addMobileErrorMessage('发送失败，请重试');
+            console.error('Failed to send continue message:', error);
+            this.addMobileErrorMessage(error.message || this.getText('mobile.messageSentFailed'));
         } finally {
             // 恢复发送按钮
             sendBtn.disabled = false;
@@ -4566,30 +4659,268 @@ class TaskManager {
     }
 
     /**
-     * Simulate mobile continue response (placeholder)
+     * Add mobile assistant message
      */
-    async simulateMobileContinueResponse() {
-        // 模拟异步响应延迟
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
+    addMobileAssistantMessage(content) {
         const messagesContainer = document.getElementById('mobile-conversation-messages');
         if (!messagesContainer) return;
         
-        const responseHtml = `
+        const messageHtml = `
             <div class="mobile-message assistant-message">
                 <div class="mobile-message-bubble assistant-bubble">
-                    <div class="mobile-message-content">
-                        <p>继续对话功能正在开发中...</p>
-                        <p>您的消息已收到，完整的对话功能将在后续版本中实现。</p>
-                    </div>
+                    <div class="mobile-message-content">${this.escapeHtml(content)}</div>
                     <div class="mobile-message-time">${this.formatMobileMessageTime(new Date().toISOString())}</div>
                 </div>
             </div>
         `;
         
-        messagesContainer.insertAdjacentHTML('beforeend', responseHtml);
+        messagesContainer.insertAdjacentHTML('beforeend', messageHtml);
         this.scrollMobileConversationToBottom();
     }
+
+    /**
+     * Add mobile continue response - refresh the conversation view
+     */
+    async addMobileContinueResponse(userMessage, sessionId) {
+        // Show a simple success message and refresh the conversation
+        this.addMobileAssistantMessage(this.getText('mobile.sessionContinued'));
+        
+        // Optionally refresh the conversation after a short delay
+        setTimeout(async () => {
+            try {
+                await this.refreshMobileConversation(sessionId);
+            } catch (error) {
+                console.warn('Failed to refresh mobile conversation:', error);
+            }
+        }, 2000);
+    }
+
+    /**
+     * Refresh mobile conversation view
+     */
+    async refreshMobileConversation(sessionId) {
+        try {
+            const response = await fetch(`/api/mobile/conversations/${sessionId}`);
+            if (response.ok) {
+                const conversationData = await response.json();
+                // Optionally update the conversation display
+                console.log('Conversation refreshed:', conversationData);
+            }
+        } catch (error) {
+            console.error('Failed to refresh conversation:', error);
+        }
+    }
+
+    /**
+     * Refresh mobile conversation view with new session ID
+     */
+    async refreshMobileConversationWithNewSession(newSessionId, oldSessionId) {
+        try {
+            // Get current task data and update its session ID
+            const currentTask = this.getCurrentMobileTask();
+            if (currentTask) {
+                // Update task's session ID references
+                currentTask.sessionId = newSessionId;
+                
+                // CRITICAL: Also update the task in this.tasks array to maintain data consistency
+                const taskIndex = this.tasks.findIndex(t => t.id === currentTask.id);
+                if (taskIndex !== -1) {
+                    this.tasks[taskIndex].sessionId = newSessionId;
+                    console.log(`Synced sessionId in tasks array for task ${currentTask.id}`);
+                } else {
+                    console.warn('Task not found in tasks array for sessionId sync');
+                }
+                
+                // CRITICAL: Also update currentMobileTask reference to maintain consistency
+                if (this.currentMobileTask && this.currentMobileTask.id === currentTask.id) {
+                    this.currentMobileTask.sessionId = newSessionId;
+                    console.log(`Synced sessionId in currentMobileTask reference for task ${currentTask.id}`);
+                }
+                
+                console.log(`Updated task session ID from ${oldSessionId} to ${newSessionId}`);
+                
+                // Use incremental message append instead of full page reload
+                console.log('Appending new messages from session:', newSessionId);
+                await this.appendNewMessage(newSessionId, oldSessionId);
+                
+                // Update page URL if possible (for better navigation)
+                if (window.history && window.history.replaceState) {
+                    const currentUrl = window.location.href;
+                    const newUrl = currentUrl.replace(oldSessionId, newSessionId);
+                    if (newUrl !== currentUrl) {
+                        window.history.replaceState(null, '', newUrl);
+                    }
+                }
+            } else {
+                console.warn('No current mobile task found for session refresh');
+            }
+        } catch (error) {
+            console.error('Failed to refresh conversation with new session:', error);
+            // Fallback: try regular refresh
+            await this.refreshMobileConversation(newSessionId);
+        }
+    }
+
+    /**
+     * Append new messages to current conversation without full page reload
+     */
+    async appendNewMessage(newSessionId, oldSessionId) {
+        try {
+            console.log(`Appending new messages: ${oldSessionId} -> ${newSessionId}`);
+            
+            // Get current messages container
+            const messagesContainer = document.getElementById('mobile-conversation-messages');
+            if (!messagesContainer) {
+                console.warn('Messages container not found, falling back to full reload');
+                return await this.fallbackToFullReload(newSessionId);
+            }
+            
+            // Get messages from new session with simple retry
+            const newMessages = await this.getNewSessionMessages(newSessionId);
+            if (!newMessages || newMessages.length === 0) {
+                console.log('No new messages found');
+                return;
+            }
+            
+            // Find current message count to determine new messages
+            const currentMessageElements = messagesContainer.querySelectorAll('.mobile-message');
+            const currentCount = currentMessageElements.length;
+            
+            // Convert and filter new messages
+            const convertedMessages = this.convertMobileSessionMessages(newMessages);
+            const newMessagesToAppend = convertedMessages.slice(currentCount);
+            
+            console.log(`Appending ${newMessagesToAppend.length} new messages`);
+            
+            // Append new messages to container
+            newMessagesToAppend.forEach(msg => {
+                const messageHtml = this.formatMobileChatMessage(msg);
+                messagesContainer.insertAdjacentHTML('beforeend', messageHtml);
+            });
+            
+            // Update input section sessionId
+            this.updateMobileInputSessionId(newSessionId);
+            
+            // Scroll to bottom
+            this.scrollMobileConversationToBottom();
+            
+            console.log('Successfully appended new messages');
+            
+        } catch (error) {
+            console.error('Failed to append new messages:', error);
+            return await this.fallbackToFullReload(newSessionId);
+        }
+    }
+    
+    /**
+     * Get messages from new session with simple retry mechanism
+     */
+    async getNewSessionMessages(sessionId, maxRetries = 3) {
+        // Get dynamic configuration
+        if (!this.systemConfig) {
+            await this.loadConfig();
+        }
+        
+        let userHomeProjectName = this.systemConfig?.userHomeProjectName;
+        if (!userHomeProjectName) {
+            const userHome = this.systemConfig?.userHome;
+            if (userHome) {
+                userHomeProjectName = userHome.replace(/\//g, '-');
+            }
+        }
+        
+        if (!userHomeProjectName) {
+            throw new Error('Could not determine userHomeProjectName');
+        }
+        
+        for (let i = 0; i < maxRetries; i++) {
+            try {
+                await new Promise(resolve => setTimeout(resolve, i * 1000)); // 0s, 1s, 2s delays
+                
+                const response = await fetch(`/api/projects/${userHomeProjectName}/sessions/${sessionId}/messages`);
+                if (response.ok) {
+                    const messages = await response.json();
+                    if (messages && messages.length > 0) {
+                        return messages;
+                    }
+                }
+                
+                console.log(`Retry ${i + 1}/${maxRetries} for session ${sessionId}`);
+            } catch (error) {
+                console.warn(`Retry ${i + 1} failed:`, error);
+            }
+        }
+        
+        throw new Error(`Failed to get messages after ${maxRetries} retries`);
+    }
+    
+    /**
+     * Update mobile input section with new session ID
+     */
+    updateMobileInputSessionId(newSessionId) {
+        const sendButton = document.getElementById('mobile-conversation-send');
+        if (sendButton) {
+            sendButton.setAttribute('onclick', `taskManager.sendMobileContinueMessage('${newSessionId}')`);
+        }
+    }
+    
+    /**
+     * Fallback to full page reload if incremental append fails
+     */
+    async fallbackToFullReload(sessionId) {
+        console.log('Using fallback full reload with sessionId:', sessionId);
+        
+        const currentTask = this.getCurrentMobileTask();
+        console.log('getCurrentMobileTask returned:', {
+            found: !!currentTask,
+            taskId: currentTask?.id,
+            currentSessionId: currentTask?.sessionId || currentTask?.session_id,
+            taskName: currentTask?.name
+        });
+        
+        if (currentTask) {
+            // Ensure the task has the latest sessionId
+            const oldSessionId = currentTask.sessionId || currentTask.session_id;
+            currentTask.sessionId = sessionId;
+            
+            console.log(`Fallback reload: Updated task ${currentTask.id} sessionId from ${oldSessionId} to ${sessionId}`);
+            
+            await this.showMobileTaskConversation(currentTask);
+        } else {
+            console.error('No currentTask found for fallback reload');
+        }
+    }
+
+    /**
+     * Get current mobile task being displayed
+     */
+    getCurrentMobileTask() {
+        // Try to find the task from the current view or stored context
+        if (this.currentMobileTask) {
+            // CRITICAL: Always prioritize fresh data from this.tasks array
+            const latestTask = this.tasks.find(t => t.id === this.currentMobileTask.id);
+            if (latestTask) {
+                console.log(`Using latest task data from tasks array for ${latestTask.id}`);
+                return latestTask;
+            }
+            console.warn('Task not found in tasks array, using cached currentMobileTask');
+            return this.currentMobileTask;
+        }
+        
+        // Fallback: look for task data in the page
+        const content = document.querySelector('.right-content');
+        if (content && content.dataset.taskId) {
+            // Try to find the task from our tasks list
+            const task = this.tasks.find(task => task.id === content.dataset.taskId);
+            if (task) {
+                console.log(`Found task from DOM taskId: ${task.id}`);
+            }
+            return task;
+        }
+        
+        return null;
+    }
+
 
     // ===== PC Task Conversation History Feature =====
 
