@@ -398,7 +398,7 @@ class TaskScheduler:
                 logger.info(f"Task marked for deletion: {task.name}")
                 return True
                 
-            logger.warning(f"Task to delete does not exist: {task_id}")
+            logger.debug(f"Task to delete does not exist: {task_id}")
             return False
             
         except Exception as e:

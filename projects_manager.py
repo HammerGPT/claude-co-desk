@@ -739,10 +739,10 @@ class SystemProjectManager:
                 if task_signature not in task_signatures:
                     task_signatures.add(task_signature)
                     all_tasks.append(task)
-                    logger.info(f"Task [mobile] {task_name} - SessionId: {bool(task.get('session_id'))}")
+                    logger.debug(f"Task [mobile] {task_name} - SessionId: {bool(task.get('session_id'))}")
                 else:
                     duplicate_count += 1
-                    logger.warning(f"Skipped duplicate mobile task: {task_name}")
+                    logger.debug(f"Skipped duplicate mobile task: {task_name}")
             
             # 然后添加PC端任务（跳过重复）
             for task in pc_tasks:
@@ -758,10 +758,10 @@ class SystemProjectManager:
                 if task_signature not in task_signatures and mobile_equivalent_signature not in task_signatures:
                     task_signatures.add(task_signature)
                     all_tasks.append(task)
-                    logger.info(f"Task [pc] {task_name} - SessionId: {bool(task.get('session_id'))}")
+                    logger.debug(f"Task [pc] {task_name} - SessionId: {bool(task.get('session_id'))}")
                 else:
                     duplicate_count += 1
-                    logger.warning(f"Skipped duplicate PC task: {task_name} (may be duplicate of mobile task)")
+                    logger.debug(f"Skipped duplicate PC task: {task_name} (may be duplicate of mobile task)")
             
             # 按时间排序（最新的在前）- 安全的None值处理
             def safe_sort_key(task):

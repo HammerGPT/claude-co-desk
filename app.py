@@ -57,6 +57,8 @@ import re
 
 # 配置日志
 logging.basicConfig(level=logging.INFO)
+# 设置uvicorn日志级别为WARNING，减少API请求日志输出
+logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
 logger = logging.getLogger(__name__)
 
 # Time context generation function

@@ -830,7 +830,7 @@ class MobileTaskHandler:
                 logger.info(f"Deleted mobile task result file: {result_file}")
                 return True
             else:
-                logger.warning(f"Mobile task result file not found: {result_file}")
+                logger.debug(f"Mobile task result file not found: {result_file}")
                 return False
         except Exception as e:
             logger.error(f"Failed to delete mobile task {task_id}: {e}")
