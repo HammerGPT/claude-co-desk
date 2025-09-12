@@ -16,6 +16,7 @@ from pathlib import Path
 from typing import Dict, List, Optional, Any
 from config import Config
 from tasks_storage import TasksStorage
+from mission_manager import MissionManager
 
 logger = logging.getLogger(__name__)
 
@@ -55,6 +56,7 @@ class MobileTaskHandler:
         self.results_dir = self.base_path / "mobile_results"
         self.conversations_dir = self.base_path / "mobile_conversations"
         self.claude_executable = self._find_claude_executable()
+        self.mission_manager = MissionManager()  # Add mission manager for task directory creation
         
         # Ensure directories exist
         self.results_dir.mkdir(exist_ok=True)
@@ -321,7 +323,8 @@ class MobileTaskHandler:
             
             # Prepare command for Claude CLI
             if work_directory is None:
-                work_directory = str(Config.get_user_home())
+                # Use MissionManager to create task-specific directory (consistent with PC-side)
+                work_directory = self.mission_manager.create_task_directory(task_id, name or "Mobile Task")
             
             # Save task to unified storage IMMEDIATELY (before execution)
             # This ensures the task is saved regardless of notification configuration
@@ -396,17 +399,19 @@ class MobileTaskHandler:
             # This ensures proper handling of long text with newlines and special characters
             shell_command_parts = [f'"{self.claude_executable}"', '-p', f'"{enhanced_goal}"', '--session-id', session_id]
             
-            # Add permission handling based on mobile settings
-            if skip_permissions:
-                shell_command_parts.append("--dangerously-skip-permissions")
+            # Mobile tasks always skip permissions (non-interactive mode)
+            shell_command_parts.append("--dangerously-skip-permissions")
             
             # Add verbose logging if requested
             if verbose_logs:
                 shell_command_parts.append("--verbose")
             
             # Construct complete shell command (similar to PC PTY Shell logic)
+            # IMPORTANT: Execute Claude CLI in user home directory, not task directory
+            # The task directory is only used for file storage (specified in Working Directory instruction)
             claude_command = ' '.join(shell_command_parts)
-            shell_command = f'cd "{work_directory}" && {claude_command}'
+            user_home = str(Config.get_user_home())
+            shell_command = f'cd "{user_home}" && {claude_command}'
             
             logger.info(f"Executing mobile task {task_id} with shell command: {shell_command}")
             logger.info(f"Enhanced goal length: {len(enhanced_goal)} characters")
@@ -545,9 +550,14 @@ class MobileTaskHandler:
             # Use JSON output format to get structured response with session information
             shell_command_parts = [f'"{self.claude_executable}"', '--resume', session_id, '-p', f'"{enhanced_goal}"', '--output-format', 'json']
             
+            # Mobile conversation continuation always skips permissions (non-interactive mode)  
+            shell_command_parts.append("--dangerously-skip-permissions")
+            
             # Construct complete shell command (similar to PC PTY Shell logic)
+            # IMPORTANT: Execute Claude CLI in user home directory for session continuity
             claude_command = ' '.join(shell_command_parts)
-            shell_command = f'cd "{work_directory}" && {claude_command}'
+            user_home = str(Config.get_user_home())
+            shell_command = f'cd "{user_home}" && {claude_command}'
             
             logger.info(f"Continuing conversation {session_id} with task {task_id}")
             logger.info(f"Continue conversation shell command: {shell_command}")
