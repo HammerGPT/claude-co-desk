@@ -227,7 +227,7 @@ class TaskManagerDashboard {
             // 基础数据加载完成后重新渲染Dashboard
             this.updateDashboard();
         } catch (error) {
-            console.error('异步加载基础数据失败:', error);
+            console.error('[DASHBOARD] Failed to load basic data asynchronously:', error);
             // 即使基础数据加载失败，也要更新显示默认状态
             this.systemStatus = null;
             this.taskStats = { total: 0, immediate: 0 };
@@ -268,7 +268,7 @@ class TaskManagerDashboard {
             await this.loadSystemInfo();
             
         } catch (error) {
-            console.error('加载基础数据失败:', error);
+            console.error('[DASHBOARD] Failed to load basic data:', error);
             // 使用默认值确保页面能够显示
             this.systemStatus = null;
             this.taskStats = { total: 0, immediate: 0 };
@@ -289,7 +289,7 @@ class TaskManagerDashboard {
             // MCP数据加载完成后重新渲染Dashboard
             this.updateDashboard();
         } catch (error) {
-            console.error('异步加载MCP状态失败:', error);
+            console.error('[DASHBOARD] Failed to load MCP status asynchronously:', error);
             // 即使MCP加载失败，也要更新显示错误状态
             this.mcpStatus = null;
             this.updateDashboard();
@@ -305,7 +305,7 @@ class TaskManagerDashboard {
             // 应用数据加载完成后重新渲染Dashboard
             this.updateDashboard();
         } catch (error) {
-            console.error('异步加载应用数据失败:', error);
+            console.error('[DASHBOARD] Failed to load application data asynchronously:', error);
             // 即使应用数据加载失败，也要更新显示错误状态
             this.applicationsData = null;
             this.updateDashboard();
@@ -337,7 +337,7 @@ class TaskManagerDashboard {
                 this.agentsCount = 0; // 默认值，如果API失败则显示0
             }
         } catch (error) {
-            console.error('加载系统信息失败:', error);
+            console.error('[DASHBOARD] Failed to load system info:', error);
             // 使用默认值
             this.claudeInfo = {
                 version: '1.0.73 (Claude Code)',
@@ -356,11 +356,11 @@ class TaskManagerDashboard {
             if (response.ok) {
                 this.mcpStatus = await response.json();
             } else {
-                console.warn('加载MCP状态失败:', response.status);
+                console.warn('[DASHBOARD] Failed to load MCP status:', response.status);
                 this.mcpStatus = null;
             }
         } catch (error) {
-            console.error('加载MCP状态异常:', error);
+            console.error('[DASHBOARD] MCP status loading error:', error);
             this.mcpStatus = null;
         }
     }
@@ -377,15 +377,15 @@ class TaskManagerDashboard {
                     // 过滤掉utility标签的应用
                     this.applicationsData = this.filterNonUtilityApps(data.applications);
                 } else {
-                    console.warn('加载应用数据失败:', data.error);
+                    console.warn('[DASHBOARD] Failed to load application data:', data.error);
                     this.applicationsData = null;
                 }
             } else {
-                console.warn('应用数据API请求失败:', response.status);
+                console.warn('[DASHBOARD] Application data API request failed:', response.status);
                 this.applicationsData = null;
             }
         } catch (error) {
-            console.error('加载应用数据异常:', error);
+            console.error('[DASHBOARD] Application data loading error:', error);
             this.applicationsData = null;
         }
     }
@@ -701,6 +701,17 @@ class TaskManagerDashboard {
                                 <span class="status-label">${t('dashboard.immediateTasks')}:</span>
                                 <span class="status-value immediate-tasks">${this.taskStats ? this.taskStats.immediate : 0}</span>
                             </div>
+                            <div class="status-item">
+                                <span class="status-label">${t('dashboard.networkAccess')}:</span>
+                                <span class="status-value code network-url">${this.systemConfig?.localUrl || 'Loading...'}</span>
+                            </div>
+                            <div class="status-item public-link-section">
+                                <span class="status-label">${t('dashboard.publicAccess')}:</span>
+                                <div class="public-link-controls">
+                                    <button id="get-public-link-btn" class="btn-small">${t('dashboard.getPublicLink')}</button>
+                                    <span class="public-link-display" style="display: none;"></span>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -730,6 +741,9 @@ class TaskManagerDashboard {
         `;
 
         this.bindActionEvents();
+        
+        // 检查现有隧道状态
+        setTimeout(() => this.checkTunnelStatus(), 1000);
     }
 
     /**
@@ -747,6 +761,13 @@ class TaskManagerDashboard {
             this.updateElement('.agents-count', this.agentsCount || 0);
             this.updateElement('.total-tasks', this.taskStats ? this.taskStats.total : 0);
             this.updateElement('.immediate-tasks', this.taskStats ? this.taskStats.immediate : 0);
+            this.updateElement('.network-url', this.systemConfig?.localUrl || 'Loading...');
+            
+            // Update public link controls if they exist
+            const publicLinkBtn = this.dashboardContainer.querySelector('#get-public-link-btn');
+            if (publicLinkBtn) {
+                publicLinkBtn.textContent = t('dashboard.getPublicLink');
+            }
 
             // 更新MCP标题
             this.updateElement('.mcp-title', this.getMCPTitle());
@@ -883,6 +904,12 @@ class TaskManagerDashboard {
         if (manageMcpToolsBtn) {
             manageMcpToolsBtn.addEventListener('click', () => this.handleManageMcpTools());
         }
+
+        // 获取公网链接按钮
+        const getPublicLinkBtn = document.getElementById('get-public-link-btn');
+        if (getPublicLinkBtn) {
+            getPublicLinkBtn.addEventListener('click', () => this.handleGetPublicLink());
+        }
     }
 
     /**
@@ -894,7 +921,7 @@ class TaskManagerDashboard {
         if (window.employeesManager) {
             window.employeesManager.initializeSystem();
         } else {
-            console.error('❌ 员工管理器未加载');
+            console.error('[DASHBOARD] Employee manager not loaded');
             alert(t('dashboard.systemNotReady'));
         }
     }
@@ -908,7 +935,7 @@ class TaskManagerDashboard {
         if (window.employeesManager) {
             window.employeesManager.showAgentsModal();
         } else {
-            console.error('❌ 员工管理器未加载');
+            console.error('[DASHBOARD] Employee manager not loaded');
             alert(t('dashboard.systemNotReady'));
         }
     }
@@ -942,11 +969,11 @@ class TaskManagerDashboard {
             if (data.success) {
                 // 可以在这里添加成功提示
             } else {
-                console.error(`应用 ${appName} 启动失败:`, data.error);
+                console.error(`[DASHBOARD] Application ${appName} launch failed:`, data.error);
                 alert(t('dashboard.launchFailed') + ': ' + appName);
             }
         } catch (error) {
-            console.error(`启动应用 ${appName} 时出错:`, error);
+            console.error(`[DASHBOARD] Error launching application ${appName}:`, error);
             alert(t('dashboard.launchFailed') + ': ' + appName);
         } finally {
             // 恢复按钮状态
@@ -961,7 +988,7 @@ class TaskManagerDashboard {
      * 处理管理更多应用
      */
     handleManageMoreApps() {
-        console.log('从仪表板打开应用管理');
+        console.log('[DASHBOARD] Opening application management from dashboard');
         
         // 打开设置模态窗口并切换到应用管理标签
         const settingsBtn = document.getElementById('settings-btn');
@@ -976,7 +1003,7 @@ class TaskManagerDashboard {
                 }
             }, 100);
         } else {
-            console.error('❌ 设置按钮未找到');
+            console.error('[DASHBOARD] Settings button not found');
         }
     }
 
@@ -984,7 +1011,7 @@ class TaskManagerDashboard {
      * 处理管理MCP工具
      */
     handleManageMcpTools() {
-        console.log('从仪表板打开MCP工具管理');
+        console.log('[DASHBOARD] Opening MCP tools management from dashboard');
         
         // 打开设置模态窗口并切换到MCP工具标签
         const settingsBtn = document.getElementById('settings-btn');
@@ -999,21 +1026,99 @@ class TaskManagerDashboard {
                 }
             }, 100);
         } else {
-            console.error('❌ 设置按钮未找到');
+            console.error('[DASHBOARD] Settings button not found');
         }
     }
+
+
+    /**
+     * 检查现有隧道状态
+     */
+    async checkTunnelStatus() {
+        try {
+            const response = await fetch('/api/tunnel/status');
+            const data = await response.json();
+            
+            if (data.active && data.public_url) {
+                // 隧道已存在，直接显示
+                const btn = document.getElementById('get-public-link-btn');
+                const display = document.querySelector('.public-link-display');
+                if (btn && display) {
+                    btn.style.display = 'none';
+                    display.style.display = 'inline';
+                    display.innerHTML = `
+                        <div class="public-url-container">
+                            <span class="code public-url-text" title="${data.public_url}">${data.public_url}</span>
+                            <button class="copy-url-btn" onclick="copyUrlToClipboard('${data.public_url}', this)">Copy</button>
+                        </div>
+                    `;
+                }
+            }
+        } catch (error) {
+            console.log('Tunnel status check failed:', error);
+        }
+    }
+
+    /**
+     * 处理获取公网链接
+     */
+    async handleGetPublicLink() {
+        console.log('[DASHBOARD] Getting public access link');
+        
+        const btn = document.getElementById('get-public-link-btn');
+        const display = document.querySelector('.public-link-display');
+        if (!btn || !display) return;
+        
+        // 显示加载状态
+        const originalText = btn.textContent;
+        btn.textContent = t('dashboard.gettingPublicLink');
+        btn.disabled = true;
+        
+        try {
+            const response = await fetch('/api/tunnel/start', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                // 隐藏按钮，显示公网链接
+                btn.style.display = 'none';
+                display.style.display = 'inline';
+                display.innerHTML = `
+                    <div class="public-url-container">
+                        <span class="code public-url-text" title="${data.public_url}">${data.public_url}</span>
+                        <button class="copy-url-btn" onclick="copyUrlToClipboard('${data.public_url}', this)">Copy</button>
+                    </div>
+                `;
+            } else {
+                alert(t('dashboard.publicLinkFailed') + ': ' + data.message);
+                btn.textContent = originalText;
+                btn.disabled = false;
+            }
+        } catch (error) {
+            console.error('[DASHBOARD] Failed to get public link:', error);
+            alert(t('dashboard.publicLinkError'));
+            btn.textContent = originalText;
+            btn.disabled = false;
+        }
+    }
+
 
     /**
      * 处理创建任务
      */
     handleCreateTask() {
-        console.log('从仪表板创建新任务');
+        console.log('[DASHBOARD] Creating new task from dashboard');
         
         // 使用任务管理器的快速添加功能
         if (window.taskManager) {
             window.taskManager.showQuickAddTask();
         } else {
-            console.error('❌ 任务管理器未加载');
+            console.error('[DASHBOARD] Task manager not loaded');
             alert(t('dashboard.taskManagerNotReady'));
         }
     }
@@ -1022,7 +1127,7 @@ class TaskManagerDashboard {
      * 处理浏览项目
      */
     handleViewProjects() {
-        console.log('[DASHBOARD] 从仪表板浏览项目');
+        console.log('[DASHBOARD] Browsing projects from dashboard');
         
         // 展开项目抽屉
         if (window.sidebarDrawers) {
@@ -1080,6 +1185,63 @@ class TaskManagerDashboard {
 
 // 导出到全局作用域
 window.TaskManagerDashboard = TaskManagerDashboard;
+
+// 全局复制URL功能
+window.copyUrlToClipboard = function(url, button) {
+    try {
+        // 首先尝试现代 Clipboard API
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(url).then(() => {
+                showCopyFeedback(button);
+            }).catch(() => {
+                fallbackCopy(url, button);
+            });
+        } else {
+            fallbackCopy(url, button);
+        }
+    } catch (error) {
+        console.error('Copy failed:', error);
+        fallbackCopy(url, button);
+    }
+};
+
+// 备用复制方法
+function fallbackCopy(url, button) {
+    try {
+        const textArea = document.createElement('textarea');
+        textArea.value = url;
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-999999px';
+        textArea.style.top = '-999999px';
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        
+        const successful = document.execCommand('copy');
+        document.body.removeChild(textArea);
+        
+        if (successful) {
+            showCopyFeedback(button);
+        } else {
+            console.error('Fallback copy failed');
+            alert('Copy failed. Please manually select and copy the URL.');
+        }
+    } catch (error) {
+        console.error('Fallback copy error:', error);
+        alert('Copy not supported. Please manually select and copy the URL.');
+    }
+}
+
+// 显示复制成功反馈
+function showCopyFeedback(button) {
+    const originalText = button.textContent;
+    button.textContent = 'Copied!';
+    button.style.background = '#28a745';
+    setTimeout(() => {
+        button.textContent = originalText;
+        button.style.background = '';
+    }, 1500);
+}
 
 // 等待DOM加载完成后创建全局实例
 if (document.readyState === 'loading') {

@@ -250,6 +250,88 @@ body {
   color: hsl(var(--muted-foreground));
 }
 
+/* Public link controls */
+.public-link-section {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.public-link-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.public-link-display {
+  font-size: 12px;
+  color: hsl(var(--primary));
+  font-weight: 500;
+  background: hsl(var(--primary) / 0.1);
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: 1px solid hsl(var(--primary) / 0.2);
+}
+
+.public-url-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: hsl(var(--primary) / 0.05);
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid hsl(var(--primary) / 0.15);
+  max-width: 300px;
+}
+
+.public-url-text {
+  font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+  font-size: 11px;
+  color: hsl(var(--primary));
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+
+.copy-url-btn {
+  padding: 4px 8px;
+  font-size: 10px;
+  background: hsl(var(--primary));
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  white-space: nowrap;
+}
+
+.copy-url-btn:hover {
+  background: hsl(var(--primary) / 0.8);
+}
+
+.btn-small {
+  padding: 4px 8px;
+  font-size: 12px;
+  border-radius: 4px;
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  border: 1px solid hsl(var(--primary));
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-small:hover {
+  background: hsl(var(--primary) / 0.9);
+  border-color: hsl(var(--primary) / 0.9);
+}
+
+.btn-small:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .status-icon {
   margin-right: 8px;
   display: flex;
@@ -780,4 +862,110 @@ form, fieldset, legend, label {
     height: 16px;
     opacity: 0.6;
   }
+}
+
+/* 公网链接模态窗口样式 */
+.public-link-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+}
+
+.public-link-content {
+  background: hsl(var(--background));
+  border: 1px solid hsl(var(--border));
+  border-radius: 8px;
+  padding: 24px;
+  max-width: 500px;
+  width: 90%;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+}
+
+.public-link-content h3 {
+  margin: 0 0 12px 0;
+  color: hsl(var(--foreground));
+  font-size: 18px;
+}
+
+.public-link-content p {
+  margin: 0 0 16px 0;
+  color: hsl(var(--muted-foreground));
+  line-height: 1.5;
+}
+
+.public-link-url {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.public-link-url input {
+  flex: 1;
+  padding: 8px 12px;
+  border: 1px solid hsl(var(--border));
+  border-radius: 4px;
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 14px;
+}
+
+.public-link-url button {
+  padding: 8px 16px;
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background 150ms ease;
+}
+
+.public-link-url button:hover {
+  background: hsl(var(--primary) / 0.9);
+}
+
+.service-info {
+  font-size: 12px;
+  color: hsl(var(--muted-foreground));
+  margin-bottom: 20px;
+  font-style: italic;
+}
+
+.public-link-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+}
+
+.public-link-actions button {
+  padding: 8px 16px;
+  border: 1px solid hsl(var(--border));
+  border-radius: 4px;
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 150ms ease;
+}
+
+.public-link-actions button:hover {
+  background: hsl(var(--accent));
+}
+
+.public-link-actions button:first-child {
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  border-color: hsl(var(--primary));
+}
+
+.public-link-actions button:first-child:hover {
+  background: hsl(var(--primary) / 0.9);
 }

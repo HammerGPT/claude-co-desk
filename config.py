@@ -5,6 +5,8 @@ Claude Co-Desk 配置管理模块
 
 import os
 import shutil
+import socket
+import ipaddress
 from pathlib import Path
 from typing import Optional
 
@@ -12,7 +14,7 @@ class Config:
     """系统配置管理类"""
     
     # 服务器配置
-    HOST = os.getenv('HELIKI_HOST', 'localhost')
+    HOST = os.getenv('HELIKI_HOST', '0.0.0.0')
     PORT = int(os.getenv('HELIKI_PORT', '3005'))
     
     # 路径配置
@@ -81,6 +83,49 @@ class Config:
         }
     
     @classmethod
+    def get_local_ip(cls) -> str:
+        """获取真正的局域网IP地址"""
+        try:
+            # Get all network interfaces
+            hostname = socket.gethostname()
+            ip_list = socket.gethostbyname_ex(hostname)[2]
+            
+            # Filter private network IPs
+            private_ips = []
+            for ip in ip_list:
+                if ip != '127.0.0.1':
+                    try:
+                        addr = ipaddress.ip_address(ip)
+                        if addr.is_private:
+                            private_ips.append(ip)
+                    except ValueError:
+                        continue
+            
+            # Prefer 192.168.x.x IPs (most common home/office networks)
+            for ip in private_ips:
+                if ip.startswith('192.168.'):
+                    return ip
+            
+            # Then prefer 10.x.x.x IPs
+            for ip in private_ips:
+                if ip.startswith('10.'):
+                    return ip
+            
+            # Finally use any other private IP
+            if private_ips:
+                return private_ips[0]
+            
+            # Fallback to original method if no private IPs found
+            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            s.connect(("8.8.8.8", 80))
+            local_ip = s.getsockname()[0]
+            s.close()
+            return local_ip
+            
+        except Exception:
+            return "127.0.0.1"  # Final fallback
+    
+    @classmethod
     def get_frontend_config(cls) -> dict:
         """获取前端需要的配置信息"""
         return {
@@ -88,6 +133,9 @@ class Config:
             'userHomeProjectName': cls.get_user_home_project_name(),
             'claudeCliPath': cls.get_claude_cli_path(),
             'serverPort': cls.PORT,
+            'serverHost': cls.HOST,
+            'localIp': cls.get_local_ip(),
+            'localUrl': f"http://{cls.get_local_ip()}:{cls.PORT}",
             'defaultWorkingDirectory': cls.get_default_working_directory(),
             'defaultLanguage': 'en',  # 默认语言为英文
             'supportedLanguages': ['en', 'zh']  # 支持的语言列表

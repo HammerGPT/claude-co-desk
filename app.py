@@ -2974,6 +2974,203 @@ async def check_environment():
     
     return JSONResponse(content=env_status)
 
+# 全局隧道状态管理
+tunnel_status = {
+    'active': False,
+    'public_url': None,
+    'service': None,
+    'process': None,
+    'created_at': None
+}
+
+# 内网穿透状态查询API
+@app.get("/api/tunnel/status")
+async def get_tunnel_status():
+    """Get current tunnel status"""
+    global tunnel_status
+    
+    # Check if process is still running
+    if tunnel_status['active'] and tunnel_status['process']:
+        if tunnel_status['process'].poll() is not None:
+            # Process ended, reset status
+            tunnel_status = {
+                'active': False,
+                'public_url': None,
+                'service': None,
+                'process': None,
+                'created_at': None
+            }
+    
+    return JSONResponse(content={
+        'active': tunnel_status['active'],
+        'public_url': tunnel_status['public_url'],
+        'service': tunnel_status['service'],
+        'created_at': tunnel_status['created_at']
+    })
+
+# 内网穿透API
+@app.post("/api/tunnel/start")
+async def start_tunnel():
+    """Start tunnel service to get public access URL"""
+    global tunnel_status
+    
+    # Check if tunnel is already active
+    if tunnel_status['active'] and tunnel_status['process']:
+        if tunnel_status['process'].poll() is None:
+            # Tunnel is still running, return existing URL
+            return JSONResponse(content={
+                "success": True,
+                "public_url": tunnel_status['public_url'],
+                "service": tunnel_status['service'],
+                "message": "Tunnel already active"
+            })
+        else:
+            # Process ended, reset status
+            tunnel_status = {
+                'active': False,
+                'public_url': None,
+                'service': None,
+                'process': None,
+                'created_at': None
+            }
+    
+    try:
+        import subprocess
+        import re
+        from datetime import datetime
+        
+        # Try to use Cloudflare Tunnel (reliable and free)
+        try:
+            # Check if cloudflared is available
+            result = subprocess.run(['which', 'cloudflared'], capture_output=True, text=True, timeout=5)
+            if result.returncode == 0:
+                cloudflared_path = result.stdout.strip()
+                server_config = Config.get_server_config()
+                port = server_config['port']
+                
+                # Start cloudflared tunnel in background
+                import threading
+                import time
+                
+                result_container = {'url': None, 'error': None}
+                
+                def run_cloudflare_tunnel():
+                    try:
+                        proc = subprocess.Popen(
+                            [cloudflared_path, 'tunnel', '--url', f'http://localhost:{port}'], 
+                            stdout=subprocess.PIPE, 
+                            stderr=subprocess.PIPE,
+                            text=True
+                        )
+                        
+                        # Wait for output with timeout
+                        start_time = time.time()
+                        while time.time() - start_time < 30:  # 30 second timeout for CF tunnel
+                            if proc.poll() is not None:
+                                # Process ended unexpectedly
+                                if result_container['url'] is None:
+                                    result_container['error'] = "Cloudflare tunnel process ended unexpectedly"
+                                break
+                            
+                            # Read from stderr (cloudflared outputs to stderr)
+                            import select
+                            ready, _, _ = select.select([proc.stderr], [], [], 1)
+                            if ready:
+                                line = proc.stderr.readline()
+                                if line:
+                                    # Look for tunnel URL in the output
+                                    url_match = re.search(r'https://[a-z0-9-]+\.trycloudflare\.com', line)
+                                    if url_match:
+                                        result_container['url'] = url_match.group(0)
+                                        result_container['process'] = proc
+                                        # Keep the tunnel running in background
+                                        return
+                        
+                        if result_container['url'] is None:
+                            result_container['error'] = "Timeout waiting for Cloudflare tunnel URL"
+                        
+                    except Exception as e:
+                        result_container['error'] = str(e)
+                
+                # Run in thread and wait
+                thread = threading.Thread(target=run_cloudflare_tunnel)
+                thread.start()
+                thread.join(timeout=35)  # Maximum 35 seconds
+                
+                if result_container['url']:
+                    # Update global tunnel status
+                    tunnel_status = {
+                        'active': True,
+                        'public_url': result_container['url'],
+                        'service': 'cloudflare',
+                        'process': result_container['process'],
+                        'created_at': datetime.now().isoformat()
+                    }
+                    
+                    return JSONResponse(content={
+                        "success": True,
+                        "public_url": result_container['url'],
+                        "service": "cloudflare",
+                        "message": "Tunnel started successfully"
+                    })
+                elif result_container['error']:
+                    logger.warning(f"Cloudflare tunnel failed: {result_container['error']}")
+                else:
+                    logger.warning("Cloudflare tunnel timed out")
+        except Exception as e:
+            logger.warning(f"Cloudflare tunnel failed: {e}")
+        
+        # Try ngrok as fallback
+        try:
+            result = subprocess.run(['which', 'ngrok'], capture_output=True, text=True, timeout=5)
+            if result.returncode == 0:
+                server_config = Config.get_server_config()
+                port = server_config['port']
+                
+                # Start ngrok in background
+                process = subprocess.Popen(
+                    ['ngrok', 'http', str(port), '--log=stdout'],
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True
+                )
+                
+                # Wait a bit for ngrok to start
+                import time
+                time.sleep(3)
+                
+                # Get ngrok API to find the public URL
+                try:
+                    import requests
+                    api_response = requests.get('http://localhost:4040/api/tunnels', timeout=5)
+                    if api_response.status_code == 200:
+                        tunnels = api_response.json()
+                        if tunnels.get('tunnels'):
+                            public_url = tunnels['tunnels'][0]['public_url']
+                            return JSONResponse(content={
+                                "success": True,
+                                "public_url": public_url,
+                                "service": "ngrok",
+                                "message": "Tunnel started successfully"
+                            })
+                except Exception as e:
+                    logger.warning(f"Failed to get ngrok URL: {e}")
+                    
+        except Exception as e:
+            logger.warning(f"Ngrok failed: {e}")
+        
+        return JSONResponse(content={
+            "success": False,
+            "message": "No tunnel service available. Please install localtunnel (npm install -g localtunnel) or ngrok."
+        }, status_code=400)
+        
+    except Exception as e:
+        logger.error(f"Tunnel start failed: {e}")
+        return JSONResponse(content={
+            "success": False,
+            "message": f"Failed to start tunnel: {str(e)}"
+        }, status_code=500)
+
 # 系统项目管理API
 @app.get("/api/system-project/status")
 async def get_system_project_status():
