@@ -11,50 +11,33 @@ Claude Co-Desk 是基于Claude Code完整上下文工程框架构建的本地AI�
 
 <div align="center">
   
-<table>
-<tr>
-<td align="center">
+<div align="center">
+
 <h3>主控制台</h3>
-<img src="docs/screenshots/main-dashboard.png" alt="主控制台" width="400">
-<br>
-<em>多智能体协作控制中心</em>
-</td>
-<td align="center">
+<img src="docs/screenshots/main-dashboard.png" alt="主控制台" width="800">
+<p><em>多智能体协作控制中心</em></p>
+
 <h3>预置数字员工</h3>
-<img src="docs/screenshots/digital-employees.png" alt="预置数字员工" width="400">
-<br>
-<em>预配置AI智能体专家团队</em>
-</td>
-</tr>
-<tr>
-<td align="center">
+<img src="docs/screenshots/digital-employees.png" alt="预置数字员工" width="800">
+<p><em>预配置AI智能体专家团队</em></p>
+
 <h3>PC端任务执行</h3>
-<img src="docs/screenshots/pc-task-execution.png" alt="PC端任务执行" width="400">
-<br>
-<em>全功能桌面界面，支持Claude Code项目可视化管理</em>
-</td>
-<td align="center">
+<img src="docs/screenshots/pc-task-execution.png" alt="PC端任务执行" width="800">
+<p><em>全功能桌面界面，支持Claude Code项目可视化管理</em></p>
+
 <h3>移动端任务执行</h3>
-<img src="docs/screenshots/mobile-task-execution.png" alt="移动端任务执行" width="250">
-<br>
-<em>移动优先的任务监控和状态跟踪（不支持项目管理）</em>
-</td>
-</tr>
-<tr>
-<td align="center">
+<img src="docs/screenshots/mobile-task-execution.png" alt="移动端任务执行" width="400">
+<p><em>移动优先的任务监控和状态跟踪（不支持项目管理）</em></p>
+
 <h3>通知系统</h3>
-<img src="docs/screenshots/notification-system.png" alt="通知系统" width="400">
-<br>
-<em>邮件和微信通知，提供详细任务完成结果</em>
-</td>
-<td align="center">
+<img src="docs/screenshots/notification-system.png" alt="通知系统" width="800">
+<p><em>邮件和微信通知，提供详细任务完成结果</em></p>
+
 <h3>MCP工具管理</h3>
-<img src="docs/screenshots/mcp-tools.png" alt="MCP工具管理" width="400">
-<br>
-<em>动态工具扩展和管理</em>
-</td>
-</tr>
-</table>
+<img src="docs/screenshots/mcp-tools.png" alt="MCP工具管理" width="800">
+<p><em>动态工具扩展和管理</em></p>
+
+</div>
 
 </div>
 

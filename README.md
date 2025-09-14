@@ -14,50 +14,33 @@ Claude Co-Desk is a local AI task automation system built on Claude Code's compl
 
 <div align="center">
   
-<table>
-<tr>
-<td align="center">
+<div align="center">
+
 <h3>Main Dashboard</h3>
-<img src="docs/screenshots/main-dashboard.png" alt="Main Dashboard" width="400">
-<br>
-<em>Multi-agent collaboration control center</em>
-</td>
-<td align="center">
+<img src="docs/screenshots/main-dashboard.png" alt="Main Dashboard" width="800">
+<p><em>Multi-agent collaboration control center</em></p>
+
 <h3>Digital Employees</h3>
-<img src="docs/screenshots/digital-employees.png" alt="Digital Employees" width="400">
-<br>
-<em>Pre-configured AI agent specialists</em>
-</td>
-</tr>
-<tr>
-<td align="center">
+<img src="docs/screenshots/digital-employees.png" alt="Digital Employees" width="800">
+<p><em>Pre-configured AI agent specialists</em></p>
+
 <h3>PC Task Execution</h3>
-<img src="docs/screenshots/pc-task-execution.png" alt="PC Task Execution" width="400">
-<br>
-<em>Full-featured desktop interface with Claude Code project management</em>
-</td>
-<td align="center">
+<img src="docs/screenshots/pc-task-execution.png" alt="PC Task Execution" width="800">
+<p><em>Full-featured desktop interface with Claude Code project management</em></p>
+
 <h3>Mobile Task Execution</h3>
-<img src="docs/screenshots/mobile-task-execution.png" alt="Mobile Task Execution" width="250">
-<br>
-<em>Mobile-first task monitoring and status tracking (project management not supported)</em>
-</td>
-</tr>
-<tr>
-<td align="center">
+<img src="docs/screenshots/mobile-task-execution.png" alt="Mobile Task Execution" width="400">
+<p><em>Mobile-first task monitoring and status tracking (project management not supported)</em></p>
+
 <h3>Notification System</h3>
-<img src="docs/screenshots/notification-system.png" alt="Notification System" width="400">
-<br>
-<em>Email & WeChat notifications with detailed task completion results</em>
-</td>
-<td align="center">
+<img src="docs/screenshots/notification-system.png" alt="Notification System" width="800">
+<p><em>Email & WeChat notifications with detailed task completion results</em></p>
+
 <h3>MCP Tool Management</h3>
-<img src="docs/screenshots/mcp-tools.png" alt="MCP Tool Management" width="400">
-<br>
-<em>Dynamic tool extension and management</em>
-</td>
-</tr>
-</table>
+<img src="docs/screenshots/mcp-tools.png" alt="MCP Tool Management" width="800">
+<p><em>Dynamic tool extension and management</em></p>
+
+</div>
 
 </div>
 
