@@ -60,6 +60,12 @@ class NotificationManager {
                 port: 587,
                 secure: false
             },
+            'heliki.com': {
+                nameKey: 'providers.exmail',
+                host: 'smtp.exmail.qq.com',
+                port: 465,
+                secure: true
+            },
             'example.com': {
                 nameKey: 'providers.custom',
                 host: 'smtp.example.com',
@@ -356,13 +362,11 @@ class NotificationManager {
         }
         
         testResult.style.display = 'block';
-        
-        // Auto hide after 5 seconds for success messages
-        if (success) {
-            setTimeout(() => {
-                testResult.style.display = 'none';
-            }, 5000);
-        }
+
+        // Auto hide after 5 seconds for success messages, 8 seconds for error messages
+        setTimeout(() => {
+            testResult.style.display = 'none';
+        }, success ? 5000 : 8000);
     }
     
     updateConfigStatus(status, text) {

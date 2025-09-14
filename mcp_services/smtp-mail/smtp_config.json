@@ -16,5 +16,6 @@
   "rateLimit": {
     "enabled": true,
     "messagesPerMinute": 30
-  }
+  },
+  "testStatus": "success"
 }

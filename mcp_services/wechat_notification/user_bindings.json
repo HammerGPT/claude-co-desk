@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "last_sync": "2025-09-14T12:49:17.345302",
+  "last_sync": "2025-09-14T15:25:36.712988",
   "users": {
     "test_user_claude": {
       "user_identifier": "test_user_claude",
@@ -61,12 +61,12 @@
           "custom"
         ]
       },
-      "updated_at": "2025-09-14T12:49:17.345166"
+      "updated_at": "2025-09-14T15:25:36.712964"
     }
   },
   "binding_stats": {
     "total_users": 3,
     "active_bindings": 3,
-    "last_updated": "2025-09-14T12:49:17.345294"
+    "last_updated": "2025-09-14T15:25:36.712984"
   }
 }

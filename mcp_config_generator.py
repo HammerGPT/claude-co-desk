@@ -69,17 +69,39 @@ class MCPConfigGenerator:
                 if smtp_servers:
                     default_server = next((s for s in smtp_servers if s.get("isDefault")), smtp_servers[0])
                     auth = default_server.get("auth", {})
-                    # Only use if not example/placeholder values
-                    if (default_server.get("host") != "smtp.example.com" and
-                        auth.get("user") != "your_email@example.com" and
-                        auth.get("pass") != "your_password"):
+                    # Only use if not example/placeholder values and explicitly configured
+                    host = default_server.get("host", "")
+                    user = auth.get("user", "")
+                    password = auth.get("pass", "")
 
+                    # Extended placeholder detection
+                    placeholder_hosts = ["smtp.example.com", "localhost", "127.0.0.1", ""]
+                    placeholder_users = ["your_email@example.com", "user@example.com", "test@example.com", ""]
+                    placeholder_passwords = ["your_password", "password", "test_password", ""]
+
+                    # For security, never include these known real credentials in open source
+                    security_blocked_domains = ["heliki.com", "6s6YqVq2v8q3pCN8"]
+
+                    # Check if configuration is valid and not placeholder
+                    is_valid_config = (
+                        host not in placeholder_hosts and
+                        user not in placeholder_users and
+                        password not in placeholder_passwords and
+                        len(password) > 5 and  # Minimum password length
+                        "@" in user and "." in user  # Basic email format check
+                    )
+
+                    # Security check: block known sensitive values from being written
+                    contains_blocked_content = any(blocked in str(value).lower() for blocked in security_blocked_domains
+                                                   for value in [host, user, password])
+
+                    if is_valid_config and not contains_blocked_content:
                         return {
-                            "SMTP_HOST": default_server.get("host", ""),
+                            "SMTP_HOST": host,
                             "SMTP_PORT": str(default_server.get("port", 587)),
                             "SMTP_SECURE": str(default_server.get("secure", False)).lower(),
-                            "SMTP_USER": auth.get("user", ""),
-                            "SMTP_PASS": auth.get("pass", "")
+                            "SMTP_USER": user,
+                            "SMTP_PASS": password
                         }
 
                 logger.info(f"SMTP config contains example values only, skipping environment variable setup")

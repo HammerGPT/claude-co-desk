@@ -3,8 +3,8 @@
   "description": "WeChat notification service via cloud API",
   "api_config": {
     "base_url": "https://www.heliki.com/wechat",
-    "user_identifier": "user_1756570917_94251a17",
-    "api_key": "ak_7a01da17c505732994be14faab8fc044",
+    "user_identifier": "user_1757839498_7009609d",
+    "api_key": "ak_2fda28d434c25ff9029660a2fa7ea431",
     "timeout": 30
   },
   "notification_settings": {
@@ -12,5 +12,5 @@
     "max_retries": 3,
     "retry_delay": 5
   },
-  "updated_at": "2025-09-13T22:55:55.956089"
+  "updated_at": "2025-09-14T16:44:58.632165"
 }

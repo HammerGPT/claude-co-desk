@@ -203,24 +203,72 @@ def ensure_mcp_services():
     """Ensure all MCP services are built - extensible for future services"""
     mcp_services_dir = Path(__file__).parent / 'mcp_services'
 
+    # Check if npm is available
+    try:
+        npm_result = subprocess.run(['npm', '--version'], capture_output=True, text=True, timeout=10)
+        if npm_result.returncode != 0:
+            logger.warning("npm not available, skipping MCP service builds")
+            return
+    except (subprocess.TimeoutExpired, FileNotFoundError):
+        logger.warning("npm not found or timeout, skipping MCP service builds")
+        return
+
     # SMTP Mail Service
     smtp_service_dir = mcp_services_dir / 'smtp-mail'
     smtp_build_path = smtp_service_dir / 'build'
     if smtp_service_dir.exists() and not smtp_build_path.exists():
-        print("   Building SMTP MCP service...")
-        subprocess.run(['npm', 'install'], cwd=str(smtp_service_dir), check=True)
-        subprocess.run(['npm', 'run', 'build'], cwd=str(smtp_service_dir), check=True)
-        print("   SMTP MCP service built successfully")
+        try:
+            print("   Building SMTP MCP service...")
+
+            # Check if package.json exists
+            package_json = smtp_service_dir / 'package.json'
+            if not package_json.exists():
+                logger.warning(f"No package.json found in {smtp_service_dir}, skipping build")
+                return
+
+            # Install dependencies with timeout
+            install_result = subprocess.run(
+                ['npm', 'install'],
+                cwd=str(smtp_service_dir),
+                capture_output=True,
+                text=True,
+                timeout=120
+            )
+            if install_result.returncode != 0:
+                logger.error(f"npm install failed: {install_result.stderr}")
+                return
+
+            # Build with timeout
+            build_result = subprocess.run(
+                ['npm', 'run', 'build'],
+                cwd=str(smtp_service_dir),
+                capture_output=True,
+                text=True,
+                timeout=60
+            )
+            if build_result.returncode != 0:
+                logger.error(f"npm run build failed: {build_result.stderr}")
+                return
+
+            print("   SMTP MCP service built successfully")
+
+        except subprocess.TimeoutExpired:
+            logger.error("MCP service build timeout")
+        except Exception as e:
+            logger.error(f"MCP service build failed: {e}")
 
     # Future MCP services can be added here following the same pattern
     # Example:
     # new_service_dir = mcp_services_dir / 'new-service'
     # new_build_path = new_service_dir / 'build'
     # if new_service_dir.exists() and not new_build_path.exists():
-    #     print("   Building New MCP service...")
-    #     subprocess.run(['npm', 'install'], cwd=str(new_service_dir), check=True)
-    #     subprocess.run(['npm', 'run', 'build'], cwd=str(new_service_dir), check=True)
-    #     print("   New MCP service built successfully")
+    #     try:
+    #         print("   Building New MCP service...")
+    #         subprocess.run(['npm', 'install'], cwd=str(new_service_dir), check=True, timeout=120)
+    #         subprocess.run(['npm', 'run', 'build'], cwd=str(new_service_dir), check=True, timeout=60)
+    #         print("   New MCP service built successfully")
+    #     except Exception as e:
+    #         logger.error(f"New MCP service build failed: {e}")
 
 # WeChat MCP Service initialization
 async def init_wechat_mcp_service():
