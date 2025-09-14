@@ -25,6 +25,11 @@ test_*.py
 mission/
 tasks.json
 .mcp.json
+.user_config.json
+
+# Mobile conversation data
+mobile_conversations/
+mobile_results/
 
 # Node modules and dependencies
 node_modules/
