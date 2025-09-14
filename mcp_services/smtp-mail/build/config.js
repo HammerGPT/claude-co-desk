@@ -3,8 +3,10 @@ import * as path from 'path';
 import { fileURLToPath } from 'url';
 import { logToFile } from "./index.js";
 // Define paths for configuration and data storage - use current MCP service directory
+// ES module equivalent of __filename and __dirname
 const __filename = fileURLToPath(import.meta.url);
-export const CONFIG_DIR = path.dirname(__filename);
+const __dirname = path.dirname(__filename);
+export const CONFIG_DIR = __dirname;
 export const TEMPLATES_DIR = path.join(CONFIG_DIR, 'templates');
 export const SMTP_CONFIG_FILE = path.join(CONFIG_DIR, 'smtp_config.json');
 export const LOG_FILE = path.join(CONFIG_DIR, 'email-logs.json');
