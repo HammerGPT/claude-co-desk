@@ -3134,6 +3134,38 @@ async def start_tunnel():
         
         # Try to use Cloudflare Tunnel (reliable and free)
         try:
+            # First try Python pycloudflared package
+            try:
+                from pycloudflared import try_cloudflare
+                server_config = Config.get_server_config()
+                port = server_config['port']
+
+                logger.info(f"Starting Cloudflare tunnel using pycloudflared on port {port}")
+                tunnel_result = try_cloudflare(port, verbose=False)
+
+                # Update global tunnel status
+                tunnel_status = {
+                    'active': True,
+                    'public_url': tunnel_result.tunnel,
+                    'service': 'cloudflare',
+                    'process': tunnel_result.process,
+                    'created_at': datetime.now().isoformat()
+                }
+
+                logger.info(f"Cloudflare tunnel started successfully: {tunnel_result.tunnel}")
+                return JSONResponse(content={
+                    "success": True,
+                    "public_url": tunnel_result.tunnel,
+                    "service": "cloudflare",
+                    "message": "Tunnel started successfully"
+                })
+
+            except ImportError:
+                logger.info("pycloudflared not available, trying system cloudflared")
+            except Exception as e:
+                logger.warning(f"pycloudflared failed: {e}, trying system cloudflared")
+
+            # Fall back to system-level cloudflared
             # Check if cloudflared is available
             result = subprocess.run(['which', 'cloudflared'], capture_output=True, text=True, timeout=5)
             if result.returncode == 0:
@@ -3254,7 +3286,7 @@ async def start_tunnel():
         
         return JSONResponse(content={
             "success": False,
-            "message": "No tunnel service available. Please install localtunnel (npm install -g localtunnel) or ngrok."
+            "message": "No tunnel service available. Please install Cloudflare Tunnel or ngrok."
         }, status_code=400)
         
     except Exception as e:

@@ -24,3 +24,6 @@ mcp>=1.13.0
 
 # Timezone Support
 pytz>=2025.2
+
+# Cloudflare Tunnel Support
+pycloudflared>=0.2.0
