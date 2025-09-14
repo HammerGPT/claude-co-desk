@@ -11,6 +11,8 @@ import subprocess
 import shutil
 import re
 import uuid
+import os
+import platform
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Any
@@ -19,6 +21,14 @@ from tasks_storage import TasksStorage
 from mission_manager import MissionManager
 
 logger = logging.getLogger(__name__)
+
+def should_use_sandbox_env():
+    """Check if IS_SANDBOX=1 environment variable should be used for Linux root environment"""
+    try:
+        return platform.system() == 'Linux' and os.getuid() == 0
+    except (AttributeError, OSError):
+        # getuid() not available on Windows or permission error
+        return False
 
 # PC-side functions will be imported lazily to avoid circular imports
 format_markdown_command = None
@@ -411,7 +421,11 @@ class MobileTaskHandler:
             # The task directory is only used for file storage (specified in Working Directory instruction)
             claude_command = ' '.join(shell_command_parts)
             user_home = str(Config.get_user_home())
-            shell_command = f'cd "{user_home}" && {claude_command}'
+            if should_use_sandbox_env():
+                shell_command = f'cd "{user_home}" && IS_SANDBOX=1 {claude_command}'
+                logger.info("Using IS_SANDBOX=1 for Linux root environment")
+            else:
+                shell_command = f'cd "{user_home}" && {claude_command}'
             
             logger.info(f"Executing mobile task {task_id} with shell command: {shell_command}")
             logger.info(f"Enhanced goal length: {len(enhanced_goal)} characters")
@@ -557,7 +571,11 @@ class MobileTaskHandler:
             # IMPORTANT: Execute Claude CLI in user home directory for session continuity
             claude_command = ' '.join(shell_command_parts)
             user_home = str(Config.get_user_home())
-            shell_command = f'cd "{user_home}" && {claude_command}'
+            if should_use_sandbox_env():
+                shell_command = f'cd "{user_home}" && IS_SANDBOX=1 {claude_command}'
+                logger.info("Using IS_SANDBOX=1 for Linux root environment")
+            else:
+                shell_command = f'cd "{user_home}" && {claude_command}'
             
             logger.info(f"Continuing conversation {session_id} with task {task_id}")
             logger.info(f"Continue conversation shell command: {shell_command}")

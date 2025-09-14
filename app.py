@@ -25,6 +25,15 @@ from fastapi.middleware.cors import CORSMiddleware
 # Platform-specific imports for PTY functionality
 IS_WINDOWS = platform.system() == 'Windows'
 
+def should_use_sandbox_env():
+    """Check if IS_SANDBOX=1 environment variable should be used for Linux root environment"""
+    try:
+        import os
+        return platform.system() == 'Linux' and os.getuid() == 0
+    except (AttributeError, OSError):
+        # getuid() not available on Windows or permission error
+        return False
+
 if not IS_WINDOWS:
     import pty
     import select
@@ -785,19 +794,31 @@ class PTYShellHandler:
                     else:
                         enhanced_command = f'"{claude_executable}" "{command_content}"'
                 
-                shell_command = f'cd "{project_path}" && {enhanced_command}'
+                if should_use_sandbox_env():
+                    shell_command = f'cd "{project_path}" && IS_SANDBOX=1 {enhanced_command}'
+                    logger.info("Using IS_SANDBOX=1 for Linux root environment")
+                else:
+                    shell_command = f'cd "{project_path}" && {enhanced_command}'
                 logger.info(f"Using enhanced initial command: {enhanced_command}")
             elif has_session and session_id:
                 # 优化恢复会话策略：
                 # 1. 首先尝试使用传入的session_id
                 # 2. 如果失败，自动启动新会话
                 # 注：session_id现在优先是文件名(主会话ID)，更可能成功
-                shell_command = f'cd "{project_path}" && ("{claude_executable}" --resume {session_id} || "{claude_executable}")'
+                if should_use_sandbox_env():
+                    shell_command = f'cd "{project_path}" && IS_SANDBOX=1 ("{claude_executable}" --resume {session_id} || "{claude_executable}")'
+                    logger.info("Using IS_SANDBOX=1 for Linux root environment")
+                else:
+                    shell_command = f'cd "{project_path}" && ("{claude_executable}" --resume {session_id} || "{claude_executable}")'
                 logger.info(f"Resume session command (enhanced fallback): \"{claude_executable}\" --resume {session_id} || \"{claude_executable}\"")
                 logger.info(f"Session ID type: {'main session' if len(session_id.split('-')) == 5 else 'sub session'}")
             else:
                 # 直接启动新会话
-                shell_command = f'cd "{project_path}" && "{claude_executable}"'
+                if should_use_sandbox_env():
+                    shell_command = f'cd "{project_path}" && IS_SANDBOX=1 "{claude_executable}"'
+                    logger.info("Using IS_SANDBOX=1 for Linux root environment")
+                else:
+                    shell_command = f'cd "{project_path}" && "{claude_executable}"'
                 logger.info(f"Starting new Claude session: \"{claude_executable}\"")
             
             # 注意：不再需要添加JSON参数，session_id通过文件监控获取
