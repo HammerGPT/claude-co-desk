@@ -1041,7 +1041,7 @@ class EnhancedSidebar {
             }
         }));
         
-        console.log('📋 通知页签状态变化:', {
+        console.log('Notification tab state change:', {
             hasActiveSessions,
             activeSessionCount: this.activeSessions.size
         });
@@ -1826,7 +1826,7 @@ class EnhancedSidebar {
             const sessionId = `mcp-manager-${Date.now()}-${Math.random().toString(36).substr(2, 8)}`;
             const sessionName = `MCP工具搜索: ${userQuery && userQuery.length > 20 ? userQuery.substr(0, 20) + '...' : (userQuery || '未知查询')}`;
             
-            console.log('🔍 启动MCP工具搜索会话:');
+            console.log('Starting MCP tool search session:');
             console.log('  会话ID:', sessionId);
             console.log('  会话名称:', sessionName);
             console.log('  用户需求:', userQuery);
@@ -2067,7 +2067,7 @@ class EnhancedSidebar {
         if (assistantTerminal) {
             assistantTerminal.innerHTML = `
                 <div style="padding: 1rem; font-family: monospace; background: #1a1a1a; color: #ffffff;">
-                    <p>🤖 MCP工具助手会话已启动</p>
+                    <p>MCP tool assistant session started</p>
                     <p>会话ID: ${data.sessionId}</p>
                     <p>正在分析您的需求...</p>
                 </div>
@@ -2082,7 +2082,7 @@ class EnhancedSidebar {
         if (agentTerminal) {
             agentTerminal.innerHTML = `
                 <div style="padding: 1rem;">
-                    <p>🤖 MCP管理员会话已启动</p>
+                    <p>MCP manager session started</p>
                     <p>会话ID: ${data.sessionId}</p>
                     <p>正在处理您的请求...</p>
                 </div>
@@ -2321,7 +2321,7 @@ class EnhancedSidebar {
                         last_updated: new Date().toISOString(),
                         restored: true // 标记为恢复的会话
                     };
-                    console.log('🔧 创建临时会话对象:', this.selectedSession.id);
+                    console.log('Creating temporary session object:', this.selectedSession.id);
                 }
             } else {
                 this.selectedSession = null;

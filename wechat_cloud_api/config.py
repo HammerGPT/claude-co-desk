@@ -131,7 +131,7 @@ def validate_configuration() -> bool:
         logger.error(f"Data directory not writable: {e}")
         return False
     
-    logger.info("✓ Configuration validation passed")
+    logger.info("Success: Configuration validation passed")
     return True
 
 def create_example_env_file():
@@ -226,15 +226,15 @@ if __name__ == "__main__":
     
     try:
         settings = get_settings()
-        print(f"✓ Configuration loaded for {settings.app_name}")
+        print(f"Success: Configuration loaded for {settings.app_name}")
         
         if validate_configuration():
-            print("✓ Configuration validation passed")
+            print("Success: Configuration validation passed")
         else:
-            print("✗ Configuration validation failed")
+            print("Error: Configuration validation failed")
             
         create_example_env_file()
-        print("✓ Example environment file created")
+        print("Success: Example environment file created")
         
         # 显示当前配置摘要
         print(f"\nConfiguration Summary:")
@@ -244,5 +244,5 @@ if __name__ == "__main__":
         print(f"  Debug Mode: {settings.debug}")
         
     except Exception as e:
-        print(f"✗ Configuration error: {e}")
+        print(f"Error: Configuration error: {e}")
         exit(1)

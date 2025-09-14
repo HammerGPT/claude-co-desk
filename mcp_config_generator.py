@@ -655,10 +655,10 @@ def main():
     success = generator.setup_mcp_configuration()
     
     if success:
-        print("\n✓ MCP configuration setup successful!")
+        print("\nSuccess: MCP configuration setup successful!")
         print("  Restart Claude Code to activate the application control MCP server")
     else:
-        print("\n✗ MCP configuration setup failed")
+        print("\nError: MCP configuration setup failed")
         return 1
     
     return 0

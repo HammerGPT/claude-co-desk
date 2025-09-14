@@ -1336,7 +1336,7 @@ if (typeof module !== 'undefined' && module.exports) {
     module.exports = { I18n, TEXTS };
 }
 
-console.log('🌍 I18n system initialized, current language:', window.i18n.getCurrentLanguage());
+console.log('I18n system initialized, current language:', window.i18n.getCurrentLanguage());
 
 // 页面加载完成后初始化文本
 if (document.readyState === 'loading') {

@@ -230,5 +230,32 @@
     "message_type": "text",
     "success": true,
     "message": "Message sent successfully"
+  },
+  {
+    "timestamp": "2025-09-13T01:37:40.889299",
+    "message_id": "a63b2aaa-5a52-4c2f-ac82-9102859e29a7",
+    "user_identifier": "user_1756570917_94251a17",
+    "message_type": "text",
+    "success": false,
+    "message": "Exception during send: 'WeChatNotificationMCP' object has no attribute '_save_mobile_task_to_local_storage'",
+    "error_type": "AttributeError"
+  },
+  {
+    "timestamp": "2025-09-13T01:57:57.485513",
+    "message_id": "675dbfa0-7211-4688-922f-afad7458fa8c",
+    "user_identifier": "user_1756570917_94251a17",
+    "message_type": "text",
+    "success": false,
+    "message": "Exception during send: 'WeChatNotificationMCP' object has no attribute '_save_mobile_task_to_local_storage'",
+    "error_type": "AttributeError"
+  },
+  {
+    "timestamp": "2025-09-13T01:58:17.020507",
+    "message_id": "72b9ed6a-d565-4e17-94f1-fa9b85b48ae2",
+    "user_identifier": "user_1756570917_94251a17",
+    "message_type": "text",
+    "success": false,
+    "message": "Exception during send: 'WeChatNotificationMCP' object has no attribute '_save_mobile_task_to_local_storage'",
+    "error_type": "AttributeError"
   }
 ]

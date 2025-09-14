@@ -639,7 +639,7 @@ class Terminal {
 
         // 监听终端渲染事件
         this.terminal.onRender((event) => {
-            console.log(` [XTERM DEBUG] 终端渲染事件:`, {
+            console.log(` [XTERM DEBUG] terminal render event:`, {
                 start: event.start,
                 end: event.end,
                 bufferLength: this.terminal?.buffer?.active?.length || 0,
@@ -653,7 +653,7 @@ class Terminal {
 
         // 监听缓冲区变化
         this.terminal.onScroll((yDisp) => {
-            console.log(` [XTERM DEBUG] 滚动事件:`, {
+            console.log(` [XTERM DEBUG] scroll event:`, {
                 yDisp,
                 bufferLength: this.terminal?.buffer?.active?.length || 0,
                 viewportY: this.terminal?.buffer?.active?.viewportY || 0,
@@ -663,14 +663,14 @@ class Terminal {
 
         // 监听选择变化
         this.terminal.onSelectionChange(() => {
-            console.log(` [XTERM DEBUG] 选择变化事件:`, {
+            console.log(` [XTERM DEBUG] selection change event:`, {
                 hasSelection: this.terminal.hasSelection(),
                 bufferLength: this.terminal?.buffer?.active?.length || 0,
                 timestamp: new Date().toISOString()
             });
         });
 
-        console.log(' [XTERM DEBUG] 事件监听器已添加');
+        console.log(' [XTERM DEBUG] event listeners added');
     }
 
     /**

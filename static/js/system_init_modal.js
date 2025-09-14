@@ -53,7 +53,7 @@ class SystemInitModal {
      * 显示初始化弹窗
      */
     show() {
-        console.log('🚀 SystemInitModal.show() 被调用');
+        console.log('SystemInitModal.show() called');
         this.isVisible = true;
         this.isInitializing = true;
         this.progress = 0;
@@ -139,7 +139,7 @@ class SystemInitModal {
      */
     async startInitialization() {
         console.log('📡 startInitialization() 开始执行');
-        this.addTerminalOutput('🚀 开始初始化数字员工团队...', 'info');
+        this.addTerminalOutput('Starting digital employee team initialization...', 'info');
         this.updateProgress(5, '发送初始化请求...');
 
         try {
@@ -182,12 +182,12 @@ class SystemInitModal {
             { progress: 25, message: '连接Claude Code服务...', output: '🔗 连接到Claude Code' },
             { progress: 35, message: '在用户主目录初始化Claude项目...', output: '🏗️ 执行 claude /init' },
             { progress: 50, message: '等待Claude项目配置生成...', output: '⚙️ 生成CLAUDE.md配置文件' },
-            { progress: 60, message: '部署文档管理员...', output: '📋 部署 document-manager.md' },
+            { progress: 60, message: 'Deploying document manager...', output: 'Deploying document-manager.md' },
             { progress: 70, message: '部署工作助理...', output: '💼 部署 work-assistant.md' },
             { progress: 75, message: '部署财务助理...', output: '💰 部署 finance-assistant.md' },
-            { progress: 80, message: '部署信息收集员...', output: '🔍 部署 info-collector.md' },
+            { progress: 80, message: 'Deploying info collector...', output: 'Deploying info-collector.md' },
             { progress: 85, message: '部署全栈工程师...', output: '⚡ 部署 fullstack-engineer.md' },
-            { progress: 95, message: '验证系统初始化完成...', output: '🔍 验证所有组件正常' }
+            { progress: 95, message: 'Verifying system initialization...', output: 'Verifying all components are normal' }
         ];
 
         for (const step of steps) {

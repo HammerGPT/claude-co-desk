@@ -43,7 +43,7 @@ class WebSocketManager {
                     this.messages.push(data);
                     this._handleMessage(data);
                 } catch (error) {
-                    console.error('解析WebSocket消息失败:', error);
+                    console.error('Failed to parse WebSocket message:', error);
                 }
             };
             
@@ -59,11 +59,11 @@ class WebSocketManager {
             };
             
             this.ws.onerror = (error) => {
-                console.error('WebSocket错误:', error);
+                console.error('WebSocket Error:', error);
             };
             
         } catch (error) {
-            console.error('创建WebSocket连接失败:', error);
+            console.error('Failed to create WebSocket connection:', error);
         }
     }
 
@@ -76,7 +76,7 @@ class WebSocketManager {
             this.ws.send(messageStr);
             return true;
         } else {
-            console.warn('WebSocket未连接，无法发送消息');
+            console.warn('WebSocket not connected, unable to send message');
             return false;
         }
     }
@@ -457,7 +457,7 @@ class ShellWebSocketManager {
                 };
                 
                 this.ws.onerror = (error) => {
-                    console.error('Shell WebSocket错误:', error);
+                    console.error('Shell WebSocket Error:', error);
                     this.isConnected = false;
                     this.isConnecting = false;
                     reject(error); // 连接失败时reject
@@ -731,7 +731,7 @@ window.addEventListener('load', () => {
     // 监听所有可能导致页面状态变化的事件
     ['beforeunload', 'pagehide', 'visibilitychange', 'focus', 'blur'].forEach(eventType => {
         document.addEventListener(eventType, (event) => {
-            console.log(`[GLOBAL DEBUG] 页面事件触发: ${eventType}`, {
+            console.log(`[GLOBAL DEBUG] page event triggered: ${eventType}`, {
                 hidden: document.hidden,
                 visibilityState: document.visibilityState,
                 hasFocus: document.hasFocus(),

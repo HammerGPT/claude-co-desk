@@ -339,9 +339,9 @@ async def startup_event():
             data_file=settings.user_bindings_file
         )
         
-        logger.info("✓ WeChat API client initialized")
-        logger.info("✓ User binding manager initialized")
-        logger.info("✓ WeChat Cloud API Service started successfully")
+        logger.info("Success: WeChat API client initialized")
+        logger.info("Success: User binding manager initialized")
+        logger.info("Success: WeChat Cloud API Service started successfully")
         
     except Exception as e:
         logger.error(f"Failed to start service: {e}")

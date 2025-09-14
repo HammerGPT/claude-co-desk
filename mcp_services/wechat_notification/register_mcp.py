@@ -87,8 +87,8 @@ def register_wechat_mcp():
         with open(claude_config_path, 'w', encoding='utf-8') as f:
             json.dump(config, f, indent=2, ensure_ascii=False)
         
-        print("✓ WeChat notification MCP service registered successfully")
-        print("✓ Configuration saved to ~/.claude.json")
+        print("Success: WeChat notification MCP service registered successfully")
+        print("Success: Configuration saved to ~/.claude.json")
         
         return True
         
@@ -114,13 +114,13 @@ def verify_registration():
             "wechat_notification" in config[home_key]["mcpServers"]):
             
             mcp_config = config[home_key]["mcpServers"]["wechat_notification"]
-            print(f"✓ WeChat notification MCP service found in configuration:")
+            print(f"Success: WeChat notification MCP service found in configuration:")
             print(f"  Command: {mcp_config['command']}")
             print(f"  Args: {mcp_config['args']}")
             print(f"  Env: {mcp_config.get('env', {})}")
             return True
         else:
-            print("✗ WeChat notification MCP service not found in configuration")
+            print("Error: WeChat notification MCP service not found in configuration")
             return False
             
     except Exception as e:

@@ -154,7 +154,7 @@ All MCP tools will be installed in the current project, and team members can sha
 
 ### Requirements Analysis Template  
 ```
-🔍 Analyzing your requirements: "[user description]"
+Analyzing your requirements: "[user description]"
 
 Based on your description, I understand you need: [functionality summary]
 Matching the most suitable MCP servers...
@@ -235,7 +235,7 @@ Would you like me to retry the installation?
 
 #### When No Suitable Tool Found
 ```
-🔍 Sorry, I couldn't find MCP tools that fully match your requirements.
+Sorry, I couldn't find MCP tools that fully match your requirements.
 
 Suggested solutions:
 1. Try using tools with similar functionality

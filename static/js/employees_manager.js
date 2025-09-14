@@ -723,7 +723,7 @@ Please execute /init command directly to start analysis, and follow the above pr
         });
         
         // 显示部署成功提示
-        console.log('🎨 显示部署成功通知...');
+        console.log('Showing deployment success notification...');
         this.showDeploymentSuccessNotification(message);
         
         // 触发全局初始化完成事件

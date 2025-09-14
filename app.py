@@ -31,7 +31,7 @@ if not IS_WINDOWS:
     import termios
     # fcntl will be imported locally where needed
 
-# 导入Claude CLI集成和项目管理器
+# Import Claude CLI integration and project manager
 from claude_cli import claude_cli
 from projects_manager import ProjectManager
 from task_scheduler import TaskScheduler
@@ -55,9 +55,9 @@ import aiofiles
 import yaml
 import re
 
-# 配置日志
+# Configure logging
 logging.basicConfig(level=logging.INFO)
-# 设置uvicorn日志级别为WARNING，减少API请求日志输出
+# Set uvicorn log level to WARNING to reduce API request log output
 logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
 logger = logging.getLogger(__name__)
 
@@ -197,11 +197,11 @@ async def init_wechat_mcp_service():
     from user_config import get_user_config
     
     try:
-        # 确保微信MCP服务目录存在
+        # Ensure WeChat MCP service directory exists
         mcp_services_path = Path(__file__).parent / "mcp_services" / "wechat_notification"
         mcp_services_path.mkdir(parents=True, exist_ok=True)
         
-        # 获取用户配置
+        # Get user configuration
         user_config = await get_user_config()
         user_identifier = user_config.get("user_identifier")
         api_key = user_config.get("api_key")
@@ -210,10 +210,10 @@ async def init_wechat_mcp_service():
             logger.warning("User not registered, skipping WeChat MCP service initialization")
             return
         
-        # 创建或更新微信MCP服务配置文件
+        # Create or update WeChat MCP service configuration file
         config_path = mcp_services_path / "wechat_config.json"
         
-        # 检查现有配置
+        # Check existing configuration
         existing_config = {}
         if config_path.exists():
             try:
@@ -222,7 +222,7 @@ async def init_wechat_mcp_service():
             except Exception as e:
                 logger.warning(f"Failed to read existing WeChat MCP config: {e}")
         
-        # 更新配置
+        # Update configuration
         config_data = {
             "service_name": "wechat_notification",
             "description": "WeChat notification service via cloud API",
@@ -238,16 +238,16 @@ async def init_wechat_mcp_service():
                 "retry_delay": 5
             },
             "updated_at": datetime.now().isoformat(),
-            **existing_config.get("custom_settings", {})  # 保留用户自定义设置
+            **existing_config.get("custom_settings", {})  # Preserve user custom settings
         }
         
-        # 保存配置
+        # Save configuration
         with open(config_path, 'w', encoding='utf-8') as f:
             json.dump(config_data, f, indent=2, ensure_ascii=False)
         
         logger.info(f"WeChat MCP service config updated: {config_path}")
         
-        # 初始化用户绑定数据结构（如果不存在）
+        # Initialize user binding data structure (if not exists)
         user_bindings_path = mcp_services_path / "user_bindings.json"
         if not user_bindings_path.exists():
             bindings_data = {
@@ -275,13 +275,13 @@ async def init_wechat_mcp_service():
         logger.error(f"Failed to initialize WeChat MCP service: {e}")
         raise
 
-# 定义生命周期管理器
+# Define lifecycle manager
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # 启动时执行
+    # Execute on startup
     logger.info("Application starting...")
     
-    # 初始化用户注册配置
+    # Initialize user registration configuration
     try:
         logger.info("Initializing user configuration...")
         await user_config_manager.ensure_user_registration()
@@ -289,11 +289,11 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning(f"User configuration initialization failed (non-blocking): {e}")
     
-    # 启动任务调度器
+    # Start task scheduler
     logger.info("Starting task scheduler...")
     task_scheduler.start()
     
-    # 初始化微信通知MCP服务
+    # Initialize WeChat notification MCP service
     try:
         logger.info("Initializing WeChat notification MCP service...")
         await init_wechat_mcp_service()
@@ -301,7 +301,7 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning(f"WeChat notification MCP service initialization failed (non-blocking): {e}")
     
-    # 统一注册所有MCP服务到Claude Code全局配置
+    # Register all MCP services to Claude Code global configuration
     try:
         logger.info("Registering all MCP services to Claude Code global configuration...")
         mcp_generator = MCPConfigGenerator()
@@ -313,12 +313,12 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning(f"MCP services registration failed (non-blocking): {e}")
     
-    yield  # 应用运行期间
+    yield  # Application runtime
     
-    # 关闭时执行
+    # Execute on shutdown
     logger.info("Application shutting down...")
     
-    # 停止任务调度器
+    # Stop task scheduler
     logger.info("Stopping task scheduler...")
     task_scheduler.stop()
 
@@ -1468,7 +1468,7 @@ class PTYShellHandler:
             from user_config import get_user_config
             import aiohttp
             
-            # 获取用户配置
+            # Get user configuration
             user_config = await get_user_config()
             user_identifier = user_config.get("user_identifier")
             api_key = user_config.get("api_key")
@@ -2195,7 +2195,7 @@ async def get_notification_status():
             from user_config import get_user_config
             from pathlib import Path
             
-            # 获取用户配置
+            # Get user configuration
             user_config = await get_user_config()
             user_identifier = user_config.get("user_identifier")
             
@@ -2599,7 +2599,7 @@ async def get_wechat_binding_status():
         from user_config import get_user_config
         from pathlib import Path
         
-        # 获取用户配置
+        # Get user configuration
         user_config = await get_user_config()
         user_identifier = user_config.get("user_identifier")
         
@@ -2713,7 +2713,7 @@ async def generate_wechat_qr():
         from user_config import get_user_config
         import aiohttp
         
-        # 获取用户配置
+        # Get user configuration
         user_config = await get_user_config()
         user_identifier = user_config.get("user_identifier")
         api_key = user_config.get("api_key")
@@ -2782,7 +2782,7 @@ async def test_wechat_notification(request: Request):
         except Exception as e:
             language = 'zh-CN'  # Default to Chinese
         
-        # 获取用户配置
+        # Get user configuration
         user_config = await get_user_config()
         user_identifier = user_config.get("user_identifier")
         api_key = user_config.get("api_key")
@@ -2877,7 +2877,7 @@ async def unbind_wechat():
         from pathlib import Path
         import json
         
-        # 获取用户配置
+        # Get user configuration
         user_config = await get_user_config()
         user_identifier = user_config.get("user_identifier")
         
@@ -4918,8 +4918,8 @@ async def chat_websocket_endpoint(websocket: WebSocket):
                 goal_config = message.get('goal_config', '').strip()
                 
                 # 调试：检查接收到的完整命令
-                logger.info(f"🔔 Received WebSocket command: {command}")
-                logger.info(f"🔔 Command length: {len(command)} characters")
+                logger.info(f"Received WebSocket command: {command}")
+                logger.info(f"Command length: {len(command)} characters")
                 
                 # 调试日志：确认接收到的参数
                 logger.info(f"Task execution parameter debug: skipPermissions={skip_permissions}, verboseLogs={verbose_logs}")
@@ -4955,12 +4955,12 @@ async def chat_websocket_endpoint(websocket: WebSocket):
                 )
                 
                 if role:
-                    logger.info(f"🔔 Added role agent call: {role}")
+                    logger.info(f"Added role agent call: {role}")
                 
-                logger.info(f"🔔 Enhanced command built with Markdown format")
+                logger.info(f"Enhanced command built with Markdown format")
                 
                 task_command_parts = ['claude', f'"{enhanced_command}"']
-                logger.info(f"🔔 Task command parts: {task_command_parts}")
+                logger.info(f"Task command parts: {task_command_parts}")
                 
                 # 添加权限设置
                 if skip_permissions:
@@ -4982,9 +4982,9 @@ async def chat_websocket_endpoint(websocket: WebSocket):
                 
                 # 拼接完整命令
                 full_task_command = ' '.join(task_command_parts)
-                logger.info(f"🔔 Built final task command: {full_task_command}")
-                logger.info(f"🔔 Final task_command_parts: {task_command_parts}")
-                logger.info(f"🔔 Final command length: {len(full_task_command)} characters")
+                logger.info(f"Built final task command: {full_task_command}")
+                logger.info(f"Final task_command_parts: {task_command_parts}")
+                logger.info(f"Final command length: {len(full_task_command)} characters")
                 
                 # 通知前端创建任务页签，同时传递完整的初始命令
                 await manager.broadcast({
@@ -5140,7 +5140,7 @@ async def chat_websocket_endpoint(websocket: WebSocket):
     except WebSocketDisconnect:
         manager.disconnect(websocket)
     except Exception as e:
-        logger.error(f"WebSocket错误: {e}")
+        logger.error(f"WebSocket Error: {e}")
         manager.disconnect(websocket)
 
 @app.websocket("/shell")
@@ -5605,7 +5605,7 @@ async def mobile_task_result_page(task_id: str):
                 <span class="info-label">Goal:</span> {result.get('goal', 'N/A')}
             </div>
             <div class="info-item">
-                <span class="info-label">Status:</span> {'✅ Completed' if result.get('exit_code') == 0 else '❌ Failed'}
+                <span class="info-label">Status:</span> {'Completed' if result.get('exit_code') == 0 else 'Failed'}
             </div>
             <div class="info-item">
                 <span class="info-label">Completed:</span> {result.get('completed_at', 'N/A')}
@@ -5622,8 +5622,8 @@ async def mobile_task_result_page(task_id: str):
         
         <div class="actions">
             <a href="javascript:history.back()" class="btn btn-secondary">← Back</a>
-            <a href="javascript:copyToClipboard()" class="btn btn-primary">📋 Copy Result</a>
-            {'<a href="/mobile/conversation/' + result.get('session_id', '') + '" class="btn btn-secondary">💬 View Conversation</a>' if result.get('session_id') else ''}
+            <a href="javascript:copyToClipboard()" class="btn btn-primary">Copy Result</a>
+            {'<a href="/mobile/conversation/' + result.get('session_id', '') + '" class="btn btn-secondary">View Conversation</a>' if result.get('session_id') else ''}
         </div>
     </div>
     
@@ -5692,7 +5692,7 @@ async def mobile_conversation_page(session_id: str):
             tasks_html += f"""
             <div class="task-item">
                 <div class="task-header">
-                    <h3>{'💬 Follow-up' if task.get('is_continuation') else '🎯 Initial Task'} #{i+1}</h3>
+                    <h3>{'Follow-up' if task.get('is_continuation') else 'Initial Task'} #{i+1}</h3>
                     <span class="task-status {'success' if task.get('status') == 'completed' else 'failed'}">{task.get('status', 'unknown')}</span>
                 </div>
                 <div class="task-goal">
@@ -5886,7 +5886,7 @@ async def mobile_conversation_page(session_id: str):
 <body>
     <div class="container">
         <div class="header">
-            <h1>📱 Conversation History</h1>
+            <h1>Conversation History</h1>
             <div class="session-info">
                 <p><strong>Session ID:</strong> {session_id}</p>
                 <p><strong>Created:</strong> {conversation.get('created_at', 'N/A')}</p>

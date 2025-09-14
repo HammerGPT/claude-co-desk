@@ -465,7 +465,7 @@ class Sidebar {
      * 处理会话点击
      */
     handleSessionClick(sessionId) {
-        console.log(`🎯 点击会话: ${sessionId}`);
+        console.log(`Session clicked: ${sessionId}`);
         
         // 构建会话对象
         const session = this.findSessionById(sessionId);
@@ -480,7 +480,7 @@ class Sidebar {
             
             if (shouldConnect) {
                 // 需要建立新连接
-                console.log(`🔗 建立新会话连接: ${sessionId}`);
+                console.log(`Establishing new session connection: ${sessionId}`);
                 
                 // 通知聊天组件建立连接
                 if (window.chatInterface) {
@@ -488,7 +488,7 @@ class Sidebar {
                 }
             } else {
                 // 已连接会话，仅切换页签
-                console.log(`🔄 切换到已连接会话: ${sessionId}`);
+                console.log(`Switching to connected session: ${sessionId}`);
             }
         }
     }
@@ -541,14 +541,14 @@ class Sidebar {
             }
         });
 
-        console.log(`🔄 更新会话状态显示: ${stateData.activeSessions.length} 个活跃会话`);
+        console.log(`Updating session status display: ${stateData.activeSessions.length} active sessions`);
     }
 
     /**
      * 处理会话选择变化
      */
     handleSessionSelectionChange(changeData) {
-        console.log(`🎯 会话选择变化:`, changeData);
+        console.log(`Session selection changed:`, changeData);
         
         // 重新渲染以更新选中状态
         if (changeData.session) {

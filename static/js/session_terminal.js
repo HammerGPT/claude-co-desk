@@ -201,12 +201,12 @@ class SessionTerminal {
         try {
             this._addTerminalEventListeners(sessionId, terminal);
         } catch (error) {
-            console.error('❌ 添加终端事件监听器失败:', sessionId, error);
+            console.error('NotDetected 添加终端事件监听器失败:', sessionId, error);
         }
 
         // 禁用终端大小变化处理，使用固定尺寸
         terminal.onResize(({ cols, rows }) => {
-            console.log(`🚫 终端尺寸变化被忽略: ${cols}x${rows}，保持固定120x30`, sessionId);
+            console.log(`Terminal resize ignored: ${cols}x${rows}, keeping fixed 120x30`, sessionId);
         });
 
         // 保存终端实例和相关信息
@@ -289,7 +289,7 @@ class SessionTerminal {
                 const fixedRows = 30;
                 const hasSession = !!originalSession; // 关键修复：基于originalSession判断
                 
-                console.log(`📐 发送固定终端尺寸: ${fixedCols}x${fixedRows}`, sessionId);
+                console.log(`Sending fixed terminal size: ${fixedCols}x${fixedRows}`, sessionId);
                 
                 // 检查是否为任务执行（sessionId以task_开头）
                 const isTaskExecution = sessionId && sessionId.startsWith('task_');
@@ -306,9 +306,9 @@ class SessionTerminal {
                     rows: fixedRows
                 };
                 
-                console.log('🔔 Sending init message to PTY Shell:', initMessage);
-                console.log('🔔 Final initialCommand being sent:', initialCommand);
-                console.log('🔔 initialCommand length:', initialCommand ? initialCommand.length : 0);
+                console.log('Sending init message to PTY Shell:', initMessage);
+                console.log('Final initialCommand being sent:', initialCommand);
+                console.log('initialCommand length:', initialCommand ? initialCommand.length : 0);
                 
                 ws.send(JSON.stringify(initMessage));
                 
@@ -318,7 +318,7 @@ class SessionTerminal {
                 
                 if (!hasSession) {
                 } else {
-                    console.log('🔄 恢复已有会话，等待历史内容加载', sessionId, originalSession.id);
+                    console.log('Resume 恢复已有会话，等待历史内容加载', sessionId, originalSession.id);
                 }
                 
                 // 调整终端尺寸
@@ -345,7 +345,7 @@ class SessionTerminal {
             
             ws.onclose = () => {
                 console.log('WebSocket连接已关闭:', sessionId);
-                terminalData.terminal.writeln('\x1b[31m❌ 连接已断开\x1b[0m');
+                terminalData.terminal.writeln('\x1b[31mNotDetected 连接已断开\x1b[0m');
                 this.connections.delete(sessionId);
                 // 释放连接锁
                 this.connectingStates.delete(sessionId);
@@ -353,7 +353,7 @@ class SessionTerminal {
             
             ws.onerror = (error) => {
                 console.error('WebSocket错误:', error);
-                terminalData.terminal.writeln('\x1b[31m❌ 连接错误\x1b[0m');
+                terminalData.terminal.writeln('\x1b[31mNotDetected 连接错误\x1b[0m');
                 // 释放连接锁
                 this.connectingStates.delete(sessionId);
             };
@@ -362,7 +362,7 @@ class SessionTerminal {
             
         } catch (error) {
             console.error('连接失败:', error);
-            terminalData.terminal.writeln('\x1b[31m❌ 无法连接到服务器\x1b[0m');
+            terminalData.terminal.writeln('\x1b[31mNotDetected 无法连接到服务器\x1b[0m');
         } finally {
             // 无论成功失败都要释放连接锁
             this.connectingStates.delete(sessionId);
@@ -463,7 +463,7 @@ class SessionTerminal {
         try {
             // 获取容器实际尺寸
             const containerRect = terminalData.container.getBoundingClientRect();
-            console.log(`📐 容器尺寸:`, {
+            console.log(`Size 容器尺寸:`, {
                 sessionId: sessionId,
                 width: containerRect.width,
                 height: containerRect.height
@@ -477,7 +477,7 @@ class SessionTerminal {
                 const maxCols = Math.floor((containerRect.width - 20) / charWidth);
                 const maxRows = Math.floor((containerRect.height - 20) / charHeight);
                 
-                console.log(`📏 预计算尺寸:`, {
+                console.log(`Calc 预计算尺寸:`, {
                     sessionId: sessionId,
                     maxCols: maxCols,
                     maxRows: maxRows
@@ -535,7 +535,7 @@ class SessionTerminal {
                 cols: terminalData.terminal.cols,
                 rows: terminalData.terminal.rows
             }));
-            console.log(`📐 终端尺寸已发送:`, {
+            console.log(`Size 终端尺寸已发送:`, {
                 sessionId: sessionId,
                 cols: terminalData.terminal.cols,
                 rows: terminalData.terminal.rows
@@ -547,7 +547,7 @@ class SessionTerminal {
      * 关闭会话 - 清理所有相关状态（修复版）
      */
     closeSession(sessionId) {
-        console.log('🗝 [SESSION TERMINAL] 关闭会话:', sessionId);
+        console.log('Key [SESSION TERMINAL] 关闭会话:', sessionId);
         
         // 1. 关闭WebSocket连接
         const connection = this.connections.get(sessionId);
@@ -583,7 +583,7 @@ class SessionTerminal {
         // 由 sidebar 负责判断是否显示空状态或切换到其他会话
         if (this.activeSessionId === sessionId) {
             this.activeSessionId = null;
-            console.log('🗝 [SESSION TERMINAL] 当前活跃会话已清除，等待sidebar切换逐譡');
+            console.log('Key [SESSION TERMINAL] 当前活跃会话已清除，等待sidebar切换逐譡');
         }
 
     }
@@ -647,7 +647,7 @@ class SessionTerminal {
             // 监听终端渲染事件
             if (typeof terminal.onRender === 'function') {
                 terminal.onRender((event) => {
-                    console.log(`🔍 [XTERM DEBUG] 终端渲染事件:`, {
+                    console.log(`Debug [XTERM DEBUG] terminal render event:`, {
                         sessionId: sessionId,
                         start: event?.start || 'N/A',
                         end: event?.end || 'N/A',
@@ -657,13 +657,13 @@ class SessionTerminal {
                     });
                 });
             } else {
-                console.warn('🔍 [XTERM DEBUG] onRender方法不存在:', sessionId);
+                console.warn('Debug [XTERM DEBUG] onRender method not available:', sessionId);
             }
 
             // 监听缓冲区变化
             if (typeof terminal.onScroll === 'function') {
                 terminal.onScroll((yDisp) => {
-                    console.log(`🔍 [XTERM DEBUG] 滚动事件:`, {
+                    console.log(`Debug [XTERM DEBUG] scroll event:`, {
                         sessionId: sessionId,
                         yDisp,
                         bufferLength: terminal?.buffer?.active?.length || 0,
@@ -672,7 +672,7 @@ class SessionTerminal {
                     });
                 });
             } else {
-                console.warn('🔍 [XTERM DEBUG] onScroll方法不存在:', sessionId);
+                console.warn('Debug [XTERM DEBUG] onScroll method not available:', sessionId);
             }
 
             // 监听选择变化
@@ -714,13 +714,13 @@ class SessionTerminal {
 
         try {
             localStorage.setItem(this.CONNECTION_STATE_KEY, JSON.stringify(state));
-            console.log('✅ 会话终端连接状态已保存:', {
+            console.log('Detected 会话终端连接状态已保存:', {
                 sessionId: this.activeSessionId,
                 project: state.project.name,
                 sessionName: state.sessionName
             });
         } catch (error) {
-            console.error('❌ 保存会话终端连接状态失败:', error);
+            console.error('NotDetected 保存会话终端连接状态失败:', error);
         }
     }
 
@@ -729,7 +729,7 @@ class SessionTerminal {
      */
     async attemptStateRestore() {
         if (!this.autoRestoreEnabled) {
-            console.log('🔒 自动恢复已禁用');
+            console.log('Lock 自动恢复已禁用');
             return false;
         }
 
@@ -749,7 +749,7 @@ class SessionTerminal {
                 return false;
             }
 
-            console.log('🔄 开始恢复会话终端连接状态:', {
+            console.log('Resume 开始恢复会话终端连接状态:', {
                 sessionId: state.activeSessionId,
                 project: state.project.name,
                 sessionName: state.sessionName,
@@ -773,7 +773,7 @@ class SessionTerminal {
                 
                 // 使用侧边栏的连接方法来恢复会话，这样会正确创建页签
                 if (state.originalSession) {
-                    console.log('🔄 通过侧边栏连接方法恢复会话:', state.originalSession.id);
+                    console.log('Resume 通过侧边栏连接方法恢复会话:', state.originalSession.id);
                     window.enhancedSidebar.connectToExistingSession(
                         state.project, 
                         state.originalSession, 
@@ -781,7 +781,7 @@ class SessionTerminal {
                     );
                 } else {
                     // 如果没有原始会话，直接创建新会话
-                    console.log('🔄 创建新会话:', state.activeSessionId);
+                    console.log('Resume 创建新会话:', state.activeSessionId);
                     await this.switchToSession(
                         state.activeSessionId,
                         state.project,
@@ -794,7 +794,7 @@ class SessionTerminal {
             return true;
 
         } catch (error) {
-            console.error('❌ 恢复会话终端连接状态失败:', error);
+            console.error('NotDetected 恢复会话终端连接状态失败:', error);
             this.clearConnectionState();
             return false;
         }
@@ -806,9 +806,9 @@ class SessionTerminal {
     clearConnectionState() {
         try {
             localStorage.removeItem(this.CONNECTION_STATE_KEY);
-            console.log('🗑️ 已清除保存的会话终端连接状态');
+            console.log('Clean 已清除保存的会话终端连接状态');
         } catch (error) {
-            console.error('❌ 清除会话终端连接状态失败:', error);
+            console.error('NotDetected 清除会话终端连接状态失败:', error);
         }
     }
 
@@ -846,14 +846,14 @@ class SessionTerminal {
             this.clearConnectionState();
         }
 
-        console.log('🔌 会话连接已断开:', sessionId);
+        console.log('Disconnect 会话连接已断开:', sessionId);
     }
 
     /**
      * 显示空状态 - 由 sidebar 调用
      */
     showEmptyState() {
-        console.log('💭 [SESSION TERMINAL] 显示空状态');
+        console.log('Show [SESSION TERMINAL] 显示空状态');
         
         // 重置活跃会话
         this.activeSessionId = null;
@@ -874,7 +874,7 @@ class SessionTerminal {
      * 完全清理所有会话终端资源 - 修复页面关闭时状态未清除的问题
      */
     cleanup() {
-        console.log('🧹 [SESSION TERMINAL] 开始清理所有会话终端资源...');
+        console.log('Cleanup [SESSION TERMINAL] 开始清理所有会话终端资源...');
         
         try {
             // 1. 清理定时器
@@ -884,7 +884,7 @@ class SessionTerminal {
             }
             
             // 2. 断开所有WebSocket连接
-            console.log('🧹 [SESSION TERMINAL] 断开所有WebSocket连接...');
+            console.log('Cleanup [SESSION TERMINAL] 断开所有WebSocket连接...');
             for (const [sessionId, connection] of this.connections) {
                 try {
                     if (connection && connection.readyState === WebSocket.OPEN) {
@@ -892,15 +892,15 @@ class SessionTerminal {
                         connection.onerror = null;
                         connection.close();
                     }
-                    console.log('✅ [SESSION TERMINAL] 已断开会话连接:', sessionId);
+                    console.log('Detected [SESSION TERMINAL] 已断开会话连接:', sessionId);
                 } catch (error) {
-                    console.error('❌ [SESSION TERMINAL] 断开会话连接失败:', sessionId, error);
+                    console.error('NotDetected [SESSION TERMINAL] 断开会话连接失败:', sessionId, error);
                 }
             }
             this.connections.clear();
             
             // 3. 销毁所有终端实例和清理DOM
-            console.log('🧹 [SESSION TERMINAL] 清理所有终端实例...');
+            console.log('Cleanup [SESSION TERMINAL] 清理所有终端实例...');
             for (const [sessionId, terminalData] of this.terminals) {
                 try {
                     // 销毁终端实例
@@ -913,9 +913,9 @@ class SessionTerminal {
                         terminalData.container.remove();
                     }
                     
-                    console.log('✅ [SESSION TERMINAL] 已清理会话终端:', sessionId);
+                    console.log('Detected [SESSION TERMINAL] 已清理会话终端:', sessionId);
                 } catch (error) {
-                    console.error('❌ [SESSION TERMINAL] 清理会话终端失败:', sessionId, error);
+                    console.error('NotDetected [SESSION TERMINAL] 清理会话终端失败:', sessionId, error);
                 }
             }
             this.terminals.clear();
@@ -927,7 +927,7 @@ class SessionTerminal {
             this.activeSessionId = null;
             
             // 6. 清理localStorage中的连接状态 - 关键修复
-            console.log('🧹 [SESSION TERMINAL] 清理localStorage中的连接状态...');
+            console.log('Cleanup [SESSION TERMINAL] 清理localStorage中的连接状态...');
             this.clearConnectionState();
             
             // 7. 清理终端容器显示，显示空状态
@@ -952,10 +952,10 @@ class SessionTerminal {
                 this.currentSessionName.textContent = '';
             }
             
-            console.log('✅ [SESSION TERMINAL] 所有会话终端资源清理完成');
+            console.log('Detected [SESSION TERMINAL] 所有会话终端资源清理完成');
             
         } catch (error) {
-            console.error('❌ [SESSION TERMINAL] 清理过程中出现错误:', error);
+            console.error('NotDetected [SESSION TERMINAL] 清理过程中出现错误:', error);
         }
     }
 
@@ -971,7 +971,7 @@ class SessionTerminal {
             this.currentSessionName.textContent = sessionName || '';
         }
         
-        console.log('📱 已更新当前会话显示:', {
+        console.log('Update 已更新当前会话显示:', {
             project: project.name,
             sessionName: sessionName
         });
@@ -1306,7 +1306,7 @@ class SessionTerminal {
      */
     _detectClaudeStartup(sessionId, data) {
         // 增强调试：记录原始数据
-        console.log(`🔍 [启动检测] 检测数据 (${sessionId}):`, {
+        console.log(`Debug [启动检测] 检测数据 (${sessionId}):`, {
             dataLength: data.length,
             dataPreview: data.substring(0, 100),
             fullData: data // 临时显示完整数据用于调试
@@ -1334,18 +1334,18 @@ class SessionTerminal {
             const found = data.includes(signal) || data.toLowerCase().includes(signal.toLowerCase());
             if (found) {
                 detectedSignal = signal;
-                console.log(`🎯 [启动检测] 找到启动信号: "${signal}" 在数据中`);
+                console.log(`Target [启动检测] 找到启动信号: "${signal}" 在数据中`);
             }
             return found;
         });
         
-        console.log(`🔍 [启动检测] 检测结果 (${sessionId}): ${detectedStartup ? '✅ 检测到' : '❌ 未检测到'}`);
+        console.log(`Debug [启动检测] 检测结果 (${sessionId}): ${detectedStartup ? 'Detected 检测到' : 'NotDetected 未检测到'}`);
         if (detectedSignal) {
-            console.log(`🔍 [启动检测] 匹配的信号: "${detectedSignal}"`);
+            console.log(`Debug [启动检测] 匹配的信号: "${detectedSignal}"`);
         }
         
         if (detectedStartup) {
-            console.log('🎯 检测到Claude Code启动信号:', sessionId, '信号:', detectedSignal);
+            console.log('Target 检测到Claude Code启动信号:', sessionId, '信号:', detectedSignal);
             this.claudeStartupDetected.set(sessionId, true);
             
             // 延时发送引导文字，确保Claude Code完全启动
@@ -1355,7 +1355,7 @@ class SessionTerminal {
                 this._sendInitializationGuidance(sessionId);
             }, 2000); // 2秒延迟
         } else {
-            console.log('🔍 [启动检测] 未发现Claude Code启动信号，继续等待...');
+            console.log('Debug [启动检测] 未发现Claude Code启动信号，继续等待...');
         }
     }
 
@@ -1363,10 +1363,10 @@ class SessionTerminal {
      * 发送初始化引导文字
      */
     _sendInitializationGuidance(sessionId) {
-        console.log('📤 [引导发送] 开始发送初始化引导文字:', sessionId);
+        console.log('Send [引导发送] 开始发送初始化引导文字:', sessionId);
         
         const connection = this.connections.get(sessionId);
-        console.log('📤 [引导发送] WebSocket连接状态:', {
+        console.log('Send [引导发送] WebSocket连接状态:', {
             sessionId: sessionId,
             hasConnection: !!connection,
             readyState: connection ? connection.readyState : 'N/A',
@@ -1433,8 +1433,8 @@ Please follow this standard process:
 
 Please execute /init command directly to start analysis, and follow the above process strictly to complete initialization.`;
 
-        console.log('📤 [引导发送] 准备发送的引导文字长度:', guidanceText.length);
-        console.log('📤 [引导发送] 引导文字预览:', guidanceText.substring(0, 100) + '...');
+        console.log('Send [引导发送] 准备发送的引导文字长度:', guidanceText.length);
+        console.log('Send [引导发送] 引导文字预览:', guidanceText.substring(0, 100) + '...');
         
         try {
             // 发送引导文字
@@ -1443,27 +1443,27 @@ Please execute /init command directly to start analysis, and follow the above pr
                 data: guidanceText + '\r'
             });
             
-            console.log('📤 [引导发送] 发送WebSocket消息:', {
+            console.log('Send [引导发送] 发送WebSocket消息:', {
                 messageLength: message.length,
                 messageType: 'input',
                 dataLength: guidanceText.length + 1 // +1 for \r
             });
             
             connection.send(message);
-            console.log('✅ [引导发送] WebSocket消息已发送成功');
+            console.log('Detected [引导发送] WebSocket消息已发送成功');
             
         } catch (error) {
-            console.error('❌ [引导发送] 发送WebSocket消息失败:', error);
+            console.error('NotDetected [引导发送] 发送WebSocket消息失败:', error);
             return;
         }
 
         // 清理追踪状态
-        console.log('🧹 [引导发送] 清理追踪状态...');
+        console.log('Cleanup [引导发送] 清理追踪状态...');
         this.initializingSessions.delete(sessionId);
         this.claudeStartupDetected.delete(sessionId);
         
-        console.log('✅ 初始化引导已发送并清理追踪状态:', sessionId);
-        console.log('✅ [引导发送] 剩余初始化会话:', Array.from(this.initializingSessions));
+        console.log('Detected 初始化引导已发送并清理追踪状态:', sessionId);
+        console.log('Detected [引导发送] 剩余初始化会话:', Array.from(this.initializingSessions));
     }
 }
 

@@ -674,7 +674,7 @@ Binding Cache Status:
                 health_data["overall_status"] = "degraded"
             
             # Format health report
-            status_emoji = {"healthy": "✓", "degraded": "⚠", "unhealthy": "✗"}.get(health_data["overall_status"], "?")
+            status_emoji = {"healthy": "[OK]", "degraded": "[WARN]", "unhealthy": "[ERROR]"}.get(health_data["overall_status"], "[?]")
             
             health_text = f"""WeChat MCP Service Health Check:
 Overall Status: {status_emoji} {health_data["overall_status"].upper()}
@@ -682,7 +682,7 @@ Overall Status: {status_emoji} {health_data["overall_status"].upper()}
 Component Status:"""
             
             for component, status in health_data["components"].items():
-                component_emoji = "✓" if "healthy" in status else ("⚠" if "degraded" in status else "✗")
+                component_emoji = "[OK]" if "healthy" in status else ("[WARN]" if "degraded" in status else "[ERROR]")
                 health_text += f"\n• {component}: {component_emoji} {status}"
             
             if include_detailed and "storage_details" in health_data:

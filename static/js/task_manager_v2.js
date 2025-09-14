@@ -3266,7 +3266,7 @@ class TaskManager {
      * Get localized role example based on current language
      */
     getLocalizedRoleExample(role) {
-        const currentLang = window.CURRENT_LANGUAGE || 'zh';
+        const currentLang = window.i18n ? window.i18n.getCurrentLanguage() : 'en';
         
         if (currentLang === 'zh') {
             return this.getChineseRoleExamples()[role] || this.getDefaultGoalExample();
@@ -3607,7 +3607,7 @@ class TaskManager {
      * Get default goal example
      */
     getDefaultGoalExample() {
-        const currentLang = window.CURRENT_LANGUAGE || 'zh';
+        const currentLang = window.i18n ? window.i18n.getCurrentLanguage() : 'en';
         
         if (currentLang === 'zh') {
             return `
