@@ -20,6 +20,11 @@ Thumbs.db
 *.log
 debug_session.log
 test_*.py
+test_deployment.py
+
+# Node.js related (deprecated)
+package.json
+package-lock.json
 
 # Runtime generated files
 mission/
