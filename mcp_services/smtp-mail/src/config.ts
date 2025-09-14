@@ -1,6 +1,7 @@
 import fs from 'fs-extra';
 import * as path from 'path';
 import * as os from 'os';
+import { fileURLToPath } from 'url';
 import { logToFile } from "./index.js";
 
 // Define types for configurations
@@ -46,7 +47,10 @@ export interface EmailLogEntry {
 }
 
 // Define paths for configuration and data storage - use current MCP service directory
-export const CONFIG_DIR = path.dirname(__filename);
+// ES module equivalent of __filename and __dirname
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+export const CONFIG_DIR = __dirname;
 export const TEMPLATES_DIR = path.join(CONFIG_DIR, 'templates');
 export const SMTP_CONFIG_FILE = path.join(CONFIG_DIR, 'smtp_config.json');
 export const LOG_FILE = path.join(CONFIG_DIR, 'email-logs.json');
