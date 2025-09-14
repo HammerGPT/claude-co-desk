@@ -49,6 +49,7 @@ mcp_services/*/*.json
 # Personal and sensitive configurations
 .claude/
 CLAUDE.local.md
+CLAUDE.md
 
 # Temporary and cache files
 *.tmp
