@@ -109,7 +109,8 @@ class MCPConfigGenerator:
 
             # Handle legacy direct environment variable format
             logger.info(f"Loaded SMTP configuration from {config_file}")
-            return config
+            # Filter out non-MCP standard fields like testStatus
+            return {k: v for k, v in config.items() if k.startswith('SMTP_')}
 
         except (json.JSONDecodeError, IOError) as e:
             logger.error(f"Error loading SMTP config from {config_file}: {e}")
