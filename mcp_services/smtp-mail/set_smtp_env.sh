@@ -3,11 +3,11 @@
 # SMTP Configuration for smtp_mail MCP service
 # This script sets environment variables for the SMTP service
 
-export SMTP_HOST="smtp.exmail.qq.com"
+export SMTP_HOST="smtp.example.com"
 export SMTP_PORT="587"
-export SMTP_USER="no-reply@heliki.com"
-export SMTP_PASS="6s6YqVq2v8q3pCN8"
-export SMTP_SECURE="true"
+export SMTP_USER="your_email@example.com"
+export SMTP_PASS="your_password"
+export SMTP_SECURE="false"
 
 echo "SMTP environment variables set for smtp_mail MCP service:"
 echo "SMTP_HOST: $SMTP_HOST"

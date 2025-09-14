@@ -6,6 +6,7 @@ Claude Co-Desk - 基于Claude Code的智能协作平台
 
 import asyncio
 import json
+import os
 import platform
 import shutil
 import subprocess
@@ -197,6 +198,29 @@ def format_markdown_command(
     
     # Join all parts with newlines
     return "\n".join(command_parts).strip()
+
+def ensure_mcp_services():
+    """Ensure all MCP services are built - extensible for future services"""
+    mcp_services_dir = Path(__file__).parent / 'mcp_services'
+
+    # SMTP Mail Service
+    smtp_service_dir = mcp_services_dir / 'smtp-mail'
+    smtp_build_path = smtp_service_dir / 'build'
+    if smtp_service_dir.exists() and not smtp_build_path.exists():
+        print("   Building SMTP MCP service...")
+        subprocess.run(['npm', 'install'], cwd=str(smtp_service_dir), check=True)
+        subprocess.run(['npm', 'run', 'build'], cwd=str(smtp_service_dir), check=True)
+        print("   SMTP MCP service built successfully")
+
+    # Future MCP services can be added here following the same pattern
+    # Example:
+    # new_service_dir = mcp_services_dir / 'new-service'
+    # new_build_path = new_service_dir / 'build'
+    # if new_service_dir.exists() and not new_build_path.exists():
+    #     print("   Building New MCP service...")
+    #     subprocess.run(['npm', 'install'], cwd=str(new_service_dir), check=True)
+    #     subprocess.run(['npm', 'run', 'build'], cwd=str(new_service_dir), check=True)
+    #     print("   New MCP service built successfully")
 
 # WeChat MCP Service initialization
 async def init_wechat_mcp_service():
@@ -5951,6 +5975,15 @@ if __name__ == "__main__":
     print(f"   Projects directory: {'' if env_status['projects_dir'] else ''}")
     print(f"   Status: {'Ready' if env_status['ready'] else 'Needs configuration'}")
     
+    # 确保MCP服务已构建
+    print(f"Ensuring MCP services are built...")
+    try:
+        ensure_mcp_services()
+        print(f"   MCP services check completed")
+    except Exception as e:
+        print(f"   Warning: MCP service build failed: {e}")
+        print(f"   Some features may not be available")
+
     # 配置Claude hooks for数字员工自动部署
     print(f"Configuring Claude hooks...")
     try:

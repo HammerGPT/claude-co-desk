@@ -60,9 +60,9 @@ class NotificationManager {
                 port: 587,
                 secure: false
             },
-            'heliki.com': {
+            'example.com': {
                 nameKey: 'providers.custom',
-                host: 'smtp.exmail.qq.com',
+                host: 'smtp.example.com',
                 port: 587,
                 secure: false
             }

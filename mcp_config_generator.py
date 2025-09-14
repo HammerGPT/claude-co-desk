@@ -53,16 +53,42 @@ class MCPConfigGenerator:
     def load_smtp_config(self, service_dir: Path) -> Dict[str, str]:
         """Load SMTP configuration from config file"""
         config_file = service_dir / "smtp_config.json"
-        
+
         if not config_file.exists():
             logger.warning(f"SMTP config file not found: {config_file}")
             return {}
-        
+
         try:
             with open(config_file, 'r', encoding='utf-8') as f:
                 config = json.load(f)
+
+            # Handle new JSON structure format
+            if "smtpServers" in config:
+                smtp_servers = config.get("smtpServers", [])
+                # Only convert to env vars if we have a valid server with real credentials
+                if smtp_servers:
+                    default_server = next((s for s in smtp_servers if s.get("isDefault")), smtp_servers[0])
+                    auth = default_server.get("auth", {})
+                    # Only use if not example/placeholder values
+                    if (default_server.get("host") != "smtp.example.com" and
+                        auth.get("user") != "your_email@example.com" and
+                        auth.get("pass") != "your_password"):
+
+                        return {
+                            "SMTP_HOST": default_server.get("host", ""),
+                            "SMTP_PORT": str(default_server.get("port", 587)),
+                            "SMTP_SECURE": str(default_server.get("secure", False)).lower(),
+                            "SMTP_USER": auth.get("user", ""),
+                            "SMTP_PASS": auth.get("pass", "")
+                        }
+
+                logger.info(f"SMTP config contains example values only, skipping environment variable setup")
+                return {}
+
+            # Handle legacy direct environment variable format
             logger.info(f"Loaded SMTP configuration from {config_file}")
             return config
+
         except (json.JSONDecodeError, IOError) as e:
             logger.error(f"Error loading SMTP config from {config_file}: {e}")
             return {}

@@ -1,8 +1,20 @@
 {
-  "SMTP_HOST": "smtp.exmail.qq.com",
-  "SMTP_PORT": "465",
-  "SMTP_SECURE": "true",
-  "SMTP_USER": "no-reply@heliki.com",
-  "SMTP_PASS": "6s6YqVq2v8q3pCN8",
-  "testStatus": "success"
+  "smtpServers": [
+    {
+      "id": "example-smtp",
+      "name": "Example SMTP",
+      "host": "smtp.example.com",
+      "port": 587,
+      "secure": false,
+      "auth": {
+        "user": "your_email@example.com",
+        "pass": "your_password"
+      },
+      "isDefault": true
+    }
+  ],
+  "rateLimit": {
+    "enabled": true,
+    "messagesPerMinute": 30
+  }
 }
