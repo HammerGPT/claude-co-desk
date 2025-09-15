@@ -878,7 +878,7 @@ class PTYShellHandler:
                 # 2. 如果失败，自动启动新会话
                 # 注：session_id现在优先是文件名(主会话ID)，更可能成功
                 if should_use_sandbox_env():
-                    shell_command = f'cd "{project_path}" && IS_SANDBOX=1 ("{claude_executable}" --resume {session_id} || "{claude_executable}")'
+                    shell_command = f'cd "{project_path}" && (IS_SANDBOX=1 "{claude_executable}" --resume {session_id} || IS_SANDBOX=1 "{claude_executable}")'
                     logger.info("Using IS_SANDBOX=1 for Linux root environment")
                 else:
                     shell_command = f'cd "{project_path}" && ("{claude_executable}" --resume {session_id} || "{claude_executable}")'
