@@ -438,10 +438,10 @@ class WeChatNotificationMCP:
             if response.get("success", False):
                 # Update binding cache after successful message
                 await self._update_binding_cache(user_identifier, True, message_id)
-                
-                # Save task to local tasks storage (unified storage approach)
-                await self._save_mobile_task_to_local_storage(message, task_name, message_id)
-                
+
+                # Note: Task result storage is handled by cloud API, not local MCP service
+                # Local service only handles notification delivery and binding management
+
                 # Log successful notification
                 await log_notification_activity({
                     "timestamp": datetime.now().isoformat(),
