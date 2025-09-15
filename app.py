@@ -842,7 +842,12 @@ class PTYShellHandler:
             # 构建Claude命令 - 使用绝对路径，支持初始命令参数
             if initial_command:
                 # 正确处理：分离主命令和参数，只给主命令加引号
-                command_content = initial_command.replace("claude", "").strip()
+                # Precise prefix removal: only remove "claude" from the beginning
+                command_content = initial_command.strip()
+                if command_content.startswith("claude "):
+                    command_content = command_content[7:].strip()  # Remove "claude " (7 characters)
+                elif command_content.startswith("claude"):
+                    command_content = command_content[6:].strip()  # Remove "claude" (6 characters)
                 
                 # 查找最后一个以--开头的参数位置来分离主命令和参数
                 import re
