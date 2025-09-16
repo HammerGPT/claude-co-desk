@@ -66,7 +66,7 @@ class TasksStorage:
         try:
             if not self.storage_file.exists():
                 return False
-                
+
             backup_file = self.storage_file.with_suffix('.backup.json')
             import shutil
             shutil.copy2(self.storage_file, backup_file)
@@ -74,4 +74,34 @@ class TasksStorage:
             return True
         except Exception as e:
             logger.error(f"备份任务失败: {e}")
+            return False
+
+    def update_task_session_id(self, task_id: str, new_session_id: str) -> bool:
+        """Update sessionId for a specific task"""
+        try:
+            tasks = self.load_tasks()
+            updated = False
+
+            for task in tasks:
+                if task.get("id") == task_id:
+                    old_session_id = task.get("sessionId")
+                    if old_session_id != new_session_id:
+                        task["sessionId"] = new_session_id
+                        from datetime import datetime
+                        task["lastRun"] = datetime.now().isoformat()
+                        updated = True
+                        logger.info(f"Updated task {task_id} sessionId: {old_session_id} -> {new_session_id}")
+                    break
+
+            if updated:
+                success = self.save_tasks(tasks)
+                if success:
+                    logger.info(f"Successfully updated task {task_id} with new session ID")
+                return success
+            else:
+                logger.debug(f"No session ID update needed for task {task_id}")
+                return True
+
+        except Exception as e:
+            logger.error(f"Failed to update task session ID: {e}")
             return False

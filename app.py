@@ -800,6 +800,7 @@ class PTYShellHandler:
         self.file_monitor_thread = None  # 文件监控线程
         self.file_monitor_running = False  # 文件监控运行状态
         self.project_path = None  # 项目路径，用于文件监控
+        self.current_session_id = None  # 当前任务的sessionId，用于检测变化
     
     def is_running(self):
         """检查PTY进程是否正在运行"""
@@ -815,6 +816,8 @@ class PTYShellHandler:
         self.project_path = project_path
         if task_id:
             logger.info(f"Set task ID for session_id capture: {task_id}")
+            # 初始化current_session_id用于检测变化
+            self.current_session_id = session_id
             # 启动文件监控来捕获session_id
             self._start_file_monitor()
         
@@ -1083,8 +1086,10 @@ class PTYShellHandler:
                         
                         # 启用简化的输出处理，保留ANSI颜色序列
                         processed_output = self._simple_output_filter(raw_output)
-                        
-                        # 注意：session_id现在通过文件监控获取，不再从PTY输出解析
+
+                        # SessionId检测 - 增强原有文件监控机制
+                        if self.task_id and processed_output:
+                            self._check_session_id_in_output(raw_output)
                         
                         # 调试日志
                         if processed_output:
@@ -1759,6 +1764,72 @@ class PTYShellHandler:
             logger.error(f" 文件监控出错: {e}")
         finally:
             self.file_monitor_running = False
+
+    def _check_session_id_in_output(self, output_text: str):
+        """Check for sessionId changes in PTY output"""
+        try:
+            from session_id_utils import SessionIdExtractor
+
+            # Extract session ID from output
+            session_id = SessionIdExtractor.extract_session_from_output(output_text)
+
+            if session_id and session_id != self.current_session_id:
+                logger.info(f"Detected session ID change in PTY output: {self.current_session_id} -> {session_id}")
+
+                # Update current session ID
+                old_session_id = self.current_session_id
+                self.current_session_id = session_id
+
+                # Update task storage
+                self._update_task_session_id(session_id)
+
+        except Exception as e:
+            logger.debug(f"Error checking session ID in output: {e}")
+
+    def _update_task_session_id(self, new_session_id: str):
+        """Update task session ID and notify frontend"""
+        try:
+            from tasks_storage import TasksStorage
+
+            # Update task storage
+            storage = TasksStorage()
+            success = storage.update_task_session_id(self.task_id, new_session_id)
+
+            if success:
+                logger.info(f"PTY session ID updated for task {self.task_id}: {new_session_id}")
+
+                # Notify frontend via WebSocket
+                self._notify_session_id_update(new_session_id)
+            else:
+                logger.warning(f"Failed to update session ID in task storage: {self.task_id}")
+
+        except Exception as e:
+            logger.error(f"Error updating task session ID: {e}")
+
+    def _notify_session_id_update(self, new_session_id: str):
+        """Notify frontend about session ID update"""
+        try:
+            if hasattr(self, 'loop') and self.loop and not self.loop.is_closed():
+                # Get WebSocket manager from task_scheduler
+                import task_scheduler
+                websocket_manager = getattr(task_scheduler, 'websocket_manager', None)
+
+                if websocket_manager:
+                    import asyncio
+                    future = asyncio.run_coroutine_threadsafe(
+                        websocket_manager.broadcast({
+                            'type': 'task-session-updated',
+                            'taskId': self.task_id,
+                            'sessionId': new_session_id,
+                            'message': 'Task session ID updated'
+                        }),
+                        self.loop
+                    )
+                    future.result(timeout=5)
+                    logger.info(f"Notified frontend about session ID update: {self.task_id}")
+
+        except Exception as e:
+            logger.debug(f"Error notifying frontend about session ID update: {e}")
     
     def _scan_for_session_files(self, session_dir):
         """扫描会话文件，提取session_id"""
