@@ -95,10 +95,18 @@ function formatRecipients(recipients) {
  */
 export async function sendEmail(data, smtpConfigId) {
     try {
+        logToFile(`[sendEmail] ===== EMAIL SERVICE SEND STARTED =====`);
+        logToFile(`[sendEmail] Timestamp: ${new Date().toISOString()}`);
+        logToFile(`[sendEmail] SMTP Config ID: ${smtpConfigId || 'default'}`);
+        logToFile(`[sendEmail] Email data: ${JSON.stringify({ ...data, templateData: 'HIDDEN' }, null, 2)}`);
+        logToFile(`[sendEmail] Creating transport...`);
         const transport = await createTransport(smtpConfigId);
+        logToFile(`[sendEmail] Transport created successfully`);
+        logToFile(`[sendEmail] Getting SMTP config...`);
         const smtpConfig = smtpConfigId
             ? (await getSmtpConfigs()).find(c => c.id === smtpConfigId)
             : await getDefaultSmtpConfig();
+        logToFile(`[sendEmail] SMTP config retrieved: ${smtpConfig ? smtpConfig.id : 'NULL'}`);
         if (!smtpConfig) {
             return { success: false, message: 'SMTP configuration not found' };
         }
@@ -116,9 +124,12 @@ export async function sendEmail(data, smtpConfigId) {
             bcc: data.bcc ? formatRecipients(data.bcc) : undefined
         };
         // Send email
+        logToFile(`[sendEmail] Sending email with options: ${JSON.stringify({ ...mailOptions, from: 'HIDDEN' }, null, 2)}`);
         const info = await transport.sendMail(mailOptions);
+        logToFile(`[sendEmail] Email sent successfully, messageId: ${info.messageId}`);
         // Log email activity
         const recipients = Array.isArray(data.to) ? data.to : [data.to];
+        logToFile(`[sendEmail] Logging activity for ${recipients.length} recipients`);
         for (const recipient of recipients) {
             const logEntry = {
                 timestamp: new Date().toISOString(),
@@ -130,14 +141,21 @@ export async function sendEmail(data, smtpConfigId) {
                 message: `Message sent: ${info.messageId}`
             };
             await logEmailActivity(logEntry);
+            logToFile(`[sendEmail] Activity logged for: ${recipient.email}`);
         }
+        logToFile(`[sendEmail] ===== EMAIL SERVICE SEND COMPLETED =====`);
         return { success: true, message: `Message sent: ${info.messageId}` };
     }
     catch (error) {
-        logToFile(`Error sending email: ${error}`);
+        logToFile(`[sendEmail] ===== EMAIL SERVICE SEND FAILED =====`);
+        logToFile(`[sendEmail] Error sending email: ${error}`);
+        if (error instanceof Error && error.stack) {
+            logToFile(`[sendEmail] Stack trace: ${error.stack}`);
+        }
         // Log failed email activity
         if (data.to) {
             const recipients = Array.isArray(data.to) ? data.to : [data.to];
+            logToFile(`[sendEmail] Logging failure for ${recipients.length} recipients`);
             for (const recipient of recipients) {
                 const logEntry = {
                     timestamp: new Date().toISOString(),
@@ -149,6 +167,7 @@ export async function sendEmail(data, smtpConfigId) {
                     message: error instanceof Error ? error.message : 'Unknown error sending email'
                 };
                 await logEmailActivity(logEntry);
+                logToFile(`[sendEmail] Failure logged for: ${recipient.email}`);
             }
         }
         return {

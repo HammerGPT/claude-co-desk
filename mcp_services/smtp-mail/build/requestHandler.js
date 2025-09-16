@@ -24,15 +24,33 @@ export async function setupRequestHandlers(server, tools) {
     });
     // Handle tool calls
     server.setRequestHandler(CallToolRequestSchema, async (request) => {
+        const DEBUG_MODE = process.env.MCP_DEBUG === 'true';
+        if (DEBUG_MODE) {
+            console.error('=== MCP TOOL CALL RECEIVED ===');
+            logToFile(`[CallToolRequestSchema] ===== MCP TOOL CALL RECEIVED =====`);
+            logToFile(`[CallToolRequestSchema] Timestamp: ${new Date().toISOString()}`);
+            logToFile(`[CallToolRequestSchema] Request: ${JSON.stringify(request, null, 2)}`);
+        }
         const toolName = request.params.name;
         const toolParams = request.params.arguments || {};
+        if (DEBUG_MODE) {
+            logToFile(`[CallToolRequestSchema] Tool name: ${toolName}`);
+            logToFile(`[CallToolRequestSchema] Tool params: ${JSON.stringify(toolParams, null, 2)}`);
+        }
         // Check if the tool exists
         if (!tools[toolName]) {
+            logToFile(`[CallToolRequestSchema] ERROR: Tool '${toolName}' not found`);
             throw new Error(`Tool '${toolName}' not found`);
+        }
+        if (DEBUG_MODE) {
+            logToFile(`[CallToolRequestSchema] Tool found, executing: ${toolName}`);
         }
         // Execute the tool based on its name
         switch (toolName) {
             case "send-email":
+                if (DEBUG_MODE) {
+                    logToFile(`[CallToolRequestSchema] Calling handleSendEmail...`);
+                }
                 return await handleSendEmail(toolParams);
             case "send-bulk-emails":
                 return await handleSendBulkEmails(toolParams);
@@ -85,8 +103,107 @@ export async function setupRequestHandlers(server, tools) {
  */
 async function handleSendEmail(parameters) {
     try {
+        const DEBUG_MODE = process.env.MCP_DEBUG === 'true';
+        if (DEBUG_MODE) {
+            logToFile(`[handleSendEmail] ===== SEND EMAIL REQUEST STARTED =====`);
+            logToFile(`[handleSendEmail] Timestamp: ${new Date().toISOString()}`);
+            logToFile(`[handleSendEmail] Received parameters: ${JSON.stringify(parameters, null, 2)}`);
+        }
+        // Pre-process parameters to handle Claude Code's string serialization
+        const processedParams = { ...parameters };
+        // Handle "to" parameter that may be serialized as string
+        if (typeof processedParams.to === 'string') {
+            try {
+                processedParams.to = JSON.parse(processedParams.to);
+                if (DEBUG_MODE) {
+                    logToFile(`[handleSendEmail] Parsed "to" parameter from string: ${JSON.stringify(processedParams.to)}`);
+                }
+            }
+            catch (e) {
+                logToFile(`[handleSendEmail] Failed to parse "to" parameter as JSON: ${processedParams.to}`);
+            }
+        }
+        // Handle other object parameters that might be serialized
+        ['from', 'cc', 'bcc', 'templateData'].forEach(param => {
+            if (typeof processedParams[param] === 'string' && processedParams[param]) {
+                try {
+                    processedParams[param] = JSON.parse(processedParams[param]);
+                    if (DEBUG_MODE) {
+                        logToFile(`[handleSendEmail] Parsed "${param}" parameter from string`);
+                    }
+                }
+                catch (e) {
+                    // If parsing fails, keep as string (might be intentional)
+                    if (DEBUG_MODE) {
+                        logToFile(`[handleSendEmail] Keeping "${param}" as string (not JSON)`);
+                    }
+                }
+            }
+        });
+        if (DEBUG_MODE) {
+            logToFile(`[handleSendEmail] Processed parameters: ${JSON.stringify(processedParams, null, 2)}`);
+        }
+        // Use processed parameters for validation and processing
+        parameters = processedParams;
+        // Validate required parameters
+        if (!parameters.to) {
+            const errorMsg = 'Missing required parameter: to';
+            logToFile(`[send-email] Error: ${errorMsg}`);
+            return {
+                success: false,
+                message: errorMsg
+            };
+        }
+        if (!parameters.subject) {
+            const errorMsg = 'Missing required parameter: subject';
+            logToFile(`[send-email] Error: ${errorMsg}`);
+            return {
+                success: false,
+                message: errorMsg
+            };
+        }
+        if (!parameters.body) {
+            const errorMsg = 'Missing required parameter: body';
+            logToFile(`[send-email] Error: ${errorMsg}`);
+            return {
+                success: false,
+                message: errorMsg
+            };
+        }
         // If "to" is a single object, convert it to an array
-        const to = Array.isArray(parameters.to) ? parameters.to : [parameters.to];
+        let to;
+        if (Array.isArray(parameters.to)) {
+            to = parameters.to;
+            if (DEBUG_MODE) {
+                logToFile(`[send-email] Processing array of ${to.length} recipients`);
+            }
+        }
+        else if (typeof parameters.to === 'object' && parameters.to !== null) {
+            to = [parameters.to];
+            if (DEBUG_MODE) {
+                logToFile(`[send-email] Converting single recipient to array: ${parameters.to.email}`);
+            }
+        }
+        else {
+            const errorMsg = 'Invalid "to" parameter: must be an object or array of objects';
+            logToFile(`[send-email] Error: ${errorMsg}`);
+            return {
+                success: false,
+                message: errorMsg
+            };
+        }
+        // Validate recipient objects
+        for (let i = 0; i < to.length; i++) {
+            const recipient = to[i];
+            if (!recipient || typeof recipient !== 'object' || !recipient.email) {
+                const errorMsg = `Invalid recipient at index ${i}: must have email property`;
+                logToFile(`[send-email] Error: ${errorMsg}`);
+                return {
+                    success: false,
+                    message: errorMsg
+                };
+            }
+        }
         // Prepare the email data
         const emailData = {
             to: to,
@@ -98,19 +215,31 @@ async function handleSendEmail(parameters) {
             templateId: parameters.templateId,
             templateData: parameters.templateData
         };
+        if (DEBUG_MODE) {
+            logToFile(`[send-email] Sending email to ${to.length} recipient(s), subject: "${parameters.subject}"`);
+        }
         // Send the email
         const result = await sendEmail(emailData, parameters.smtpConfigId);
+        if (DEBUG_MODE) {
+            logToFile(`[handleSendEmail] Email send result: success=${result.success}, message="${result.message}"`);
+            logToFile(`[handleSendEmail] ===== SEND EMAIL REQUEST COMPLETED =====`);
+        }
         return {
             success: result.success,
             message: result.message
         };
     }
     catch (error) {
-        logToFile('Error in handleSendEmail:');
-        logToFile(error instanceof Error ? error.message : 'Unknown error');
+        const DEBUG_MODE = process.env.MCP_DEBUG === 'true';
+        const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+        logToFile(`[handleSendEmail] ===== SEND EMAIL REQUEST FAILED =====`);
+        logToFile(`[handleSendEmail] Exception in handleSendEmail: ${errorMsg}`);
+        if (DEBUG_MODE && error instanceof Error && error.stack) {
+            logToFile(`[handleSendEmail] Stack trace: ${error.stack}`);
+        }
         return {
             success: false,
-            message: error instanceof Error ? error.message : 'Unknown error'
+            message: errorMsg
         };
     }
 }

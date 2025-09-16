@@ -24,16 +24,28 @@ export function createToolDefinitions(): Record<string, Tool> {
         type: "object",
         properties: {
           to: {
-            type: "array",
-            items: {
-              type: "object",
-              properties: {
-                email: { type: "string" },
-                name: { type: "string" }
+            oneOf: [
+              {
+                type: "object",
+                properties: {
+                  email: { type: "string" },
+                  name: { type: "string" }
+                },
+                required: ["email"]
               },
-              required: ["email"]
-            },
-            description: "Array of recipients"
+              {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    email: { type: "string" },
+                    name: { type: "string" }
+                  },
+                  required: ["email"]
+                }
+              }
+            ],
+            description: "Recipient(s) - can be a single recipient object or array of recipients"
           },
           subject: {
             type: "string",
