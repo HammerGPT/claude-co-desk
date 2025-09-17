@@ -25,6 +25,9 @@ class SessionTerminal {
         // 初始化会话自动引导相关
         this.initializingSessions = new Set(); // 追踪初始化会话
         this.claudeStartupDetected = new Map(); // sessionId -> 是否检测到Claude启动
+
+        // taskId到sessionId的映射缓存池
+        this.taskIdToSessionIdMap = new Map(); // taskId -> sessionId 映射
         
         this.initElements();
         this.initEventListeners();
@@ -52,13 +55,13 @@ class SessionTerminal {
     initEventListeners() {
         // 监听会话切换事件
         document.addEventListener('sessionSwitch', (event) => {
-            const { sessionId, project, sessionName, originalSession, initialCommand, resumeSession, originalSessionId } = event.detail;
+            const { sessionId, project, sessionName, originalSession, initialCommand, resumeSession, originalSessionId, taskId } = event.detail;
             // 如果是恢复会话，创建一个特殊的originalSession对象
             let sessionToRestore = originalSession;
             if (resumeSession && originalSessionId) {
                 sessionToRestore = { id: originalSessionId };
             }
-            this.switchToSession(sessionId, project, sessionName, sessionToRestore, initialCommand);
+            this.switchToSession(sessionId, project, sessionName, sessionToRestore, initialCommand, taskId);
         });
 
         // 监听终端命令事件（来自文件抽屉）
@@ -110,24 +113,30 @@ class SessionTerminal {
     /**
      * 切换到指定会话
      */
-    async switchToSession(sessionId, project, sessionName, originalSession = null, initialCommand = null) {
-        console.log('切换到会话终端:', sessionId, project.name, sessionName, originalSession?.id, '初始命令:', initialCommand);
-        
+    async switchToSession(sessionId, project, sessionName, originalSession = null, initialCommand = null, taskId = null) {
+        console.log('切换到会话终端:', sessionId, project.name, sessionName, originalSession?.id, '初始命令:', initialCommand, 'taskId:', taskId);
+
         this.activeSessionId = sessionId;
-        
+
+        // 建立taskId到sessionId的映射关系
+        if (taskId && sessionId) {
+            this.taskIdToSessionIdMap.set(taskId, sessionId);
+            console.log('Key [SESSION TERMINAL] 建立映射关系:', taskId, '->', sessionId);
+        }
+
         // 检查是否为初始化会话（通过sessionName或其他标识）
         if (sessionName && sessionName.includes('系统初始化')) {
             // 不再需要复杂的启动检测，直接使用组合命令
         }
-        
+
         // 如果终端不存在，创建新终端
         if (!this.terminals.has(sessionId)) {
             await this.createTerminal(sessionId, project, sessionName, originalSession);
         }
-        
+
         // 显示对应的终端
         this.showTerminal(sessionId);
-        
+
         // 更新当前项目和会话的显示
         this.updateCurrentSessionDisplay(project, sessionName);
         
@@ -321,10 +330,8 @@ class SessionTerminal {
                     console.log('Resume 恢复已有会话，等待历史内容加载', sessionId, originalSession.id);
                 }
                 
-                // 调整终端尺寸
-                setTimeout(() => {
-                    this._fitTerminalSize(sessionId);
-                }, 100);
+                // 优化终端尺寸调整时机
+                this._scheduleTerminalResize(sessionId);
                 
                 // 保存连接状态
                 this.saveConnectionState();
@@ -454,20 +461,51 @@ class SessionTerminal {
     }
 
     /**
-     * 智能调整终端大小 - 移植自terminal.js的高级尺寸控制
+     * 调度终端尺寸调整 - 确保在适当时机执行
      */
-    _fitTerminalSize(sessionId) {
+    _scheduleTerminalResize(sessionId) {
+        // 使用多层延迟确保DOM完全准备好
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                setTimeout(() => {
+                    this._fitTerminalSize(sessionId);
+                }, 100);
+            });
+        });
+    }
+
+    /**
+     * 智能调整终端大小 - 修复容器尺寸为0的问题
+     */
+    _fitTerminalSize(sessionId, retryCount = 0) {
         const terminalData = this.terminals.get(sessionId);
         if (!terminalData || !terminalData.fitAddon || !terminalData.terminal) return;
 
         try {
+            // 检查容器是否在可见的页签中
+            const container = terminalData.container;
+            const isVisible = container.offsetParent !== null &&
+                             container.offsetWidth > 0 &&
+                             container.offsetHeight > 0;
+
+            if (!isVisible && retryCount < 10) {
+                // 容器不可见或尺寸为0，延迟重试，最多重试10次
+                setTimeout(() => this._fitTerminalSize(sessionId, retryCount + 1), 200);
+                return;
+            }
+
             // 获取容器实际尺寸
-            const containerRect = terminalData.container.getBoundingClientRect();
-            console.log(`Size 容器尺寸:`, {
-                sessionId: sessionId,
-                width: containerRect.width,
-                height: containerRect.height
-            });
+            const containerRect = container.getBoundingClientRect();
+
+            // 只在必要时打印调试信息，避免大量日志
+            if (retryCount > 0 || containerRect.width === 0) {
+                console.log(`Size 容器尺寸 (重试${retryCount}):`, {
+                    sessionId: sessionId,
+                    width: containerRect.width,
+                    height: containerRect.height,
+                    isVisible: isVisible
+                });
+            }
 
             // 确保容器有实际尺寸
             if (containerRect.width > 100 && containerRect.height > 50) {
@@ -476,47 +514,50 @@ class SessionTerminal {
                 const charHeight = 17; // 大约的行高
                 const maxCols = Math.floor((containerRect.width - 20) / charWidth);
                 const maxRows = Math.floor((containerRect.height - 20) / charHeight);
-                
-                console.log(`Calc 预计算尺寸:`, {
-                    sessionId: sessionId,
-                    maxCols: maxCols,
-                    maxRows: maxRows
-                });
-                
+
                 // 使用fitAddon调整
                 terminalData.fitAddon.fit();
-                
+
                 // 验证调整后的尺寸是否合理
                 const cols = terminalData.terminal.cols;
                 const rows = terminalData.terminal.rows;
-                
+
                 if (cols > 500 || rows > 200 || cols < 20 || rows < 5) {
                     console.warn(`Detected abnormal dimensions ${cols}x${rows}, using safe defaults`, sessionId);
                     // 使用安全的默认尺寸
                     const safeCols = Math.min(Math.max(maxCols, 80), 150);
                     const safeRows = Math.min(Math.max(maxRows, 24), 50);
-                    
+
                     // 手动设置尺寸
                     terminalData.terminal.resize(safeCols, safeRows);
-                    console.log(` 已修正为安全尺寸: ${safeCols}x${safeRows}`, sessionId);
+                    console.log(`✓ 已修正为安全尺寸: ${safeCols}x${safeRows}`, sessionId);
                 } else {
+                    console.log(`✓ 终端尺寸调整完成: ${cols}x${rows}`, sessionId);
                 }
-                
+
                 // 如果已连接，通知后端
                 const connection = this.connections.get(sessionId);
                 if (connection && connection.readyState === WebSocket.OPEN) {
                     this._sendTerminalSize(sessionId);
                 }
+            } else if (retryCount < 10) {
+                // 容器尺寸仍为0，继续重试
+                setTimeout(() => this._fitTerminalSize(sessionId, retryCount + 1), 200);
             } else {
-                // 容器尺寸为0，延迟重试
-                setTimeout(() => this._fitTerminalSize(sessionId), 200);
+                // 重试次数用完，使用默认尺寸
+                console.warn(`容器尺寸重试失败，使用默认尺寸:`, sessionId);
+                terminalData.terminal.resize(80, 24);
+                const connection = this.connections.get(sessionId);
+                if (connection && connection.readyState === WebSocket.OPEN) {
+                    this._sendTerminalSize(sessionId);
+                }
             }
         } catch (error) {
             console.error('Terminal resize failed:', sessionId, error);
             // 使用默认尺寸作为后备
             if (terminalData.terminal) {
                 terminalData.terminal.resize(80, 24);
-                console.log(' 使用默认后备尺寸: 80x24', sessionId);
+                console.log('✓ 使用默认后备尺寸: 80x24', sessionId);
             }
         }
     }
@@ -544,11 +585,18 @@ class SessionTerminal {
     }
 
     /**
-     * 关闭会话 - 清理所有相关状态（修复版）
+     * 关闭会话 - 清理所有相关状态并确保后端进程终止
      */
-    closeSession(sessionId) {
-        console.log('Key [SESSION TERMINAL] 关闭会话:', sessionId);
-        
+    closeSession(idToClose) {
+        console.log('Key [SESSION TERMINAL] 关闭会话:', idToClose);
+
+        // 首先检查传入的ID是否为taskId，如果是则通过映射找到对应的sessionId
+        let sessionId = idToClose;
+        if (this.taskIdToSessionIdMap.has(idToClose)) {
+            sessionId = this.taskIdToSessionIdMap.get(idToClose);
+            console.log('Key [SESSION TERMINAL] 通过映射找到sessionId:', idToClose, '->', sessionId);
+        }
+
         // 1. 关闭WebSocket连接
         const connection = this.connections.get(sessionId);
         if (connection) {
@@ -579,13 +627,20 @@ class SessionTerminal {
         // 3. 清理连接状态
         this.connectingStates.delete(sessionId);
 
-        // 4. 如果关闭的是当前活跃会话，重置活跃ID（不显示空状态）
+        // 4. 清理映射关系（清理所有指向这个sessionId的taskId映射）
+        for (const [taskId, mappedSessionId] of this.taskIdToSessionIdMap) {
+            if (mappedSessionId === sessionId) {
+                this.taskIdToSessionIdMap.delete(taskId);
+                console.log('Key [SESSION TERMINAL] 清理映射关系:', taskId, '->', sessionId);
+            }
+        }
+
+        // 5. 如果关闭的是当前活跃会话，重置活跃ID（不显示空状态）
         // 由 sidebar 负责判断是否显示空状态或切换到其他会话
         if (this.activeSessionId === sessionId) {
             this.activeSessionId = null;
             console.log('Key [SESSION TERMINAL] 当前活跃会话已清除，等待sidebar切换逐譡');
         }
-
     }
 
     /**
