@@ -833,7 +833,7 @@
                             </div>
                             
                             <div class="form-group">
-                                <label data-i18n="task.executionMode">执行方式</label>
+                                <label>触发时机</label>
                                 <div class="radio-group">
                                     <div class="radio-item">
                                         <input type="radio" id="standalone-execute-immediate" name="standalone-execution-mode" value="immediate" checked>
@@ -843,6 +843,28 @@
                                         <input type="radio" id="standalone-execute-scheduled" name="standalone-execution-mode" value="scheduled">
                                         <label for="standalone-execute-scheduled" data-i18n="task.executeScheduled">定时执行</label>
                                     </div>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label data-i18n="executionMode.title">执行方式</label>
+                                <div class="radio-group" id="standalone-execution-mode-group">
+                                    <div class="radio-item">
+                                        <input type="radio" id="standalone-mode-interactive" name="standalone-mode" value="interactive" checked>
+                                        <label for="standalone-mode-interactive" data-i18n="executionMode.interactive">交互模式</label>
+                                        <small data-i18n="executionMode.interactive.desc">实时显示执行过程，支持中断，需保持页面打开</small>
+                                    </div>
+                                    <div class="radio-item">
+                                        <input type="radio" id="standalone-mode-background" name="standalone-mode" value="background">
+                                        <label for="standalone-mode-background" data-i18n="executionMode.background">后台模式</label>
+                                        <small data-i18n="executionMode.background.desc">后台执行，可关闭页面，完成后查看结果</small>
+                                    </div>
+                                </div>
+                                <div class="mode-notice" id="standalone-scheduled-notice" style="display: none;">
+                                    <small data-i18n="executionMode.scheduled.notice">定时任务将自动使用后台模式执行</small>
+                                </div>
+                                <div class="execution-tips" id="standalone-background-tips" style="display: none;">
+                                    <small data-i18n="executionMode.background.tips">如需获取完成通知，请在任务描述中添加："完成后发送微信通知"</small>
                                 </div>
                             </div>
                             
@@ -1076,7 +1098,7 @@
                             </div>
                             
                             <div class="form-group">
-                                <label data-i18n="task.executionMode">执行方式</label>
+                                <label>触发时机</label>
                                 <div class="radio-group">
                                     <div class="radio-item">
                                         <input type="radio" id="standalone-edit-execute-immediate" name="standalone-edit-execution-mode" value="immediate" checked>
@@ -1086,6 +1108,28 @@
                                         <input type="radio" id="standalone-edit-execute-scheduled" name="standalone-edit-execution-mode" value="scheduled">
                                         <label for="standalone-edit-execute-scheduled" data-i18n="task.executeScheduled">定时执行</label>
                                     </div>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label data-i18n="executionMode.title">执行方式</label>
+                                <div class="radio-group" id="standalone-edit-execution-mode-group">
+                                    <div class="radio-item">
+                                        <input type="radio" id="standalone-edit-mode-interactive" name="standalone-edit-mode" value="interactive" checked>
+                                        <label for="standalone-edit-mode-interactive" data-i18n="executionMode.interactive">交互模式</label>
+                                        <small data-i18n="executionMode.interactive.desc">实时显示执行过程，支持中断，需保持页面打开</small>
+                                    </div>
+                                    <div class="radio-item">
+                                        <input type="radio" id="standalone-edit-mode-background" name="standalone-edit-mode" value="background">
+                                        <label for="standalone-edit-mode-background" data-i18n="executionMode.background">后台模式</label>
+                                        <small data-i18n="executionMode.background.desc">后台执行，可关闭页面，完成后查看结果</small>
+                                    </div>
+                                </div>
+                                <div class="mode-notice" id="standalone-edit-scheduled-notice" style="display: none;">
+                                    <small data-i18n="executionMode.scheduled.notice">定时任务将自动使用后台模式执行</small>
+                                </div>
+                                <div class="execution-tips" id="standalone-edit-background-tips" style="display: none;">
+                                    <small data-i18n="executionMode.background.tips">如需获取完成通知，请在任务描述中添加："完成后发送微信通知"</small>
                                 </div>
                             </div>
                             
@@ -1328,7 +1372,7 @@
                             </div>
                             
                             <div class="form-group">
-                                <label>执行方式</label>
+                                <label>触发时机</label>
                                 <div class="radio-group">
                                     <div class="radio-item">
                                         <input type="radio" id="execute-immediate" name="execution-mode" value="immediate" checked>
@@ -1338,6 +1382,28 @@
                                         <input type="radio" id="execute-scheduled" name="execution-mode" value="scheduled">
                                         <label for="execute-scheduled">定时执行</label>
                                     </div>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label data-i18n="executionMode.title">执行方式</label>
+                                <div class="radio-group" id="execution-mode-group">
+                                    <div class="radio-item">
+                                        <input type="radio" id="mode-interactive" name="mode" value="interactive" checked>
+                                        <label for="mode-interactive" data-i18n="executionMode.interactive">交互模式</label>
+                                        <small data-i18n="executionMode.interactive.desc">实时显示执行过程，支持中断，需保持页面打开</small>
+                                    </div>
+                                    <div class="radio-item">
+                                        <input type="radio" id="mode-background" name="mode" value="background">
+                                        <label for="mode-background" data-i18n="executionMode.background">后台模式</label>
+                                        <small data-i18n="executionMode.background.desc">后台执行，可关闭页面，完成后查看结果</small>
+                                    </div>
+                                </div>
+                                <div class="mode-notice" id="scheduled-notice" style="display: none;">
+                                    <small data-i18n="executionMode.scheduled.notice">定时任务将自动使用后台模式执行</small>
+                                </div>
+                                <div class="execution-tips" id="background-tips" style="display: none;">
+                                    <small data-i18n="executionMode.background.tips">如需获取完成通知，请在任务描述中添加："完成后发送微信通知"</small>
                                 </div>
                             </div>
                             
@@ -1377,7 +1443,9 @@
     <!-- JavaScript文件 -->
     <!-- I18n System - Must be loaded first -->
     <script src="/static/js/i18n.js"></script>
-    
+    <!-- Page Manager - Must be loaded before WebSocket -->
+    <script src="/static/js/page_manager.js"></script>
+
     <script src="/static/js/websocket.js"></script>
     <script src="/static/js/syntax_highlighter.js"></script>
     <script src="/static/js/system_init_modal.js"></script>

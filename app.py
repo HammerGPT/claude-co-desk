@@ -772,12 +772,17 @@ class ProjectScanner:
 
 # WebSocket连接管理
 class ConnectionManager:
-    """WebSocket连接管理器"""
-    
+    """WebSocket连接管理器 - 支持页面级消息路由隔离"""
+
     def __init__(self):
         self.active_connections: List[WebSocket] = []
         self.chat_connections: List[WebSocket] = []
         self.shell_connections: List[WebSocket] = []
+
+        # Page-level routing support (new feature)
+        self.connection_pages: Dict[WebSocket, str] = {}  # {connection: page_id}
+        self.page_connections: Dict[str, List[WebSocket]] = {}  # {page_id: [connections]}
+        self.connection_metadata: Dict[WebSocket, Dict] = {}  # {connection: metadata}
     
     async def connect(self, websocket: WebSocket, connection_type: str):
         await websocket.accept()
@@ -797,24 +802,39 @@ class ConnectionManager:
             self.chat_connections.remove(websocket)
         if websocket in self.shell_connections:
             self.shell_connections.remove(websocket)
-        
+
+        # Clean up page-level routing mappings
+        self._cleanup_page_mappings(websocket)
+
         logger.info("WebSocket connection closed")
     
     async def send_personal_message(self, message: dict, websocket: WebSocket):
         await websocket.send_text(json.dumps(message))
     
     async def broadcast(self, message: dict, connection_type: str = 'all'):
-        """广播消息到指定类型的WebSocket连接"""
+        """广播消息到指定类型的WebSocket连接 - 支持页面级路由隔离"""
+
+        # Check if message should be routed to specific page instead of broadcast
+        if self._should_isolate_message(message):
+            # Try to find the source page from connection context
+            source_page_id = self._get_message_source_page(message)
+            if source_page_id:
+                await self._send_to_page(message, source_page_id, connection_type)
+                return
+            else:
+                logger.warning(f"Message requires page isolation but no source page found: {message.get('type', 'unknown')}")
+
+        # Standard broadcast behavior (unchanged for compatibility)
         connections = self.active_connections
         if connection_type == 'chat':
             connections = self.chat_connections
         elif connection_type == 'shell':
             connections = self.shell_connections
-        
+
         if not connections:
             logger.warning(f"没有活跃的{connection_type}连接可用于广播")
             return
-        
+
         disconnected_connections = []
         for connection in connections:
             try:
@@ -823,12 +843,119 @@ class ConnectionManager:
                 # 连接可能已断开，记录并稍后清理
                 logger.warning(f"广播到WebSocket连接失败: {e}")
                 disconnected_connections.append(connection)
-        
+
         # 清理断开的连接
         for connection in disconnected_connections:
             self.disconnect(connection)
-            
+
         logger.info(f"Broadcasted message to {len(connections) - len(disconnected_connections)}/{len(connections)} connections")
+
+    # Page-level routing methods (new functionality)
+
+    def register_page_connection(self, websocket: WebSocket, page_id: str, metadata: Dict = None):
+        """Register a WebSocket connection with a specific page ID"""
+        self.connection_pages[websocket] = page_id
+
+        if page_id not in self.page_connections:
+            self.page_connections[page_id] = []
+        self.page_connections[page_id].append(websocket)
+
+        if metadata:
+            self.connection_metadata[websocket] = metadata
+
+        logger.info(f"Registered connection for page: {page_id}")
+
+    async def send_to_page(self, message: dict, page_id: str, connection_type: str = 'all'):
+        """Send message to all connections of a specific page"""
+        await self._send_to_page(message, page_id, connection_type)
+
+    def _should_isolate_message(self, message: dict) -> bool:
+        """Determine if a message should be page-isolated instead of broadcast"""
+        isolate_message_types = {
+            'create-task-tab',
+            'task-error',
+            'session-created',
+            'session-resumed',
+            'task-session-captured'
+        }
+        return message.get('type') in isolate_message_types
+
+    def _get_message_source_page(self, message: dict) -> Optional[str]:
+        """Try to determine the source page ID for a message"""
+        # This will be enhanced when we add context tracking
+        # For now, we'll set this during message handling
+        return message.get('_source_page_id')
+
+    async def _send_to_page(self, message: dict, page_id: str, connection_type: str = 'all'):
+        """Internal method to send message to specific page connections"""
+        if page_id not in self.page_connections:
+            logger.warning(f"No connections found for page: {page_id}")
+            return
+
+        page_connections = self.page_connections[page_id]
+
+        # Filter by connection type if needed
+        target_connections = page_connections
+        if connection_type == 'chat':
+            target_connections = [conn for conn in page_connections if conn in self.chat_connections]
+        elif connection_type == 'shell':
+            target_connections = [conn for conn in page_connections if conn in self.shell_connections]
+
+        if not target_connections:
+            logger.warning(f"No {connection_type} connections found for page: {page_id}")
+            return
+
+        disconnected_connections = []
+        for connection in target_connections:
+            try:
+                await connection.send_text(json.dumps(message))
+            except Exception as e:
+                logger.warning(f"Failed to send message to page connection: {e}")
+                disconnected_connections.append(connection)
+
+        # Clean up disconnected connections
+        for connection in disconnected_connections:
+            self.disconnect(connection)
+
+        logger.info(f"Sent message to page {page_id}: {len(target_connections) - len(disconnected_connections)}/{len(target_connections)} connections")
+
+    def _cleanup_page_mappings(self, websocket: WebSocket):
+        """Clean up page-level routing mappings for a disconnected WebSocket"""
+        if websocket in self.connection_pages:
+            page_id = self.connection_pages[websocket]
+            del self.connection_pages[websocket]
+
+            # Remove from page connections list
+            if page_id in self.page_connections:
+                if websocket in self.page_connections[page_id]:
+                    self.page_connections[page_id].remove(websocket)
+
+                # Clean up empty page entries
+                if not self.page_connections[page_id]:
+                    del self.page_connections[page_id]
+
+        # Clean up metadata
+        if websocket in self.connection_metadata:
+            del self.connection_metadata[websocket]
+
+    def get_page_connections(self, page_id: str) -> List[WebSocket]:
+        """Get all connections for a specific page"""
+        return self.page_connections.get(page_id, [])
+
+    def get_connection_page(self, websocket: WebSocket) -> Optional[str]:
+        """Get the page ID for a specific connection"""
+        return self.connection_pages.get(websocket)
+
+    def get_debug_info(self) -> Dict:
+        """Get debug information about connections and page mappings"""
+        return {
+            'total_connections': len(self.active_connections),
+            'chat_connections': len(self.chat_connections),
+            'shell_connections': len(self.shell_connections),
+            'pages_count': len(self.page_connections),
+            'page_connections': {page_id: len(connections) for page_id, connections in self.page_connections.items()},
+            'unmapped_connections': len([conn for conn in self.active_connections if conn not in self.connection_pages])
+        }
 
 # PTY Shell处理器 - 移植自claudecodeui的node-pty逻辑
 class PTYShellHandler:
@@ -5231,6 +5358,19 @@ async def chat_websocket_endpoint(websocket: WebSocket):
             data = await websocket.receive_text()
             message = json.loads(data)
             
+            # Handle page identification message first
+            if message.get('type') == 'page_identification':
+                page_id = message.get('pageId')
+                if page_id:
+                    metadata = {
+                        'userAgent': message.get('userAgent'),
+                        'url': message.get('url'),
+                        'timestamp': message.get('timestamp')
+                    }
+                    manager.register_page_connection(websocket, page_id, metadata)
+                    logger.info(f"Page identification registered: {page_id}")
+                continue
+
             # 处理不同类型的消息
             if message.get('type') == 'claude-command':
                 command = message.get('command', '')
@@ -5341,14 +5481,23 @@ async def chat_websocket_endpoint(websocket: WebSocket):
                 session_mapper.add_pending_task(task_id)
 
                 # 通知前端创建任务页签，同时传递完整的初始命令
-                await manager.broadcast({
+                # Add source page ID for page-level routing
+                source_page_id = manager.get_connection_page(websocket)
+                create_tab_message = {
                     'type': 'create-task-tab',
                     'taskId': task_id,
                     'taskName': task_name,
                     'initialCommand': full_task_command,  # 直接传递完整的任务命令
                     'workingDirectory': os.path.expanduser('~'),  # 传递工作目录
                     'scheduledExecution': message.get('scheduledExecution', False)
-                })
+                }
+
+                # Add source page ID for routing (internal use)
+                if source_page_id:
+                    create_tab_message['_source_page_id'] = source_page_id
+                    logger.info(f"Adding source page ID to create-task-tab message: {source_page_id}")
+
+                await manager.broadcast(create_tab_message)
                 
                 try:
                     # 验证命令不为空
@@ -5404,7 +5553,9 @@ async def chat_websocket_endpoint(websocket: WebSocket):
                     session_mapper.add_pending_task(task_id)
 
                     # 通知前端创建恢复会话的页签
-                    await manager.broadcast({
+                    # Add source page ID for page-level routing
+                    source_page_id = manager.get_connection_page(websocket)
+                    resume_tab_message = {
                         'type': 'create-task-tab',
                         'taskId': task_id,
                         'taskName': f"继续: {task_name}",
@@ -5412,7 +5563,13 @@ async def chat_websocket_endpoint(websocket: WebSocket):
                         'sessionId': session_id,
                         'workingDirectory': work_directory,
                         'scheduledExecution': False
-                    })
+                    }
+
+                    # Add source page ID for routing (internal use)
+                    if source_page_id:
+                        resume_tab_message['_source_page_id'] = source_page_id
+
+                    await manager.broadcast(resume_tab_message)
                     
                     logger.info(f"Task session restore request sent to frontend: session_id={session_id}")
             elif message.get('type') == 'get-mcp-status':
@@ -5462,7 +5619,9 @@ async def chat_websocket_endpoint(websocket: WebSocket):
                 logger.info(f"Built MCP admin command: {full_command}")
                 
                 # 发送创建页签消息，使用与正常任务相同的机制
-                await manager.broadcast({
+                # Add source page ID for page-level routing
+                source_page_id = manager.get_connection_page(websocket)
+                mcp_tab_message = {
                     'type': 'create-task-tab',
                     'taskId': session_id,
                     'taskName': session_name,
@@ -5471,7 +5630,13 @@ async def chat_websocket_endpoint(websocket: WebSocket):
                     'scheduledExecution': False,
                     'resumeSession': False,  # 添加会话恢复标识
                     'sessionId': None        # 添加会话ID字段
-                })
+                }
+
+                # Add source page ID for routing (internal use)
+                if source_page_id:
+                    mcp_tab_message['_source_page_id'] = source_page_id
+
+                await manager.broadcast(mcp_tab_message)
                 
                 logger.info(f"MCP admin session creation request sent to frontend: {session_id}")
                 

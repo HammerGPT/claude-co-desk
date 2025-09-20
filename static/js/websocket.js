@@ -28,7 +28,10 @@ class WebSocketManager {
             this.ws.onopen = () => {
                 this.isConnected = true;
                 this._notifyConnectionHandlers(true);
-                
+
+                // Send page identification message immediately after connection
+                this._sendPageIdentification();
+
                 // 清除重连定时器
                 if (this.reconnectTimeout) {
                     clearTimeout(this.reconnectTimeout);
@@ -210,12 +213,13 @@ class WebSocketManager {
                     
                     // 传递所有必要参数给createTaskTab
                     window.enhancedSidebar.createTaskTab(
-                        data.taskId, 
-                        data.taskName, 
-                        data.initialCommand, 
+                        data.taskId,
+                        data.taskName,
+                        data.initialCommand,
                         data.workingDirectory,
                         data.resumeSession,
-                        data.sessionId
+                        data.sessionId,
+                        data.executionMode || 'background'  // 传递执行模式，默认为background
                     );
                 }
                 break;
@@ -355,6 +359,32 @@ class WebSocketManager {
         return this.sendMessage({
             type: 'ping'
         });
+    }
+
+    /**
+     * Send page identification message to server
+     * This enables page-level message routing and isolation
+     */
+    _sendPageIdentification() {
+        if (!window.pageManager) {
+            console.warn('PageManager not available, skipping page identification');
+            return;
+        }
+
+        const routingContext = window.pageManager.getRoutingContext();
+        const identificationMessage = {
+            type: 'page_identification',
+            pageId: routingContext.pageId,
+            timestamp: routingContext.timestamp,
+            userAgent: navigator.userAgent,
+            url: window.location.href
+        };
+
+        console.log('Sending page identification:', identificationMessage);
+        this.sendMessage(identificationMessage);
+
+        // Set connectionId if available (will be set by server response)
+        // This creates the linkage between pageManager and WebSocket connection
     }
 }
 
