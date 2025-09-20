@@ -199,6 +199,61 @@ def format_markdown_command(
     # Join all parts with newlines
     return "\n".join(command_parts).strip()
 
+def build_task_command(task_data: dict, work_directory: str) -> str:
+    """
+    Build task command with unified logic for both immediate and scheduled tasks
+    """
+    # Prepare notification command if enabled
+    notification_command = None
+    notification_settings = task_data.get('notificationSettings', {})
+    if notification_settings.get('enabled') and notification_settings.get('methods'):
+        methods = notification_settings['methods']
+        if methods:
+            notification_types = []
+            if 'email' in methods:
+                notification_types.append('email notification')
+            if 'wechat' in methods:
+                notification_types.append('WeChat notification')
+
+            if notification_types:
+                notification_command = f"After task completion, send the complete detailed results and all generated content to me using {' and '.join(notification_types)} tools. Include all detailed analysis, findings, data, and generated materials directly in the notification content itself - do not just send a summary that requires me to check local files. The notification should contain the full content so I don't need to access any local files. For email notifications, format the content as clean HTML with proper structure, headers, and readable formatting instead of raw Markdown. For WeChat notifications, provide the full detailed content in a well-structured readable format."
+
+    # Build structured Markdown command
+    selected_role = task_data.get('role', '').strip()
+    goal_config = task_data.get('goal_config', '').strip()
+    time_context = get_current_time_context()
+
+    enhanced_goal = format_markdown_command(
+        user_input=task_data['goal'],
+        role=selected_role if selected_role else None,
+        goal_config=goal_config if goal_config else None,
+        work_directory=work_directory,
+        time_context=time_context,
+        notification_command=notification_command
+    )
+
+    task_command_parts = [enhanced_goal]  # 增强的任务目标
+
+    # 添加权限模式
+    if task_data.get('skipPermissions', False):
+        task_command_parts.append('--dangerously-skip-permissions')
+
+    # 添加verbose日志模式
+    if task_data.get('verboseLogs', False):
+        task_command_parts.append('--verbose')
+
+    # 添加资源文件引用（使用 @ 语法）
+    if task_data.get('resources'):
+        resource_refs = []
+        for resource in task_data['resources']:
+            resource_refs.append(f"@{resource}")
+        # 将资源引用添加到命令内容末尾
+        if resource_refs:
+            task_command_parts.extend(resource_refs)
+
+    # 拼接完整命令
+    return ' '.join(task_command_parts)
+
 def ensure_mcp_services():
     """Ensure all MCP services are built - extensible for future services"""
     mcp_services_dir = Path(__file__).parent / 'mcp_services'
@@ -796,11 +851,9 @@ class PTYShellHandler:
         
         # session_id捕获相关状态
         self.task_id = None  # 当前执行的任务ID
-        self.session_id_captured = False  # 是否已经捕获过session_id
-        self.file_monitor_thread = None  # 文件监控线程
-        self.file_monitor_running = False  # 文件监控运行状态
-        self.project_path = None  # 项目路径，用于文件监控
+        self.project_path = None  # 项目路径
         self.current_session_id = None  # 当前任务的sessionId，用于检测变化
+        self.json_line_buffer = ""  # JSON行缓冲区，处理分割的JSON输出
     
     def is_running(self):
         """检查PTY进程是否正在运行"""
@@ -809,17 +862,17 @@ class PTYShellHandler:
                 self.running and 
                 self.master_fd is not None)
     
-    async def start_shell(self, websocket: WebSocket, project_path: str, session_id: str = None, has_session: bool = False, cols: int = 80, rows: int = 24, initial_command: str = None, task_id: str = None):
+    async def start_shell(self, websocket: WebSocket, project_path: str, session_id: str = None, has_session: bool = False, cols: int = 80, rows: int = 24, initial_command: str = None, task_id: str = None, execution_mode: str = 'interactive'):
         """启动PTY shell进程"""
         # 设置task_id和project_path用于session_id捕获
         self.task_id = task_id
         self.project_path = project_path
         if task_id:
             logger.info(f"Set task ID for session_id capture: {task_id}")
+            logger.info(f"Task execution mode: {execution_mode}")
             # 初始化current_session_id用于检测变化
             self.current_session_id = session_id
-            # 启动文件监控来捕获session_id
-            self._start_file_monitor()
+            # 使用JSON输出解析来捕获session_id
         
         # 如果已经有进程在运行，先清理
         if self.is_running():
@@ -851,12 +904,12 @@ class PTYShellHandler:
                     command_content = command_content[7:].strip()  # Remove "claude " (7 characters)
                 elif command_content.startswith("claude"):
                     command_content = command_content[6:].strip()  # Remove "claude" (6 characters)
-                
+
                 # 查找最后一个以--开头的参数位置来分离主命令和参数
                 import re
                 # 查找所有--参数的位置
                 param_matches = list(re.finditer(r'\s(--\S+)', command_content))
-                
+
                 if param_matches:
                     # 找到第一个参数的位置
                     first_param_pos = param_matches[0].start()
@@ -900,8 +953,6 @@ class PTYShellHandler:
                 else:
                     shell_command = f'cd "{project_path}" && "{claude_executable}"'
                 logger.info(f"Starting new Claude session: \"{claude_executable}\"")
-            
-            # 注意：不再需要添加JSON参数，session_id通过文件监控获取
             
             # 设置正确的终端环境变量 - 使用实际尺寸和UTF-8编码
             env = os.environ.copy()
@@ -1087,8 +1138,8 @@ class PTYShellHandler:
                         # 启用简化的输出处理，保留ANSI颜色序列
                         processed_output = self._simple_output_filter(raw_output)
 
-                        # SessionId检测 - 增强原有文件监控机制
-                        if self.task_id and processed_output:
+                        # SessionId检测 - 对所有PTY输出进行检测
+                        if raw_output:
                             self._check_session_id_in_output(raw_output)
                         
                         # 调试日志
@@ -1634,9 +1685,8 @@ class PTYShellHandler:
         logger.info("Cleaning PTY Shell resources...")
         
         self.running = False
-        
-        # 停止文件监控
-        self._stop_file_monitor()
+
+        # JSON输出解析，无需清理文件监控
         
         # 等待读取线程结束
         if self.read_thread and self.read_thread.is_alive():
@@ -1665,114 +1715,40 @@ class PTYShellHandler:
         logger.info("PTY Shell resource cleanup completed")
     
     
-    def _start_file_monitor(self):
-        """启动文件监控来捕获session_id"""
-        if self.file_monitor_running:
-            return
-        
-        import threading
-        self.file_monitor_running = True
-        self.file_monitor_thread = threading.Thread(
-            target=self._file_monitor_worker,
-            daemon=True
-        )
-        self.file_monitor_thread.start()
-        logger.info(f"Starting file monitoring for session_id capture (task: {self.task_id})")
-    
-    def _stop_file_monitor(self):
-        """停止文件监控"""
-        self.file_monitor_running = False
-        if self.file_monitor_thread and self.file_monitor_thread.is_alive():
-            self.file_monitor_thread.join(timeout=2.0)
-        logger.info("File monitoring stopped")
-    
-    def _file_monitor_worker(self):
-        """文件监控工作线程"""
-        import time
-        from pathlib import Path
-        
-        try:
-            # Claude CLI会话文件目录
-            claude_dir = Path.home() / ".claude" / "projects"
-            
-            # 构建项目路径对应的文件路径
-            # 例如: /home/user -> -home-user
-            if self.project_path:
-                project_file_path = self.project_path.replace("/", "-")
-                session_dir = claude_dir / project_file_path
-            else:
-                # 默认监控所有项目目录
-                session_dir = claude_dir
-            
-            logger.info(f"Monitoring directory: {session_dir}")
-            
-            # 记录监控开始时间
-            start_time = time.time()
-            
-            # 监控最多30秒
-            while self.file_monitor_running and time.time() - start_time < 30:
-                if not self.session_id_captured:
-                    session_id = self._scan_for_session_files(session_dir)
-                    if session_id:
-                        # 找到session_id，保存到任务记录
-                        try:
-                            success = task_scheduler.update_task_session_id(self.task_id, session_id)
-                            if success:
-                                logger.info(f"File monitoring successfully captured session_id: {session_id} (task: {self.task_id})")
-                                self.session_id_captured = True
-                                
-                                # 通知前端任务数据已更新，需要刷新任务列表
-                                try:
-                                    # 使用saved事件循环发送WebSocket消息
-                                    if hasattr(self, 'loop') and self.loop and not self.loop.is_closed():
-                                        # 获取WebSocket管理器
-                                        websocket_manager = getattr(task_scheduler, 'websocket_manager', None)
-                                        if websocket_manager:
-                                            # 在主事件循环中发送广播消息
-                                            import asyncio
-                                            future = asyncio.run_coroutine_threadsafe(
-                                                websocket_manager.broadcast({
-                                                    'type': 'task-session-captured',
-                                                    'taskId': self.task_id,
-                                                    'sessionId': session_id,
-                                                    'message': f"任务会话已捕获，可以继续任务"
-                                                }),
-                                                self.loop
-                                            )
-                                            future.result(timeout=5)
-                                            logger.info(f"Notified frontend to refresh task data: {self.task_id}")
-                                        else:
-                                            logger.warning(" WebSocket管理器不可用，无法通知前端")
-                                    else:
-                                        logger.warning(" 事件循环不可用，无法通知前端")
-                                except Exception as notify_error:
-                                    logger.error(f" 通知前端失败: {notify_error}")
-                                
-                                break
-                            else:
-                                logger.warning(f" 保存任务 {self.task_id} 的session_id失败")
-                        except Exception as e:
-                            logger.error(f" 保存任务session_id时出错: {e}")
-                
-                # 每0.5秒检查一次
-                time.sleep(0.5)
-            
-            if not self.session_id_captured:
-                logger.warning(f" 文件监控超时，未能捕获session_id (任务: {self.task_id})")
-                
-        except Exception as e:
-            logger.error(f" 文件监控出错: {e}")
-        finally:
-            self.file_monitor_running = False
 
     def _check_session_id_in_output(self, output_text: str):
-        """Check for sessionId changes in PTY output"""
+        """Check for sessionId changes in PTY output - enhanced with JSON line buffering"""
         try:
             from session_id_utils import SessionIdExtractor
 
-            # Extract session ID from output
-            session_id = SessionIdExtractor.extract_session_from_output(output_text)
+            # Add to JSON line buffer
+            self.json_line_buffer += output_text
 
+            # Process complete JSON lines in buffer
+            lines = self.json_line_buffer.split('\n')
+            # Keep the last incomplete line in buffer
+            self.json_line_buffer = lines[-1]
+            complete_lines = lines[:-1]
+
+            session_id = None
+
+            # First try to extract from complete lines (JSON parsing)
+            for line in complete_lines:
+                line = line.strip()
+                if line.startswith('{') and line.endswith('}'):
+                    temp_session = SessionIdExtractor.extract_session_from_output(line)
+                    if temp_session:
+                        session_id = temp_session
+                        logger.info(f"Successfully extracted sessionId from JSON line: {temp_session}")
+                        break
+
+            # If no JSON sessionId found, try full text extraction as fallback
+            if not session_id:
+                session_id = SessionIdExtractor.extract_session_from_output(output_text)
+                if session_id:
+                    logger.info(f"Extracted sessionId from text fallback: {session_id}")
+
+            # Update sessionId if changed
             if session_id and session_id != self.current_session_id:
                 logger.info(f"Detected session ID change in PTY output: {self.current_session_id} -> {session_id}")
 
@@ -1784,7 +1760,7 @@ class PTYShellHandler:
                 self._update_task_session_id(session_id)
 
         except Exception as e:
-            logger.debug(f"Error checking session ID in output: {e}")
+            logger.error(f"Error checking session ID in output: {e}")
 
     def _update_task_session_id(self, new_session_id: str):
         """Update task session ID and notify frontend"""
@@ -1831,37 +1807,6 @@ class PTYShellHandler:
         except Exception as e:
             logger.debug(f"Error notifying frontend about session ID update: {e}")
     
-    def _scan_for_session_files(self, session_dir):
-        """扫描会话文件，提取session_id"""
-        import re
-        import time
-        from pathlib import Path
-        
-        try:
-            if not session_dir.exists():
-                return None
-            
-            # 查找新创建的.jsonl文件
-            current_time = time.time()
-            for file_path in session_dir.glob("*.jsonl"):
-                # 检查文件创建时间（最近10秒内创建的）
-                try:
-                    file_stat = file_path.stat()
-                    if current_time - file_stat.st_ctime < 10:
-                        # 从文件名提取session_id
-                        # 格式: 891a2f24-0dcb-41a3-ba70-8dff44e3eb42.jsonl
-                        filename = file_path.stem
-                        if re.match(r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', filename):
-                            logger.info(f"Getting session_id from filename: {filename} (file: {file_path.name})")
-                            return filename
-                except:
-                    continue
-            
-            return None
-            
-        except Exception as e:
-            logger.debug(f"扫描会话文件出错: {e}")
-            return None
 
 manager = ConnectionManager()
 
@@ -1878,6 +1823,72 @@ logger.info("Application scanner initialized")
 # 初始化MCP配置生成器
 mcp_config_generator = MCPConfigGenerator()
 logger.info("MCP configuration generator initialized")
+
+# Session Task Mapper for Claude Code Hook Integration
+class SessionTaskMapper:
+    """Maps Claude Code session IDs to internal task IDs using hook events"""
+
+    def __init__(self):
+        self.session_to_task = {}  # session_id -> task_id
+        self.task_to_session = {}  # task_id -> session_id
+        self.pending_tasks = []    # FIFO queue for task-session mapping
+        logger.info("SessionTaskMapper initialized")
+
+    def add_pending_task(self, task_id: str):
+        """Add a task to pending queue, expecting a session creation soon"""
+        self.pending_tasks.append(task_id)
+        logger.info(f"Added pending task to mapping queue: {task_id}")
+
+    def map_session_to_task(self, session_id: str, source: str = None) -> bool:
+        """Map a session to task - handle both new sessions and session updates"""
+
+        # Check if session already exists (for compact, resume with new ID, etc.)
+        existing_task = self.session_to_task.get(session_id)
+        if existing_task:
+            logger.info(f"Session {session_id} already mapped to task {existing_task} (source: {source})")
+            return True
+
+        # For new sessions, try to map to pending task
+        if not self.pending_tasks:
+            # If no pending tasks but this might be a session update, try to find related task
+            if source in ['compact', 'resume']:
+                logger.info(f"No pending tasks for {source} operation with session {session_id} - treating as session update")
+                return False  # Let caller handle this case
+            else:
+                logger.warning(f"No pending tasks to map session {session_id} (source: {source})")
+                return False
+
+        # Get oldest pending task (FIFO)
+        task_id = self.pending_tasks.pop(0)
+
+        # Create bidirectional mapping
+        self.session_to_task[session_id] = task_id
+        self.task_to_session[task_id] = session_id
+
+        logger.info(f"Mapped session {session_id} to task {task_id} (source: {source})")
+        return True
+
+    def get_task_for_session(self, session_id: str) -> str:
+        """Get task ID for a given session ID"""
+        return self.session_to_task.get(session_id)
+
+    def get_session_for_task(self, task_id: str) -> str:
+        """Get session ID for a given task ID"""
+        return self.task_to_session.get(task_id)
+
+    def clear_mapping(self, task_id: str = None, session_id: str = None):
+        """Clear mapping by task_id or session_id"""
+        if task_id and task_id in self.task_to_session:
+            mapped_session = self.task_to_session.pop(task_id)
+            self.session_to_task.pop(mapped_session, None)
+            logger.info(f"Cleared mapping for task {task_id}")
+        elif session_id and session_id in self.session_to_task:
+            mapped_task = self.session_to_task.pop(session_id)
+            self.task_to_session.pop(mapped_task, None)
+            logger.info(f"Cleared mapping for session {session_id}")
+
+# Initialize session task mapper
+session_mapper = SessionTaskMapper()
 
 # 文件管理辅助函数
 async def build_file_tree(path: Path, max_depth: int = 3, current_depth: int = 0) -> List[Dict[str, Any]]:
@@ -4010,6 +4021,84 @@ async def remove_temporary_hook(request: Request):
             content={"error": "移除临时hooks失败", "details": str(e)}
         )
 
+@app.post("/api/session-mapping")
+async def handle_session_mapping(request: Request):
+    """Handle Claude Code SessionStart hook events for session-task mapping"""
+    try:
+        data = await request.json()
+
+        session_id = data.get('session_id')
+        source = data.get('source')
+        hook_event_name = data.get('hook_event_name')
+
+        logger.info(f"Received session mapping: session_id={session_id}, source={source}, hook={hook_event_name}")
+
+        if not session_id:
+            return JSONResponse(
+                status_code=400,
+                content={"error": "Missing session_id"}
+            )
+
+        # Attempt to map session to pending task
+        success = session_mapper.map_session_to_task(session_id, source)
+
+        if success:
+            task_id = session_mapper.get_task_for_session(session_id)
+            logger.info(f"Successfully mapped session {session_id} to task {task_id}")
+
+            # Update task sessionId in database (only for new sessions, not resume)
+            if source != 'resume':
+                try:
+                    tasks_storage = TasksStorage()
+                    tasks_storage.update_task_session_id(task_id, session_id)
+                    logger.info(f"Updated task {task_id} sessionId in database: {session_id}")
+                except Exception as e:
+                    logger.error(f"Failed to update task sessionId in database: {e}")
+            else:
+                logger.info(f"Skipped sessionId update for resume operation: {session_id} -> {task_id}")
+
+            # Notify frontend about session mapping via WebSocket
+            try:
+                await manager.broadcast({
+                    'type': 'session-mapped',
+                    'session_id': session_id,
+                    'task_id': task_id,
+                    'source': source
+                })
+            except Exception as ws_error:
+                logger.warning(f"Failed to broadcast session mapping: {ws_error}")
+
+            return JSONResponse(content={
+                "success": True,
+                "message": "Session mapped successfully",
+                "task_id": task_id,
+                "session_id": session_id
+            })
+        else:
+            # For certain source types, not having pending tasks is expected
+            if source in ['compact', 'resume']:
+                logger.info(f"Session {session_id} mapping skipped for {source} operation - no active task mapping needed")
+                return JSONResponse(content={
+                    "success": True,
+                    "message": f"Session {source} operation acknowledged",
+                    "session_id": session_id,
+                    "mapped": False
+                })
+            else:
+                logger.warning(f"Failed to map session {session_id} - no pending tasks")
+                return JSONResponse(content={
+                    "success": False,
+                    "message": "No pending tasks to map session to",
+                    "session_id": session_id
+                })
+
+    except Exception as e:
+        logger.error(f"Error handling session mapping: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"error": "Session mapping failed", "details": str(e)}
+        )
+
 @app.get("/api/hooks/status")
 async def get_hook_status():
     """获取当前hooks配置状态"""
@@ -4083,10 +4172,12 @@ async def get_tasks():
                 continue
                 
             # 判断是否为移动端任务
+            # More precise mobile task detection - check if it's truly a mobile-originated task
             is_mobile = (
-                task_data.get('source') == 'mobile' or 
-                task_data.get('taskType') == 'mobile' or 
-                task_data.get('type') == 'mobile'
+                task_data.get('id', '').startswith('mobile_task_') or
+                (task_data.get('source') == 'mobile' and
+                 task_data.get('taskType') == 'mobile' and
+                 task_data.get('type') == 'mobile')
             )
             
             if is_mobile:
@@ -4126,7 +4217,12 @@ async def get_tasks():
                     "workDirectory": task_data.get('workDirectory', ''),
                     "scheduleFrequency": task_data.get('scheduleFrequency', 'immediate'),
                     "scheduleTime": task_data.get('scheduleTime', ''),
-                    "enabled": task_data.get('enabled', True)
+                    "enabled": task_data.get('enabled', True),
+                    "goal_config": task_data.get('goal_config', ''),
+                    "executionMode": task_data.get('executionMode', 'interactive'),
+                    "skipPermissions": task_data.get('skipPermissions', False),
+                    "verboseLogs": task_data.get('verboseLogs', False),
+                    "resources": task_data.get('resources', [])
                 }
                 pc_tasks.append(formatted_task)
         
@@ -4169,10 +4265,12 @@ async def get_task_by_id(task_id: str):
             )
         
         # 判断任务类型并格式化返回
+        # More precise mobile task detection - check if it's truly a mobile-originated task
         is_mobile = (
-            task_data.get('source') == 'mobile' or 
-            task_data.get('taskType') == 'mobile' or 
-            task_data.get('type') == 'mobile'
+            task_data.get('id', '').startswith('mobile_task_') or
+            (task_data.get('source') == 'mobile' and
+             task_data.get('taskType') == 'mobile' and
+             task_data.get('type') == 'mobile')
         )
         
         if is_mobile:
@@ -4211,7 +4309,12 @@ async def get_task_by_id(task_id: str):
                 "workDirectory": task_data.get('workDirectory', ''),
                 "scheduleFrequency": task_data.get('scheduleFrequency', 'immediate'),
                 "scheduleTime": task_data.get('scheduleTime', ''),
-                "enabled": task_data.get('enabled', True)
+                "enabled": task_data.get('enabled', True),
+                "goal_config": task_data.get('goal_config', ''),
+                "executionMode": task_data.get('executionMode', 'interactive'),
+                "skipPermissions": task_data.get('skipPermissions', False),
+                "verboseLogs": task_data.get('verboseLogs', False),
+                "resources": task_data.get('resources', [])
             }
         
         logger.info(f"Single task API returned: {task_id} (type: {formatted_task['type']}, sessionId: {formatted_task.get('sessionId')})")
@@ -4235,6 +4338,65 @@ async def get_scheduler_status():
         return JSONResponse(
             status_code=500,
             content={"error": "获取调度器状态失败", "details": str(e)}
+        )
+
+@app.get("/api/tasks/{task_id}/status")
+async def get_task_status(task_id: str):
+    """获取任务执行状态API - 支持后台任务状态监控"""
+    try:
+        logger.info(f"Getting status for task: {task_id}")
+
+        # 从统一存储获取任务数据
+        from tasks_storage import TasksStorage
+        storage = TasksStorage()
+        existing_tasks = storage.load_tasks()
+
+        # 查找指定任务
+        task = None
+        for t in existing_tasks:
+            if t.get('id') == task_id:
+                task = t
+                break
+
+        if not task:
+            return JSONResponse(
+                status_code=404,
+                content={"error": "任务不存在"}
+            )
+
+        # 构建状态响应
+        status_response = {
+            "id": task.get("id"),
+            "name": task.get("name"),
+            "status": task.get("status", "pending"),  # pending, running, completed, failed
+            "scheduleFrequency": task.get("scheduleFrequency", "immediate"),
+            "executionMode": task.get("executionMode", "interactive"),
+            "createdAt": task.get("createdAt"),
+            "lastRun": task.get("lastRun"),
+            "completed_at": task.get("completed_at"),
+            "exit_code": task.get("exit_code"),
+            "sessionId": task.get("sessionId"),
+            "hasResult": bool(task.get("sessionId") or task.get("completed_at")),
+            "output_preview": task.get("output", "")[:200] if task.get("output") else None,  # First 200 chars
+            "error_preview": task.get("error", "")[:200] if task.get("error") else None  # First 200 chars
+        }
+
+        # 添加结果API链接
+        if task.get("sessionId"):
+            # Use more precise mobile task detection
+            if task.get("id", "").startswith("mobile_task_"):
+                status_response["resultApi"] = f"/api/mobile/task-result/{task_id}"
+            else:
+                status_response["resultApi"] = f"/api/task-files/{task_id}"
+
+        logger.info(f"Task {task_id} status: {status_response['status']}")
+        return JSONResponse(content=status_response)
+
+    except Exception as e:
+        logger.error(f"获取任务状态时出错: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"error": "获取任务状态失败", "details": str(e)}
         )
 
 @app.post("/api/tasks")
@@ -4275,84 +4437,72 @@ async def create_task(request: Request):
         if not success:
             logger.warning(f"任务 {task_data['name']} 未添加到调度器，但仍返回成功响应")
         
-        # 如果是立即执行任务，直接创建页签执行
-        if task_data.get('executionMode') == 'immediate':
+        # 如果是立即执行任务，根据执行模式分流
+        if task_data.get('scheduleFrequency') == 'immediate':
             try:
                 # 获取刚创建的任务对象以获取工作目录
                 created_task = task_scheduler.all_tasks.get(task_data['id'])
                 if created_task:
-                    # Prepare notification command if enabled
-                    notification_command = None
-                    notification_settings = task_data.get('notificationSettings', {})
-                    if notification_settings.get('enabled') and notification_settings.get('methods'):
-                        methods = notification_settings['methods']
-                        if methods:
-                            notification_types = []
-                            if 'email' in methods:
-                                notification_types.append('email notification')
-                            if 'wechat' in methods:
-                                notification_types.append('WeChat notification')
-                            
-                            if notification_types:
-                                notification_command = f"After task completion, send the complete detailed results and all generated content to me using {' and '.join(notification_types)} tools. Include all detailed analysis, findings, data, and generated materials directly in the notification content itself - do not just send a summary that requires me to check local files. The notification should contain the full content so I don't need to access any local files. For email notifications, format the content as clean HTML with proper structure, headers, and readable formatting instead of raw Markdown. For WeChat notifications, provide the full detailed content in a well-structured readable format."
-                    
-                    # Build structured Markdown command
+                    # 使用统一的命令构建函数
+                    full_task_command = build_task_command(task_data, created_task.work_directory)
+
+                    # 记录角色信息（保持原有日志）
                     selected_role = task_data.get('role', '').strip()
-                    goal_config = task_data.get('goal_config', '').strip()
-                    time_context = get_current_time_context()
-                    
-                    enhanced_goal = format_markdown_command(
-                        user_input=task_data['goal'],
-                        role=selected_role if selected_role else None,
-                        goal_config=goal_config if goal_config else None,
-                        work_directory=created_task.work_directory,
-                        time_context=time_context,
-                        notification_command=notification_command
-                    )
-                    
                     if selected_role:
                         logger.info(f"Added role agent call: {selected_role}")
-                    
+
                     # 调试日志：确认task_data的内容
                     logger.info(f"Immediate task execution debug: verboseLogs={task_data.get('verboseLogs', 'KEY_NOT_FOUND')}, skipPermissions={task_data.get('skipPermissions', 'KEY_NOT_FOUND')}")
                     logger.info(f"task_data all keys: {list(task_data.keys())}")
-                    
-                    task_command_parts = [enhanced_goal]  # 增强的任务目标
-                    
-                    # 添加权限模式
-                    if task_data.get('skipPermissions', False):
-                        task_command_parts.append('--dangerously-skip-permissions')
-                    
-                    # 添加verbose日志模式
-                    if task_data.get('verboseLogs', False):
-                        task_command_parts.append('--verbose')
-                        logger.info(f"Batch execution added --verbose parameter to command")
-                    
-                    # 添加资源文件引用（使用 @ 语法）
-                    if task_data.get('resources'):
-                        resource_refs = []
-                        for resource in task_data['resources']:
-                            resource_refs.append(f"@{resource}")
-                        # 将资源引用添加到命令内容末尾
-                        if resource_refs:
-                            task_command_parts.extend(resource_refs)
-                    
-                    # 拼接完整命令
-                    full_task_command = ' '.join(task_command_parts)
-                    
-                    # 发送创建页签消息给前端
-                    session_data = {
-                        'type': 'create-task-tab',
-                        'taskId': task_data['id'],
-                        'taskName': f" {task_data['name']}",
-                        'initialCommand': full_task_command,
-                        'workingDirectory': os.path.expanduser('~'),
-                        'immediateExecution': True
-                    }
-                    
-                    # 通过WebSocket广播给所有连接的客户端
-                    await manager.broadcast(session_data)
-                    logger.info(f"Immediate execution task {task_data['name']} tab creation request sent")
+
+                    # 根据执行模式分流处理
+                    execution_mode = task_data.get('executionMode', 'interactive')
+                    logger.info(f"PC task {task_data['id']} execution mode: {execution_mode}")
+
+                    if execution_mode == 'background':
+                        # 后台模式：使用mobile handler异步执行
+                        logger.info(f"PC task {task_data['id']} using background execution mode")
+
+                        # 导入mobile handler
+                        from mobile_task_handler import MobileTaskHandler
+                        mobile_handler = MobileTaskHandler()
+
+                        # 使用mobile handler的异步执行逻辑
+                        asyncio.create_task(
+                            mobile_handler.execute_mobile_task(
+                                goal=task_data['goal'],
+                                role=task_data.get('role'),
+                                name=task_data.get('name'),
+                                description=task_data.get('description'),
+                                goal_config=task_data.get('goal_config'),
+                                resources=task_data.get('resources', []),
+                                execution_mode=execution_mode,
+                                schedule_settings=task_data.get('scheduleSettings'),
+                                notification_settings=task_data.get('notificationSettings'),
+                                work_directory=created_task.work_directory,
+                                task_id=task_data['id'],
+                                skip_permissions=task_data.get('skipPermissions', False),
+                                verbose_logs=task_data.get('verboseLogs', False)
+                            )
+                        )
+                        logger.info(f"PC task {task_data['id']} started in background mode")
+                    else:
+                        # 交互模式：创建页签执行
+                        # Add task to pending queue for session mapping
+                        session_mapper.add_pending_task(task_data['id'])
+
+                        session_data = {
+                            'type': 'create-task-tab',
+                            'taskId': task_data['id'],
+                            'taskName': f" {task_data['name']}",
+                            'initialCommand': full_task_command,
+                            'workingDirectory': os.path.expanduser('~'),
+                            'immediateExecution': True
+                        }
+
+                        # 通过WebSocket广播给所有连接的客户端
+                        await manager.broadcast(session_data)
+                        logger.info(f"PC task {task_data['id']} tab creation request sent (interactive mode), added to session mapping queue")
                 else:
                     logger.warning(f" 未找到刚创建的任务: {task_data['id']}")
                     
@@ -5187,6 +5337,9 @@ async def chat_websocket_endpoint(websocket: WebSocket):
                 logger.info(f"Final task_command_parts: {task_command_parts}")
                 logger.info(f"Final command length: {len(full_task_command)} characters")
                 
+                # Add task to pending queue for session mapping
+                session_mapper.add_pending_task(task_id)
+
                 # 通知前端创建任务页签，同时传递完整的初始命令
                 await manager.broadcast({
                     'type': 'create-task-tab',
@@ -5247,6 +5400,9 @@ async def chat_websocket_endpoint(websocket: WebSocket):
                         'category': 'validation'
                     }, websocket)
                 else:
+                    # Add task to pending queue for session mapping (resume may create new session)
+                    session_mapper.add_pending_task(task_id)
+
                     # 通知前端创建恢复会话的页签
                     await manager.broadcast({
                         'type': 'create-task-tab',
@@ -5371,6 +5527,7 @@ async def shell_websocket_endpoint(websocket: WebSocket):
                 initial_command = message.get('initialCommand')  # 添加初始命令参数
                 project_name = message.get('projectName')  # 添加项目名称参数
                 task_id = message.get('taskId')  # 任务ID，用于session_id捕获
+                execution_mode = message.get('executionMode', 'interactive')  # 添加执行模式参数
                 cols = message.get('cols', 80)
                 rows = message.get('rows', 24)
                 
@@ -5378,6 +5535,7 @@ async def shell_websocket_endpoint(websocket: WebSocket):
                 logger.info(f"Project path: {project_path}")
                 logger.info(f"Session info: {'restore session ' + str(session_id) if has_session else 'new session'}")
                 logger.info(f"Initial command: {initial_command or 'claude'}")
+                logger.info(f"Execution mode: {execution_mode}")
                 logger.info(f"Terminal size: {cols}x{rows}")
                 
                 # 检查项目路径是否存在
@@ -5396,7 +5554,7 @@ async def shell_websocket_endpoint(websocket: WebSocket):
                     pty_handler.cleanup()
                 
                 # 启动PTY Shell，传递初始命令参数和task_id
-                success = await pty_handler.start_shell(websocket, project_path, session_id, has_session, cols, rows, initial_command, task_id)
+                success = await pty_handler.start_shell(websocket, project_path, session_id, has_session, cols, rows, initial_command, task_id, execution_mode)
                 # 如果启动成功，尺寸已在初始化时设置，无需额外调用resize
             
             elif message.get('type') == 'input':
@@ -5410,6 +5568,25 @@ async def shell_websocket_endpoint(websocket: WebSocket):
                 rows = message.get('rows', 24)
                 logger.info(f"Terminal resized: {cols}x{rows}")
                 await pty_handler.resize_terminal(cols, rows)
+
+            elif message.get('type') == 'terminate':
+                # 处理会话终止请求
+                session_id = message.get('sessionId')
+                reason = message.get('reason', 'unknown')
+                logger.info(f"✅ [PTY SHELL] 收到终止请求: {session_id}, 原因: {reason}")
+
+                # 立即清理PTY进程
+                pty_handler.cleanup()
+
+                # 发送确认消息
+                await websocket.send_text(json.dumps({
+                    'type': 'terminated',
+                    'sessionId': session_id,
+                    'reason': reason
+                }))
+
+                logger.info(f"✅ [PTY SHELL] 会话已终止: {session_id}")
+                break  # 退出WebSocket循环
                 
     except WebSocketDisconnect:
         # 用户关闭页签是正常行为，使用debug级别日志
@@ -5458,7 +5635,7 @@ async def execute_mobile_task_async(task_data: dict):
             description=task_data.get('description'),
             goal_config=task_data.get('goal_config'),
             resources=task_data.get('resources', []),
-            execution_mode=task_data.get('executionMode', 'immediate'),
+            execution_mode=task_data.get('executionMode', 'interactive'),
             schedule_settings=task_data.get('scheduleSettings'),
             notification_settings=task_data.get('notificationSettings'),
             work_directory=task_data.get('workDirectory'),
@@ -5509,8 +5686,7 @@ async def create_mobile_task(request: Request):
         # Generate task ID and creation time like PC tasks
         task_data['id'] = f"mobile_task_{int(datetime.now().timestamp())}_{uuid.uuid4().hex[:8]}"
         task_data['createdAt'] = datetime.now().isoformat()
-        task_data['taskType'] = 'mobile'  # Mark as mobile task
-        task_data['type'] = 'mobile'  # Frontend compatibility field
+        # Mobile task identification will be based on ID prefix: mobile_task_*
         
         # Ensure data completeness like PC tasks
         if 'enabled' not in task_data:
@@ -5526,7 +5702,7 @@ async def create_mobile_task(request: Request):
         if 'goal_config' not in task_data:
             task_data['goal_config'] = task_data.get('goalConfig', '')
         if 'executionMode' not in task_data:
-            task_data['executionMode'] = 'immediate'
+            task_data['executionMode'] = 'interactive'  # Only set default for new mobile tasks
         
         # Ensure notificationSettings are preserved
         if 'notificationSettings' not in task_data:
@@ -5548,7 +5724,7 @@ async def create_mobile_task(request: Request):
             logger.warning(f"Failed to store mobile task {task_data['id']}: {e}, continuing with execution")
         
         # For immediate execution mobile tasks, start async execution
-        if task_data.get('executionMode') == 'immediate':
+        if task_data.get('scheduleFrequency') == 'immediate':
             # Start async execution without waiting
             asyncio.create_task(execute_mobile_task_async(task_data))
             logger.info(f"Mobile task {task_data['id']} started executing asynchronously")
