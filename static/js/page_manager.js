@@ -36,10 +36,7 @@ class PageManager {
     initializePageManager() {
         this.isInitialized = true;
 
-        // Add page identifier to page for debugging (in development mode)
-        if (window.location.hostname === 'localhost') {
-            this.addPageIdDebugInfo();
-        }
+        // Page identifier is kept internal for routing, not displayed on UI
 
         console.log('PageManager initialized with pageId:', this.pageId);
     }
@@ -66,28 +63,29 @@ class PageManager {
     /**
      * Add debug information to page (development only)
      */
-    addPageIdDebugInfo() {
-        // Create debug info element
-        const debugElement = document.createElement('div');
-        debugElement.id = 'page-debug-info';
-        debugElement.style.cssText = `
-            position: fixed;
-            bottom: 10px;
-            right: 10px;
-            background: rgba(0, 0, 0, 0.8);
-            color: white;
-            padding: 5px 10px;
-            border-radius: 4px;
-            font-size: 12px;
-            font-family: monospace;
-            z-index: 10000;
-            pointer-events: none;
-        `;
-        debugElement.textContent = `PageID: ${this.pageId.substring(5, 15)}...`;
-
-        // Add to page
-        document.body.appendChild(debugElement);
-    }
+    // PageID debug display functionality removed - kept internal for routing only
+    // addPageIdDebugInfo() {
+    //     // Create debug info element
+    //     const debugElement = document.createElement('div');
+    //     debugElement.id = 'page-debug-info';
+    //     debugElement.style.cssText = `
+    //         position: fixed;
+    //         bottom: 10px;
+    //         right: 10px;
+    //         background: rgba(0, 0, 0, 0.8);
+    //         color: white;
+    //         padding: 5px 10px;
+    //         border-radius: 4px;
+    //         font-size: 12px;
+    //         font-family: monospace;
+    //         z-index: 10000;
+    //         pointer-events: none;
+    //     `;
+    //     debugElement.textContent = `PageID: ${this.pageId.substring(5, 15)}...`;
+    //
+    //     // Add to page
+    //     document.body.appendChild(debugElement);
+    // }
 
     /**
      * Reset page ID (for testing purposes)
@@ -97,11 +95,7 @@ class PageManager {
         this.pageId = this.getOrCreatePageId();
         console.log('PageManager: Reset to new pageId:', this.pageId);
 
-        // Update debug info if exists
-        const debugElement = document.getElementById('page-debug-info');
-        if (debugElement) {
-            debugElement.textContent = `PageID: ${this.pageId.substring(5, 15)}...`;
-        }
+        // PageID is kept internal, no UI update needed
 
         return this.pageId;
     }

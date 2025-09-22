@@ -969,3 +969,96 @@ form, fieldset, legend, label {
 .public-link-actions button:first-child:hover {
   background: hsl(var(--primary) / 0.9);
 }
+
+/* 后台任务通知样式 */
+.task-notification {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 9999;
+  min-width: 320px;
+  max-width: 400px;
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius);
+  box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.15);
+  padding: 16px;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  animation: slideInRight 0.3s ease-out;
+}
+
+.task-notification.success {
+  border-left: 4px solid hsl(var(--primary));
+}
+
+.task-notification.error {
+  border-left: 4px solid hsl(var(--destructive));
+}
+
+.notification-content {
+  flex: 1;
+}
+
+.notification-content h4 {
+  margin: 0 0 4px 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: hsl(var(--foreground));
+}
+
+.notification-content p {
+  margin: 0 0 8px 0;
+  font-size: 13px;
+  color: hsl(var(--muted-foreground));
+  line-height: 1.4;
+}
+
+.notification-content button {
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  border: none;
+  border-radius: calc(var(--radius) - 2px);
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 150ms ease;
+}
+
+.notification-content button:hover {
+  background: hsl(var(--primary) / 0.9);
+}
+
+.notification-close {
+  background: none;
+  border: none;
+  color: hsl(var(--muted-foreground));
+  cursor: pointer;
+  font-size: 18px;
+  font-weight: 500;
+  line-height: 1;
+  padding: 0;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 150ms ease;
+}
+
+.notification-close:hover {
+  color: hsl(var(--foreground));
+}
+
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}

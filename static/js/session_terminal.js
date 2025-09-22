@@ -55,13 +55,13 @@ class SessionTerminal {
     initEventListeners() {
         // 监听会话切换事件
         document.addEventListener('sessionSwitch', (event) => {
-            const { sessionId, project, sessionName, originalSession, initialCommand, resumeSession, originalSessionId, taskId } = event.detail;
+            const { sessionId, project, sessionName, originalSession, initialCommand, resumeSession, originalSessionId, taskId, executionMode } = event.detail;
             // 如果是恢复会话，创建一个特殊的originalSession对象
             let sessionToRestore = originalSession;
             if (resumeSession && originalSessionId) {
                 sessionToRestore = { id: originalSessionId };
             }
-            this.switchToSession(sessionId, project, sessionName, sessionToRestore, initialCommand, taskId);
+            this.switchToSession(sessionId, project, sessionName, sessionToRestore, initialCommand, taskId, executionMode);
         });
 
         // 监听终端命令事件（来自文件抽屉）
@@ -113,7 +113,7 @@ class SessionTerminal {
     /**
      * 切换到指定会话
      */
-    async switchToSession(sessionId, project, sessionName, originalSession = null, initialCommand = null, taskId = null) {
+    async switchToSession(sessionId, project, sessionName, originalSession = null, initialCommand = null, taskId = null, executionMode = 'interactive') {
         console.log('切换到会话终端:', sessionId, project.name, sessionName, originalSession?.id, '初始命令:', initialCommand, 'taskId:', taskId);
 
         this.activeSessionId = sessionId;
@@ -142,7 +142,7 @@ class SessionTerminal {
         
         // 如果连接不存在，建立连接
         if (!this.connections.has(sessionId)) {
-            await this.connectSession(sessionId, project, originalSession, initialCommand);
+            await this.connectSession(sessionId, project, originalSession, initialCommand, taskId, executionMode);
         }
     }
 
@@ -266,7 +266,7 @@ class SessionTerminal {
     /**
      * 连接会话到WebSocket - 添加连接状态锁防止重复连接
      */
-    async connectSession(sessionId, project, originalSession = null, initialCommand = null) {
+    async connectSession(sessionId, project, originalSession = null, initialCommand = null, taskId = null, executionMode = 'interactive') {
         // 检查是否正在连接中
         if (this.connectingStates.get(sessionId)) {
             console.warn('[WARN] 连接正在进行中，忽略重复请求', sessionId);
@@ -300,9 +300,8 @@ class SessionTerminal {
                 
                 console.log(`Sending fixed terminal size: ${fixedCols}x${fixedRows}`, sessionId);
                 
-                // 检查是否为任务执行（sessionId以task_开头）
-                const isTaskExecution = sessionId && sessionId.startsWith('task_');
-                const taskId = isTaskExecution ? sessionId : null;
+                // 使用传递的taskId或从sessionId推断（保持向后兼容性）
+                const finalTaskId = taskId || (sessionId && sessionId.startsWith('task_') ? sessionId : null);
                 
                 const initMessage = {
                     type: 'init',
@@ -310,7 +309,8 @@ class SessionTerminal {
                     sessionId: originalSession?.id || sessionId, // 使用原始会话ID或当前sessionId
                     hasSession: hasSession,
                     initialCommand: initialCommand, // 传递初始命令
-                    taskId: taskId, // 传递任务ID用于session_id捕获
+                    taskId: finalTaskId, // 使用修正后的taskId用于session_id捕获
+                    executionMode: executionMode, // 传递执行模式
                     cols: fixedCols,
                     rows: fixedRows
                 };
@@ -318,6 +318,7 @@ class SessionTerminal {
                 console.log('Sending init message to PTY Shell:', initMessage);
                 console.log('Final initialCommand being sent:', initialCommand);
                 console.log('initialCommand length:', initialCommand ? initialCommand.length : 0);
+                console.log('Task ID being sent to PTY:', finalTaskId, '(original taskId param:', taskId, ')');
                 
                 ws.send(JSON.stringify(initMessage));
                 

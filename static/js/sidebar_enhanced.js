@@ -967,23 +967,29 @@ class EnhancedSidebar {
     switchToSession(sessionId) {
         const sessionData = this.activeSessions.get(sessionId);
         if (!sessionData) return;
-        
+
         // 更新当前活跃会话
         this.activeSessionId = sessionId;
-        
+
         // 更新页签状态
         this.updateTabStates();
-        
-        // 通知其他组件
-        this.notifySessionSwitch(sessionData);
-        
-        // 通知页签状态变化
-        this.notifyTabStateChange();
-        
+
+        // 确保DOM已完全渲染后再通知终端连接
+        requestAnimationFrame(() => {
+            // 使用双重requestAnimationFrame确保所有DOM操作完成
+            requestAnimationFrame(() => {
+                // 通知其他组件
+                this.notifySessionSwitch(sessionData);
+
+                // 通知页签状态变化
+                this.notifyTabStateChange();
+            });
+        });
+
         // 更新项目列表显示
         this.renderProjects();
-        
-        console.log('切换到会话:', sessionId, sessionData.project.name, sessionData.sessionName);
+
+        console.log('✓ 切换到会话:', sessionId, sessionData.project.name, sessionData.sessionName);
     }
 
     /**
@@ -1013,16 +1019,18 @@ class EnhancedSidebar {
         }
         
         // 触发自定义事件，传递完整的会话信息
-        const event = new CustomEvent('sessionSwitch', { 
-            detail: { 
-                sessionId: this.activeSessionId,
+        const event = new CustomEvent('sessionSwitch', {
+            detail: {
+                sessionId: sessionData.sessionId || this.activeSessionId,  // 使用实际的sessionId
                 project: sessionData.project,
                 sessionName: sessionData.sessionName,
                 originalSession: sessionData.originalSession, // 传递原始会话信息用于恢复
                 initialCommand: sessionData.initialCommand, // 传递初始命令
                 resumeSession: sessionData.resumeSession, // 是否为恢复会话
-                originalSessionId: sessionData.originalSessionId // 原始会话ID用于恢复
-            } 
+                originalSessionId: sessionData.originalSessionId, // 原始会话ID用于恢复
+                taskId: sessionData.taskId || this.activeSessionId,  // 添加taskId标识
+                executionMode: sessionData.executionMode || 'interactive'  // 添加执行模式
+            }
         });
         document.dispatchEvent(event);
     }
@@ -2394,7 +2402,7 @@ class EnhancedSidebar {
     /**
      * 创建任务页签
      */
-    createTaskTab(taskId, taskName, initialCommand = null, workingDirectory = null, resumeSession = false, sessionId = null) {
+    createTaskTab(taskId, taskName, initialCommand = null, workingDirectory = null, resumeSession = false, sessionId = null, executionMode = 'background') {
         // 检查是否已存在相同taskId的页签
         if (this.sessionTabs) {
             const existingTab = this.sessionTabs.querySelector(`[data-task-id="${taskId}"]`);
@@ -2414,25 +2422,37 @@ class EnhancedSidebar {
                 displayName: resumeSession ? '继续任务' : '任务执行',
                 path: workingDirectory || ''  // 使用传递的工作目录
             },
-            sessionId: taskId,
+            sessionId: resumeSession && sessionId ? sessionId : taskId,  // 恢复会话时使用真实sessionId
             sessionName: taskName,
             isTask: true,
             initialCommand: resumeSession ? null : initialCommand,  // 恢复会话时不需要初始命令
             resumeSession: resumeSession,  // 标记为恢复会话
-            originalSessionId: resumeSession ? sessionId : null  // 原始会话ID
+            originalSessionId: resumeSession ? sessionId : null,  // 原始会话ID
+            taskId: taskId,  // 保留taskId用于标识
+            executionMode: executionMode  // 添加执行模式
         };
         
         const tabElement = document.createElement('div');
         tabElement.className = 'session-tab task-tab';
         tabElement.id = `tab_task_${taskId}`; // 设置ID以便isCurrentTabTaskTab()正确识别
-        tabElement.setAttribute('data-session-id', taskId); // 使用taskId作为sessionId
+        // 正确设置sessionId和taskId
+        if (resumeSession && sessionId) {
+            // 恢复会话时：使用真实的sessionId
+            tabElement.setAttribute('data-session-id', sessionId);
+        } else {
+            // 新任务时：taskId即为sessionId
+            tabElement.setAttribute('data-session-id', taskId);
+        }
         tabElement.setAttribute('data-task-id', taskId);
         
+        // 确定点击时使用的标识符（页签管理仍使用taskId，但会话数据使用正确的sessionId）
+        const clickSessionId = taskId;  // 页签点击仍使用taskId作为标识
+
         tabElement.innerHTML = `
-            <div class="session-tab-content" onclick="enhancedSidebar.switchToSession('${taskId}')">
+            <div class="session-tab-content" onclick="enhancedSidebar.switchToSession('${clickSessionId}')">
                 <span class="session-tab-title">${this.escapeHtml(taskName)}</span>
             </div>
-            <button class="session-tab-close" onclick="enhancedSidebar.closeSession('${taskId}')" title="${t('session.closeTask')}">
+            <button class="session-tab-close" onclick="enhancedSidebar.closeSession('${clickSessionId}')" title="${t('session.closeTask')}">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <line x1="18" y1="6" x2="6" y2="18"></line>
                     <line x1="6" y1="6" x2="18" y2="18"></line>

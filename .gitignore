@@ -44,7 +44,14 @@ yarn.lock
 # MCP services build artifacts
 mcp_services/*/build/
 mcp_services/*/node_modules/
-mcp_services/*/*.json
+
+# MCP service sensitive configuration files (runtime generated)
+mcp_services/*/smtp_config.json
+mcp_services/*/wechat_config.json
+mcp_services/*/notification_logs.json
+mcp_services/*/user_bindings.json
+mcp_services/*/*/smtp_config.json
+mcp_services/*/*/wechat_config.json
 
 # MCP service logs and runtime data
 mcp_services/smtp-mail/build/email-logs.json

@@ -84,8 +84,8 @@ class ClaudeCLIIntegration:
         if resume and session_id:
             args.extend(['--resume', session_id])
         
-        # 添加基础标志 - 暂时注释掉减少命令长度
-        # args.extend(['--output-format', 'stream-json'])
+        # 添加基础标志 - 启用JSON输出以捕获sessionId
+        args.extend(['--output-format', 'stream-json'])
         
         # 检查MCP配置
         await self._add_mcp_config_if_available(args)

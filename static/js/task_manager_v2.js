@@ -53,7 +53,7 @@ const TASK_FIELD_CONFIG = {
     },
     scheduleFrequency: {
         type: 'radio-group',
-        label: '执行方式',
+        label: '触发时机',
         required: true,
         order: 6,
         backendKey: 'scheduleFrequency',
@@ -64,6 +64,19 @@ const TASK_FIELD_CONFIG = {
             { value: 'weekly', label: '每周定时' }
         ],
         default: 'immediate'
+    },
+    executionMode: {
+        type: 'radio-group',
+        label: 'executionMode.title',
+        required: true,
+        order: 6.5,
+        backendKey: 'executionMode',
+        showInDetail: true,
+        options: [
+            { value: 'interactive', label: 'executionMode.interactive', description: 'executionMode.interactive.desc' },
+            { value: 'background', label: 'executionMode.background', description: 'executionMode.background.desc' }
+        ],
+        default: 'interactive'
     },
     scheduleTime: {
         type: 'time',
@@ -97,7 +110,9 @@ class TaskManager {
         this.systemConfig = null; // 存储系统配置
         this.notificationStatus = null; // 存储通知配置状态
         this.isSubmittingTask = false; // 防止重复提交标志
-        
+        this.backgroundTaskPolling = null; // 后台任务轮询定时器
+        this.pollingInterval = 3000; // 轮询间隔3秒
+
         this.initElements();
         this.initEventListeners();
         
@@ -130,9 +145,15 @@ class TaskManager {
             await this.loadConfig();
             await this.loadNotificationStatus();
             this.loadTasks();
+
+            // 启动后台任务状态轮询
+            this.startBackgroundTaskPolling();
         } catch (error) {
             console.error('TaskManager初始化失败:', error);
             this.loadTasks(); // 即使配置加载失败也要加载任务
+
+            // 即使配置失败也启动轮询
+            this.startBackgroundTaskPolling();
         }
     }
 
@@ -691,14 +712,38 @@ class TaskManager {
      * 获取任务状态
      */
     getTaskStatus(task) {
-        // 检查是否有对应的页签在运行
+        // 检查后台任务的状态（优先级最高）
+        if (task.status) {
+            switch (task.status) {
+                case 'running':
+                    return {
+                        text: t('task.inProgress'),
+                        class: 'running'
+                    };
+                case 'completed':
+                    return {
+                        text: t('task.completed'),
+                        class: 'completed'
+                    };
+                case 'failed':
+                    return {
+                        text: t('task.failed'),
+                        class: 'failed'
+                    };
+                case 'pending':
+                    // 继续下面的逻辑判断
+                    break;
+            }
+        }
+
+        // 检查是否有对应的页签在运行（交互模式）
         if (this.isTaskRunning(task.id)) {
             return {
                 text: t('task.inProgress'),
                 class: 'running'
             };
         }
-        
+
         // 定时任务显示"定时"
         if (task.schedule_frequency !== 'immediate') {
             return {
@@ -706,7 +751,7 @@ class TaskManager {
                 class: 'scheduled'
             };
         }
-        
+
         // 立即执行任务且无页签则显示"完成"
         return {
             text: t('task.completed'),
@@ -977,11 +1022,18 @@ class TaskManager {
         const roleDisplay = this.getRoleDisplayName(task.role);
         statusItems.push(`<div class="status-item"><strong>${t('task.roleLabel', '选择角色')}:</strong> ${roleDisplay}</div>`);
         
-        // 执行模式
-        let executionText = task.schedule_frequency === 'immediate' 
+        // 执行模式和执行时机 - 直接从task读取
+        const executionMode = task.executionMode || 'interactive';
+        const executionModeText = executionMode === 'background'
+            ? t('executionMode.background', '后台模式')
+            : t('executionMode.interactive', '交互模式');
+
+        const scheduleText = task.schedule_frequency === 'immediate'
             ? t('task.immediate', '立即执行')
             : `${t('task.scheduledExecution', '定时执行')} ${task.schedule_time}`;
-        statusItems.push(`<div class="status-item"><strong>${t('task.executionModeLabel', '执行方式')}:</strong> ${executionText}</div>`);
+
+        statusItems.push(`<div class="status-item"><strong>${t('task.executionModeLabel', '执行方式')}:</strong> ${executionModeText}</div>`);
+        statusItems.push(`<div class="status-item"><strong>${t('task.scheduleLabel', '执行时机')}:</strong> ${scheduleText}</div>`);
         
         // 权限设置
         const skipPermText = task.skip_permissions ? t('common.yes', '是') : t('common.no', '否');
@@ -1213,9 +1265,36 @@ class TaskManager {
      */
     toggleScheduleSettings() {
         if (!this.scheduleSettings) return;
-        
+
         const isScheduled = this.executeScheduledRadio && this.executeScheduledRadio.checked;
         this.scheduleSettings.style.display = isScheduled ? 'block' : 'none';
+
+        // 定时任务强制后台模式逻辑
+        this.toggleExecutionModeBySchedule(isScheduled);
+    }
+
+    /**
+     * 根据执行时机切换执行模式
+     */
+    toggleExecutionModeBySchedule(isScheduled) {
+        const interactiveRadio = document.getElementById('mode-interactive');
+        const backgroundRadio = document.getElementById('mode-background');
+        const scheduledNotice = document.getElementById('scheduled-notice');
+
+        if (interactiveRadio && backgroundRadio) {
+            if (isScheduled) {
+                // 定时任务强制后台模式
+                interactiveRadio.disabled = true;
+                backgroundRadio.disabled = false;
+                backgroundRadio.checked = true;
+                if (scheduledNotice) scheduledNotice.style.display = 'block';
+            } else {
+                // 立即执行时恢复选择权
+                interactiveRadio.disabled = false;
+                backgroundRadio.disabled = false;
+                if (scheduledNotice) scheduledNotice.style.display = 'none';
+            }
+        }
     }
 
     /**
@@ -1445,6 +1524,10 @@ class TaskManager {
         const skipPermissions = this.skipPermissionsCheckbox?.checked || false;
         const verboseLogs = this.verboseLogsCheckbox?.checked || false;
         const isImmediate = this.executeImmediateRadio?.checked || false;
+
+        // 读取执行模式（交互/后台）
+        const executionModeRadio = document.querySelector('input[name="execution-mode"]:checked');
+        const executionMode = executionModeRadio?.value || 'interactive';
         
         // Collect role and goal configuration
         const roleSelect = document.getElementById('daily-role-select');
@@ -1463,7 +1546,7 @@ class TaskManager {
             resources: [...this.resources],
             scheduleFrequency: isImmediate ? 'immediate' : (this.scheduleFrequency?.value || 'daily'),  // 改为驼峰命名
             scheduleTime: isImmediate ? '' : (this.scheduleTime?.value || '09:00'),                    // 改为驼峰命名
-            executionMode: isImmediate ? 'immediate' : 'scheduled',                                    // 新增字段
+            executionMode: isImmediate ? executionMode : 'scheduled',  // 定时任务设置为scheduled，立即任务使用用户选择的模式
             enabled: true
         };
     }
@@ -1903,7 +1986,8 @@ class TaskManager {
             enabled: task.enabled !== false,
             skip_permissions: task.skipPermissions || task.skip_permissions || false,
             verbose_logs: task.verboseLogs || task.verbose_logs || false,
-            session_id: task.sessionId || task.session_id || null
+            session_id: task.sessionId || task.session_id || null,
+            executionMode: task.executionMode || task.execution_mode || 'interactive'  // 添加执行模式
         };
         
         const nameEl = document.getElementById('standalone-detail-task-name');
@@ -1919,17 +2003,47 @@ class TaskManager {
             originalTask: task,
             safeTask: safeTask,
             roleValue: task.role,
-            goalConfigValue: task.goal_config
+            goalConfigValue: task.goal_config,
+            goalConfigFromSafeTask: safeTask.goal_config,
+            goalConfigMapping: {
+                'task.goal_config': task.goal_config,
+                'task.goalConfig': task.goalConfig,
+                'final': task.goal_config || task.goalConfig || ''
+            }
         });
         
         if (nameEl) nameEl.textContent = safeTask.name;
         if (goalEl) goalEl.textContent = safeTask.goal;
         if (roleEl) roleEl.textContent = this.getRoleDisplayName(task.role);
-        if (goalConfigEl) goalConfigEl.textContent = task.goal_config || '未设置专业目标';
+        if (goalConfigEl) {
+            const goalConfigValue = task.goal_config || '';
+            goalConfigEl.textContent = goalConfigValue || '未设置专业目标';
+            console.log('Goal config debug:', {
+                taskGoalConfig: task.goal_config,
+                safeTaskGoalConfig: safeTask.goal_config,
+                finalValue: goalConfigValue
+            });
+        }
         if (modeEl) {
-            modeEl.textContent = safeTask.schedule_frequency === 'immediate' 
-                ? t('task.immediate') 
+            // 直接从task读取执行模式，不依赖safeTask
+            const executionMode = task.executionMode || 'interactive';
+            const executionModeText = executionMode === 'background'
+                ? t('executionMode.background')
+                : t('executionMode.interactive');
+
+            // 显示执行时机
+            const scheduleText = safeTask.schedule_frequency === 'immediate'
+                ? t('task.immediate')
                 : `${t('task.scheduledExecution')} ${safeTask.schedule_frequency === 'daily' ? t('task.scheduleDaily') : t('task.scheduleWeekly')} ${safeTask.schedule_time}`;
+
+            console.log('Execution mode display debug:', {
+                safeTaskExecutionMode: safeTask.executionMode,
+                taskExecutionMode: task.executionMode,
+                executionMode: executionMode,
+                executionModeText: executionModeText
+            });
+
+            modeEl.textContent = `${executionModeText} - ${scheduleText}`;
         }
         if (resourcesEl) {
             resourcesEl.innerHTML = safeTask.resources.length > 0 
@@ -2111,9 +2225,36 @@ class TaskManager {
         const scheduleSettings = document.getElementById('standalone-schedule-settings');
         const scheduledRadio = document.getElementById('standalone-execute-scheduled');
         if (!scheduleSettings) return;
-        
+
         const isScheduled = scheduledRadio && scheduledRadio.checked;
         scheduleSettings.style.display = isScheduled ? 'block' : 'none';
+
+        // 定时任务强制后台模式逻辑
+        this.toggleStandaloneExecutionModeBySchedule(isScheduled);
+    }
+
+    /**
+     * 独立新建任务：根据执行时机切换执行模式
+     */
+    toggleStandaloneExecutionModeBySchedule(isScheduled) {
+        const interactiveRadio = document.getElementById('standalone-mode-interactive');
+        const backgroundRadio = document.getElementById('standalone-mode-background');
+        const scheduledNotice = document.getElementById('standalone-scheduled-notice');
+
+        if (interactiveRadio && backgroundRadio) {
+            if (isScheduled) {
+                // 定时任务强制后台模式
+                interactiveRadio.disabled = true;
+                backgroundRadio.disabled = false;
+                backgroundRadio.checked = true;
+                if (scheduledNotice) scheduledNotice.style.display = 'block';
+            } else {
+                // 立即执行时恢复选择权
+                interactiveRadio.disabled = false;
+                backgroundRadio.disabled = false;
+                if (scheduledNotice) scheduledNotice.style.display = 'none';
+            }
+        }
     }
 
     /**
@@ -2123,9 +2264,36 @@ class TaskManager {
         const scheduleSettings = document.getElementById('standalone-edit-schedule-settings');
         const scheduledRadio = document.getElementById('standalone-edit-execute-scheduled');
         if (!scheduleSettings) return;
-        
+
         const isScheduled = scheduledRadio && scheduledRadio.checked;
         scheduleSettings.style.display = isScheduled ? 'block' : 'none';
+
+        // 定时任务强制后台模式逻辑
+        this.toggleStandaloneEditExecutionModeBySchedule(isScheduled);
+    }
+
+    /**
+     * 独立编辑任务：根据执行时机切换执行模式
+     */
+    toggleStandaloneEditExecutionModeBySchedule(isScheduled) {
+        const interactiveRadio = document.getElementById('standalone-edit-mode-interactive');
+        const backgroundRadio = document.getElementById('standalone-edit-mode-background');
+        const scheduledNotice = document.getElementById('standalone-edit-scheduled-notice');
+
+        if (interactiveRadio && backgroundRadio) {
+            if (isScheduled) {
+                // 定时任务强制后台模式
+                interactiveRadio.disabled = true;
+                backgroundRadio.disabled = false;
+                backgroundRadio.checked = true;
+                if (scheduledNotice) scheduledNotice.style.display = 'block';
+            } else {
+                // 立即执行时恢复选择权
+                interactiveRadio.disabled = false;
+                backgroundRadio.disabled = false;
+                if (scheduledNotice) scheduledNotice.style.display = 'none';
+            }
+        }
     }
 
     /**
@@ -2301,11 +2469,15 @@ class TaskManager {
         const immediateRadio = document.getElementById('standalone-execute-immediate');
         const frequencySelect = document.getElementById('standalone-schedule-frequency');
         const timeInput = document.getElementById('standalone-schedule-time');
-        
+
         const skipPermissions = skipInput?.checked || false;
         const verboseLogs = verboseInput?.checked || false;
         const isImmediate = immediateRadio?.checked || false;
-        
+
+        // 读取执行模式（交互/后台）
+        const executionModeRadio = document.querySelector('input[name="standalone-mode"]:checked');
+        const executionMode = executionModeRadio?.value || 'interactive';
+
         // Collect role and goal configuration
         const roleSelect = document.getElementById('standalone-role-select');
         const goalConfigTextarea = document.getElementById('standalone-goal-config');
@@ -2326,6 +2498,9 @@ class TaskManager {
             goalConfig: goalConfig,
             roleSelectElement: roleSelect,
             goalConfigElement: goalConfigTextarea,
+            executionMode: executionMode,
+            executionModeRadio: executionModeRadio,
+            isImmediate: isImmediate,
             notificationType: notificationType,
             notificationEnabled: notificationEnabled,
             notificationMethods: notificationMethods
@@ -2341,7 +2516,7 @@ class TaskManager {
             resources: this.standaloneResources || [],
             scheduleFrequency: isImmediate ? 'immediate' : (frequencySelect?.value || 'daily'),
             scheduleTime: isImmediate ? '' : (timeInput?.value || '09:00'),
-            executionMode: isImmediate ? 'immediate' : 'scheduled',
+            executionMode: isImmediate ? executionMode : 'scheduled',  // 定时任务设置为scheduled，立即任务使用用户选择的模式
             enabled: true,
             notificationSettings: {
                 enabled: notificationEnabled,
@@ -2374,7 +2549,11 @@ class TaskManager {
         const skipPermissions = skipInput?.checked || false;
         const verboseLogs = verboseInput?.checked || false;
         const isImmediate = immediateRadio?.checked || false;
-        
+
+        // 读取执行模式（交互/后台）- 编辑表单
+        const executionModeRadio = document.querySelector('input[name="standalone-edit-mode"]:checked');
+        const executionMode = executionModeRadio?.value || 'interactive';
+
         // Collect role and goal configuration for edit form
         const roleSelect = document.getElementById('standalone-edit-role-select');
         const goalConfigTextarea = document.getElementById('standalone-edit-goal-config');
@@ -2405,7 +2584,7 @@ class TaskManager {
             resources: this.standaloneEditResources || [],
             scheduleFrequency: isImmediate ? 'immediate' : (frequencySelect?.value || 'daily'),
             scheduleTime: isImmediate ? '' : (timeInput?.value || '09:00'),
-            executionMode: isImmediate ? 'immediate' : 'scheduled',
+            executionMode: isImmediate ? executionMode : 'scheduled',  // 定时任务设置为scheduled，立即任务使用用户选择的模式
             enabled: true,
             notificationSettings: {
                 enabled: notificationEnabled,
@@ -5266,6 +5445,144 @@ class TaskManager {
         
         messagesContainer.insertAdjacentHTML('beforeend', responseHtml);
         this.scrollPCConversationToBottom();
+    }
+
+    /**
+     * 启动后台任务状态轮询
+     */
+    startBackgroundTaskPolling() {
+        // 清除现有轮询
+        this.stopBackgroundTaskPolling();
+
+        console.log('Starting background task polling...');
+        this.backgroundTaskPolling = setInterval(async () => {
+            await this.pollBackgroundTasks();
+        }, this.pollingInterval);
+    }
+
+    /**
+     * 停止后台任务状态轮询
+     */
+    stopBackgroundTaskPolling() {
+        if (this.backgroundTaskPolling) {
+            clearInterval(this.backgroundTaskPolling);
+            this.backgroundTaskPolling = null;
+            console.log('Background task polling stopped');
+        }
+    }
+
+    /**
+     * 轮询后台任务状态
+     */
+    async pollBackgroundTasks() {
+        try {
+            // 获取当前运行中的后台任务
+            const runningBackgroundTasks = this.tasks.filter(task =>
+                task.status === 'running' &&
+                task.executionMode === 'background'
+            );
+
+            if (runningBackgroundTasks.length === 0) {
+                return; // 没有运行中的后台任务，跳过轮询
+            }
+
+            console.log(`Polling ${runningBackgroundTasks.length} background tasks...`);
+
+            // 逐个检查运行中的后台任务状态
+            let hasUpdates = false;
+            for (const task of runningBackgroundTasks) {
+                try {
+                    const response = await fetch(`/api/tasks/${task.id}/status`);
+                    if (response.ok) {
+                        const statusData = await response.json();
+
+                        // 检查状态是否有变化
+                        if (statusData.status !== task.status) {
+                            console.log(`Task ${task.id} status changed: ${task.status} -> ${statusData.status}`);
+                            hasUpdates = true;
+
+                            // 更新本地任务状态
+                            const taskIndex = this.tasks.findIndex(t => t.id === task.id);
+                            if (taskIndex !== -1) {
+                                this.tasks[taskIndex] = { ...this.tasks[taskIndex], ...statusData };
+                            }
+
+                            // 如果任务完成或失败，显示通知
+                            if (statusData.status === 'completed' || statusData.status === 'failed') {
+                                this.showBackgroundTaskCompleteNotification(statusData);
+                            }
+                        }
+                    }
+                } catch (error) {
+                    console.error(`Failed to poll status for task ${task.id}:`, error);
+                }
+            }
+
+            // 如果有状态更新，刷新任务列表显示
+            if (hasUpdates) {
+                this.renderTasksList();
+                this.renderSidebarTasksList();
+
+                // 如果当前选中的任务有更新，重新显示详情
+                if (this.selectedTaskId) {
+                    const selectedTask = this.tasks.find(t => t.id === this.selectedTaskId);
+                    if (selectedTask) {
+                        this.showTaskDetail(selectedTask);
+                    }
+                }
+            }
+
+        } catch (error) {
+            console.error('Background task polling failed:', error);
+        }
+    }
+
+    /**
+     * 显示后台任务完成通知
+     */
+    showBackgroundTaskCompleteNotification(task) {
+        const statusText = task.status === 'completed' ? '完成' : '失败';
+        const statusClass = task.status === 'completed' ? 'success' : 'error';
+
+        // 创建通知元素
+        const notification = document.createElement('div');
+        notification.className = `task-notification ${statusClass}`;
+        notification.innerHTML = `
+            <div class="notification-content">
+                <h4>后台任务${statusText}</h4>
+                <p>${task.name}</p>
+                ${task.hasResult ? `<button onclick="taskManager.viewTaskResult('${task.id}')">查看结果</button>` : ''}
+            </div>
+            <button class="notification-close" onclick="this.parentElement.remove()">×</button>
+        `;
+
+        // 添加到页面
+        document.body.appendChild(notification);
+
+        // 3秒后自动移除
+        setTimeout(() => {
+            if (notification.parentElement) {
+                notification.remove();
+            }
+        }, 5000);
+
+        console.log(`Background task notification shown: ${task.name} ${statusText}`);
+    }
+
+    /**
+     * 查看任务结果（通过通知按钮调用）
+     */
+    viewTaskResult(taskId) {
+        const task = this.tasks.find(t => t.id === taskId);
+        if (task && task.resultApi) {
+            // 根据任务类型打开相应的结果页面
+            if (task.type === 'mobile') {
+                window.open(task.resultApi.replace('/api', ''), '_blank');
+            } else {
+                // PC任务结果，显示详情
+                this.selectTask(taskId);
+            }
+        }
     }
 }
 

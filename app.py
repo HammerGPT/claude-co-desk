@@ -1276,14 +1276,28 @@ class PTYShellHandler:
                         # 线程安全地发送到WebSocket
                         if self.websocket and processed_output and self.loop:
                             try:
+                                # 检查WebSocket连接有效性
+                                if hasattr(self.websocket, 'client_state'):
+                                    if self.websocket.client_state.name != 'CONNECTED':
+                                        logger.debug(f" WebSocket连接已断开 ({self.websocket.client_state.name})，跳过输出发送")
+                                        continue
+
                                 future = asyncio.run_coroutine_threadsafe(
-                                    self.send_output(processed_output), 
+                                    self.send_output(processed_output),
                                     self.loop
                                 )
-                                # 等待一小段时间确保消息发送
-                                future.result(timeout=0.1)
+                                # 增加超时时间到1秒，给WebSocket发送更充裕的时间
+                                future.result(timeout=1.0)
+                            except asyncio.TimeoutError:
+                                logger.warning(" WebSocket消息发送超时 (1秒)")
                             except Exception as send_error:
-                                logger.error(f" 发送WebSocket消息失败: {send_error}")
+                                error_type = type(send_error).__name__
+                                error_msg = str(send_error)
+                                if "after sending 'websocket.close'" in error_msg or "Connection is already closed" in error_msg:
+                                    logger.debug(f" WebSocket连接已关闭: {error_type}")
+                                    self.websocket = None  # 清理已关闭的连接引用
+                                else:
+                                    logger.error(f" WebSocket消息发送失败 [{error_type}]: {error_msg}")
                             
                     except OSError as e:
                         if e.errno == 5:  # Input/output error，PTY已关闭
@@ -1628,15 +1642,27 @@ class PTYShellHandler:
         if not self.websocket:
             logger.debug(" WebSocket连接不存在，跳过发送输出")
             return
-            
-        # 检查WebSocket是否已关闭
+
+        # 增强的WebSocket连接状态检查
         try:
-            if hasattr(self.websocket, 'client_state') and self.websocket.client_state.name != 'CONNECTED':
-                logger.debug(f" WebSocket连接已关闭 ({self.websocket.client_state.name})，跳过发送输出")
+            # 检查连接对象是否有效
+            if hasattr(self.websocket, 'client_state'):
+                state = self.websocket.client_state.name
+                if state != 'CONNECTED':
+                    logger.debug(f" WebSocket连接已关闭 ({state})，跳过发送输出")
+                    self.websocket = None  # 清理无效连接引用
+                    return
+
+            # 额外检查：尝试检测连接是否真正可用
+            if hasattr(self.websocket, 'closed') and self.websocket.closed:
+                logger.debug(" WebSocket连接已关闭 (closed属性检测)")
+                self.websocket = None
                 return
-        except:
-            # 如果检查连接状态失败，也跳过发送
-            logger.debug(" 无法检查WebSocket连接状态，跳过发送输出")
+
+        except Exception as check_error:
+            # 如果检查连接状态失败，记录详细信息并跳过发送
+            logger.warning(f" WebSocket连接状态检查失败 [{type(check_error).__name__}]: {check_error}")
+            self.websocket = None
             return
             
         try:
