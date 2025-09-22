@@ -146,32 +146,74 @@ class FilesDrawer {
      * 判断当前活跃页签是否为任务页签
      */
     isCurrentTabTaskTab() {
-        // 检查当前页签类型
+        // 方法1: 检查当前活跃的DOM页签
         const activeTab = document.querySelector('.session-tab.active');
-        if (!activeTab) {
-            console.log('isCurrentTabTaskTab: 没有找到活跃页签');
-            return false;
+        if (activeTab) {
+            const tabId = activeTab.id;
+            const isTaskTab = tabId && tabId.startsWith('tab_task_');
+            console.log(`isCurrentTabTaskTab [DOM检测]: 页签ID=${tabId}, 是否为任务页签=${isTaskTab}`);
+            if (isTaskTab) {
+                return true;
+            }
+        } else {
+            console.log('isCurrentTabTaskTab [DOM检测]: 没有找到活跃页签');
         }
-        
-        // 通过页签ID判断是否为任务页签
-        const tabId = activeTab.id;
-        const isTaskTab = tabId && tabId.startsWith('tab_task_');
-        console.log(`isCurrentTabTaskTab: 页签ID=${tabId}, 是否为任务页签=${isTaskTab}`);
-        return isTaskTab;
+
+        // 方法2: 备用检测 - 通过enhancedSidebar的活跃会话数据
+        if (window.enhancedSidebar && window.enhancedSidebar.activeSessionId) {
+            const activeSessionId = window.enhancedSidebar.activeSessionId;
+            const activeSessions = window.enhancedSidebar.activeSessions;
+
+            if (activeSessions && activeSessions.has(activeSessionId)) {
+                const sessionData = activeSessions.get(activeSessionId);
+                const isTaskSession = sessionData && sessionData.isTask === true;
+                console.log(`isCurrentTabTaskTab [会话数据检测]: sessionId=${activeSessionId}, 是否为任务会话=${isTaskSession}`);
+                if (isTaskSession) {
+                    return true;
+                }
+            }
+        }
+
+        // 方法3: 最后备用 - 检查当前项目是否为task-execution类型
+        if (this.currentProject && this.currentProject.name === 'task-execution') {
+            console.log('isCurrentTabTaskTab [项目类型检测]: 项目为task-execution类型，判定为任务页签');
+            return true;
+        }
+
+        console.log('isCurrentTabTaskTab: 所有检测方法都未识别为任务页签');
+        return false;
     }
     
     /**
      * 获取当前任务ID
      */
     getCurrentTaskId() {
+        // 方法1: 从DOM页签ID提取
         const activeTab = document.querySelector('.session-tab.active');
-        if (!activeTab) return null;
-        
-        const tabId = activeTab.id;
-        if (tabId && tabId.startsWith('tab_task_')) {
-            // 从tab_task_xxx提取任务ID
-            return tabId.replace('tab_task_', '');
+        if (activeTab) {
+            const tabId = activeTab.id;
+            if (tabId && tabId.startsWith('tab_task_')) {
+                const taskId = tabId.replace('tab_task_', '');
+                console.log(`getCurrentTaskId [DOM检测]: 从页签ID提取任务ID=${taskId}`);
+                return taskId;
+            }
         }
+
+        // 方法2: 备用检测 - 从enhancedSidebar的活跃会话数据获取
+        if (window.enhancedSidebar && window.enhancedSidebar.activeSessionId) {
+            const activeSessionId = window.enhancedSidebar.activeSessionId;
+            const activeSessions = window.enhancedSidebar.activeSessions;
+
+            if (activeSessions && activeSessions.has(activeSessionId)) {
+                const sessionData = activeSessions.get(activeSessionId);
+                if (sessionData && sessionData.isTask === true && sessionData.taskId) {
+                    console.log(`getCurrentTaskId [会话数据检测]: 从会话数据获取任务ID=${sessionData.taskId}`);
+                    return sessionData.taskId;
+                }
+            }
+        }
+
+        console.log('getCurrentTaskId: 无法获取任务ID');
         return null;
     }
     
