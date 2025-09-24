@@ -42,19 +42,25 @@ class MissionManager:
     def create_task_directory(self, task_id: str, task_name: str = "") -> str:
         """
         Creating work directory for task
-        
+
         Args:
             task_id: 任务ID
             task_name: 任务名称（可选，用于日志）
-            
+
         Returns:
             str: 创建的工作目录绝对路径
-            
+
         Raises:
             Exception: 目录创建失败时抛出异常
         """
         try:
-            # 生成目录名：task_id_随机后缀
+            # Check if directory already exists for this task_id
+            existing_dir = self._find_existing_task_directory(task_id)
+            if existing_dir:
+                logger.info(f"Reusing existing directory for task {task_id}: {existing_dir}")
+                return existing_dir
+
+            # Generate directory name only if no existing directory found
             random_suffix = self._generate_random_suffix()
             dir_name = f"{task_id}_{random_suffix}"
             task_dir = self.base_mission_dir / dir_name
@@ -219,3 +225,29 @@ class MissionManager:
             logger.error(f" 清理目录失败: {e}")
             
         return cleaned_count
+
+    def _find_existing_task_directory(self, task_id: str) -> Optional[str]:
+        """
+        Find existing directory for the specified task_id
+
+        Args:
+            task_id: Task ID to search for
+
+        Returns:
+            Optional[str]: Path to existing directory if found, None otherwise
+        """
+        try:
+            if not self.base_mission_dir.exists():
+                return None
+
+            for item in self.base_mission_dir.iterdir():
+                if item.is_dir() and item.name.startswith(f"{task_id}_"):
+                    logger.info(f"Found existing directory for task {task_id}: {item}")
+                    return str(item)
+
+            logger.info(f"No existing directory found for task {task_id}")
+            return None
+
+        except Exception as e:
+            logger.error(f"Error searching for existing directory: {e}")
+            return None
