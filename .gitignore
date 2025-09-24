@@ -57,6 +57,9 @@ mcp_services/*/*/wechat_config.json
 mcp_services/smtp-mail/email-logs.json
 mcp_services/smtp-mail/build/email-logs.json
 
+# MCP service template files (not needed in repository)
+mcp_services/smtp-mail/smtp_config.json.template
+
 # Personal and sensitive configurations
 .claude/
 CLAUDE.local.md
