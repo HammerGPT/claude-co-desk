@@ -232,6 +232,14 @@ def build_task_command(task_data: dict, work_directory: str) -> str:
         notification_command=notification_command
     )
 
+    # 修复：先处理资源文件，将其包含在enhanced_goal中
+    if task_data.get('resources'):
+        resource_refs = []
+        for resource in task_data['resources']:
+            resource_refs.append(f"@{resource}")
+        if resource_refs:
+            enhanced_goal = f"{enhanced_goal} {' '.join(resource_refs)}"
+
     task_command_parts = [enhanced_goal]  # 增强的任务目标
 
     # 添加权限模式
@@ -241,15 +249,6 @@ def build_task_command(task_data: dict, work_directory: str) -> str:
     # 添加verbose日志模式
     if task_data.get('verboseLogs', False):
         task_command_parts.append('--verbose')
-
-    # 添加资源文件引用（使用 @ 语法）
-    if task_data.get('resources'):
-        resource_refs = []
-        for resource in task_data['resources']:
-            resource_refs.append(f"@{resource}")
-        # 将资源引用添加到命令内容末尾
-        if resource_refs:
-            task_command_parts.extend(resource_refs)
 
     # 拼接完整命令
     return ' '.join(task_command_parts)
@@ -5488,14 +5487,8 @@ async def chat_websocket_endpoint(websocket: WebSocket):
                     task_command_parts.append('--verbose')
                     logger.info(f"Added --verbose parameter to command")
                 
-                # 添加资源文件引用（使用 @ 语法）
-                if resources:
-                    resource_refs = []
-                    for resource in resources:
-                        resource_refs.append(f"@{resource}")
-                    # 将资源引用添加到命令内容末尾
-                    if resource_refs:
-                        task_command_parts.extend(resource_refs)
+                # 修复：交互模式下不需要重复处理资源文件
+                # 前端buildClaudeCommand已经将资源文件包含在command中了
                 
                 # 拼接完整命令
                 full_task_command = ' '.join(task_command_parts)
