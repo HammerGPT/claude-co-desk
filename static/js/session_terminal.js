@@ -229,9 +229,9 @@ class SessionTerminal {
         });
 
         // 显示欢迎信息
-        terminal.writeln(`\x1b[36m欢迎使用 ${project.name} - ${sessionName}\x1b[0m`);
-        terminal.writeln('\x1b[90m正在连接到 Claude CLI...\x1b[0m');
-        terminal.writeln('');
+        this._withAutoScroll(terminal, (term) => term.writeln(`\x1b[36m欢迎使用 ${project.name} - ${sessionName}\x1b[0m`));
+        this._withAutoScroll(terminal, (term) => term.writeln('\x1b[90m正在连接到 Claude CLI...\x1b[0m'));
+        this._withAutoScroll(terminal, (term) => term.writeln(''));
 
         console.log('创建终端成功:', sessionId);
     }
@@ -272,7 +272,7 @@ class SessionTerminal {
             console.warn('[WARN] 连接正在进行中，忽略重复请求', sessionId);
             const terminalData = this.terminals.get(sessionId);
             if (terminalData && terminalData.terminal) {
-                terminalData.terminal.writeln('\x1b[33m[WARN] 连接正在进行中，请稍候...\x1b[0m');
+                this._writelnToSession(sessionId, '\x1b[33m[WARN] 连接正在进行中，请稍候...\x1b[0m');
             }
             return;
         }
@@ -324,7 +324,7 @@ class SessionTerminal {
                 
                 // 连接成功后清除欢迎信息，无论新会话还是已有会话
                 terminalData.terminal.clear();
-                terminalData.terminal.write('\x1b[2J\x1b[H'); // 清屏并移动光标到左上角
+                this._writeToSession(sessionId, '\x1b[2J\x1b[H'); // 清屏并移动光标到左上角
                 
                 if (!hasSession) {
                 } else {
@@ -346,14 +346,14 @@ class SessionTerminal {
                 } catch (error) {
                     // 如果不是JSON，直接当作文本输出
                     if (terminalData.terminal) {
-                        terminalData.terminal.write(event.data);
+                        this._writeToSession(sessionId, event.data);
                     }
                 }
             };
             
             ws.onclose = () => {
                 console.log('WebSocket连接已关闭:', sessionId);
-                terminalData.terminal.writeln('\x1b[31mNotDetected 连接已断开\x1b[0m');
+                this._writelnToSession(sessionId, '\x1b[31mNotDetected 连接已断开\x1b[0m');
                 this.connections.delete(sessionId);
                 // 释放连接锁
                 this.connectingStates.delete(sessionId);
@@ -361,7 +361,7 @@ class SessionTerminal {
             
             ws.onerror = (error) => {
                 console.error('WebSocket错误:', error);
-                terminalData.terminal.writeln('\x1b[31mNotDetected 连接错误\x1b[0m');
+                this._writelnToSession(sessionId, '\x1b[31mNotDetected 连接错误\x1b[0m');
                 // 释放连接锁
                 this.connectingStates.delete(sessionId);
             };
@@ -370,7 +370,7 @@ class SessionTerminal {
             
         } catch (error) {
             console.error('连接失败:', error);
-            terminalData.terminal.writeln('\x1b[31mNotDetected 无法连接到服务器\x1b[0m');
+            this._writelnToSession(sessionId, '\x1b[31mNotDetected 无法连接到服务器\x1b[0m');
         } finally {
             // 无论成功失败都要释放连接锁
             this.connectingStates.delete(sessionId);
@@ -391,7 +391,7 @@ class SessionTerminal {
                 break;
                 
             case 'error':
-                terminalData.terminal.writeln(`\x1b[31m错误: ${message.error}\x1b[0m`);
+                this._writelnToSession(sessionId, `\x1b[31m错误: ${message.error}\x1b[0m`);
                 break;
                 
             case 'url_open':
@@ -422,7 +422,7 @@ class SessionTerminal {
         
         // 基本的终端状态检查
         if (terminalData.terminal && terminalData.terminal.buffer) {
-            terminalData.terminal.write(output);
+            this._writeToSession(sessionId, output);
         } else {
             // 尝试恢复终端状态
             this._tryRecoverTerminalState(sessionId);
@@ -740,6 +740,53 @@ class SessionTerminal {
 
         } catch (error) {
             console.error('Failed to add terminal event listeners:', sessionId, error);
+        }
+    }
+
+    /**
+     * 判定终端视图是否位于底部
+     */
+    _isTerminalAtBottom(terminal) {
+        const buffer = terminal?.buffer?.active;
+        if (!buffer) {
+            return true;
+        }
+        return buffer.viewportY === buffer.baseY;
+    }
+
+    /**
+     * 在保持用户滚动位置的前提下写入终端
+     */
+    _withAutoScroll(terminal, writeFn) {
+        if (!terminal || typeof writeFn !== 'function') {
+            return;
+        }
+        const shouldStickToBottom = this._isTerminalAtBottom(terminal);
+        writeFn(terminal);
+        if (shouldStickToBottom) {
+            this._scrollTerminalToBottom(terminal);
+        }
+    }
+
+    _writeToSession(sessionId, content) {
+        const terminalData = this.terminals.get(sessionId);
+        if (!terminalData?.terminal) {
+            return;
+        }
+        this._withAutoScroll(terminalData.terminal, (terminal) => terminal.write(content));
+    }
+
+    _writelnToSession(sessionId, content = '') {
+        const terminalData = this.terminals.get(sessionId);
+        if (!terminalData?.terminal) {
+            return;
+        }
+        this._withAutoScroll(terminalData.terminal, (terminal) => terminal.writeln(content));
+    }
+
+    _scrollTerminalToBottom(terminal) {
+        if (terminal && typeof terminal.scrollToBottom === 'function') {
+            terminal.scrollToBottom();
         }
     }
 

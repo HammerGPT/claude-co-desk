@@ -189,9 +189,9 @@ class Terminal {
         this._addTerminalEventListeners();
 
         // 显示欢迎信息
-        this.terminal.writeln('\x1b[36m欢迎使用 Claude Co-Desk 数字工作台\x1b[0m');
-        this.terminal.writeln('\x1b[90m请选择项目和会话，然后点击"连接"开始\x1b[0m');
-        this.terminal.writeln('');
+        this._writeln('\x1b[36m欢迎使用 Claude Co-Desk 数字工作台\x1b[0m');
+        this._writeln('\x1b[90m请选择项目和会话，然后点击"连接"开始\x1b[0m');
+        this._writeln('');
     }
 
     /**
@@ -282,7 +282,7 @@ class Terminal {
                         outputLength: output.length,
                         terminalBufferLength: this.terminal.buffer.active?.length || 0
                     });
-                    this.terminal.write(output);
+                    this._write(output);
                 } else {
                     console.warn(` [TERMINAL DEBUG] 终端状态异常，跳过写入:`, {
                         hasTerminal: !!this.terminal,
@@ -315,10 +315,10 @@ class Terminal {
                 }
                 
                 // 显示重连成功提示
-                this.terminal.writeln('\x1b[32m 连接已恢复\x1b[0m');
+                this._writeln('\x1b[32m 连接已恢复\x1b[0m');
             } else if (!connected && this.terminal) {
                 // 连接断开时显示提示，但不清除终端内容
-                this.terminal.writeln('\x1b[33m 连接已断开，正在尝试重连...\x1b[0m');
+                this._writeln('\x1b[33m 连接已断开，正在尝试重连...\x1b[0m');
             }
         });
     }
@@ -330,7 +330,7 @@ class Terminal {
         // 检查是否正在连接中
         if (this.isConnecting) {
             console.warn(' 连接正在进行中，忽略重复请求');
-            this.terminal.writeln('\x1b[33m 连接正在进行中，请稍候...\x1b[0m');
+            this._writeln('\x1b[33m 连接正在进行中，请稍候...\x1b[0m');
             return;
         }
 
@@ -348,7 +348,7 @@ class Terminal {
 
             // 检查终端是否已初始化
             if (!this.isInitialized) {
-                this.terminal.writeln('\x1b[31m 终端未初始化\x1b[0m');
+                this._writeln('\x1b[31m 终端未初始化\x1b[0m');
                 return;
             }
 
@@ -359,7 +359,7 @@ class Terminal {
                     this.selectedProject = selectedProject;
                     console.log(' 从侧边栏获取到项目:', selectedProject);
                 } else {
-                    this.terminal.writeln('\x1b[31m 请先选择一个项目\x1b[0m');
+                    this._writeln('\x1b[31m 请先选择一个项目\x1b[0m');
                     console.error(' 没有选中的项目');
                     return;
                 }
@@ -373,7 +373,7 @@ class Terminal {
             }
 
             // 显示简单的连接状态（避免与后端输出重复）
-            this.terminal.write(`\x1b[36m 正在连接...\x1b[0m\r\n`);
+            this._writeln('\x1b[36m 正在连接...\x1b[0m');
 
             // 初始化WebSocket处理器
             this.initWebSocketHandlers();
@@ -405,7 +405,7 @@ class Terminal {
 
         } catch (error) {
             console.error(' 终端连接错误:', error);
-            this.terminal.writeln(`\x1b[31m 连接失败: ${error.message}\x1b[0m`);
+            this._writeln(`\x1b[31m 连接失败: ${error.message}\x1b[0m`);
             this.isConnected = false;
         } finally {
             // 无论成功失败都要释放连接锁
@@ -425,7 +425,7 @@ class Terminal {
             }
             // 保持终端内容，只显示断开提示
             if (this.terminal) {
-                this.terminal.writeln('\x1b[33m 连接已断开\x1b[0m');
+                this._writeln('\x1b[33m 连接已断开\x1b[0m');
             }
         } catch (error) {
             console.error(' 断开连接时发生错误:', error);
@@ -449,7 +449,7 @@ class Terminal {
         
         // 防止在连接过程中重启
         if (this.isConnecting) {
-            this.terminal.writeln('\x1b[33m 正在连接中，请稍候...\x1b[0m');
+            this._writeln('\x1b[33m 正在连接中，请稍候...\x1b[0m');
             return;
         }
         
@@ -463,18 +463,18 @@ class Terminal {
 
         // 重新显示欢迎信息
         setTimeout(() => {
-            this.terminal.writeln('\x1b[36m欢迎使用 Claude Co-Desk 数字工作台\x1b[0m');
-            this.terminal.writeln('\x1b[90m请选择项目和会话，然后点击"连接"开始\x1b[0m');
-            this.terminal.writeln('');
+            this._writeln('\x1b[36m欢迎使用 Claude Co-Desk 数字工作台\x1b[0m');
+            this._writeln('\x1b[90m请选择项目和会话，然后点击"连接"开始\x1b[0m');
+            this._writeln('');
             
             // 如果有选中的项目，显示提示
             if (this.selectedProject) {
-                this.terminal.writeln(`\x1b[90m[PROJECT] 已选择项目: ${this.selectedProject.display_name || this.selectedProject.name}\x1b[0m`);
+                this._writeln(`\x1b[90m[PROJECT] 已选择项目: ${this.selectedProject.display_name || this.selectedProject.name}\x1b[0m`);
                 if (this.selectedSession) {
                     const sessionInfo = this.selectedSession.summary || this.selectedSession.id.substring(0, 8);
-                    this.terminal.writeln(`\x1b[90m 已选择会话: ${sessionInfo}\x1b[0m`);
+                    this._writeln(`\x1b[90m 已选择会话: ${sessionInfo}\x1b[0m`);
                 }
-                this.terminal.writeln('');
+                this._writeln('');
             }
         }, 100);
     }
@@ -496,7 +496,7 @@ class Terminal {
      * 处理URL打开
      */
     handleUrlOpen(url) {
-        this.terminal.writeln(`\x1b[32m 正在打开浏览器: ${url}\x1b[0m`);
+        this._writeln(`\x1b[32m 正在打开浏览器: ${url}\x1b[0m`);
         
         // 在新标签页中打开URL
         window.open(url, '_blank');
@@ -546,7 +546,7 @@ class Terminal {
         // 如果正在连接中，显示警告并忽略
         if (this.isConnecting) {
             console.warn(' 正在连接中，忽略项目切换请求');
-            this.terminal.writeln('\x1b[33m 正在连接中，请稍候...\x1b[0m');
+            this._writeln('\x1b[33m 正在连接中，请稍候...\x1b[0m');
             return;
         }
         
@@ -558,8 +558,8 @@ class Terminal {
         
         // 显示项目切换信息
         if (this.isConnected) {
-            this.terminal.writeln(`\x1b[33m\n[PROJECT] 切换到项目: ${project?.display_name || project?.name}\x1b[0m`);
-            this.terminal.writeln(`\x1b[90m 点击"连接"按钮切换到此项目\x1b[0m`);
+            this._writeln(`\x1b[33m\n[PROJECT] 切换到项目: ${project?.display_name || project?.name}\x1b[0m`);
+            this._writeln(`\x1b[90m 点击"连接"按钮切换到此项目\x1b[0m`);
         }
     }
 
@@ -577,7 +577,7 @@ class Terminal {
         // 如果正在连接中，显示警告并忽略
         if (this.isConnecting) {
             console.warn(' 正在连接中，忽略会话切换请求');
-            this.terminal.writeln('\x1b[33m 正在连接中，请稍候...\x1b[0m');
+            this._writeln('\x1b[33m 正在连接中，请稍候...\x1b[0m');
             return;
         }
         
@@ -590,13 +590,13 @@ class Terminal {
         
         // 显示会话切换信息
         const sessionInfo = session ? session.summary || session.id.substring(0, 8) : '新会话';
-        this.terminal.writeln(`\x1b[33m 已选择会话: ${sessionInfo}\x1b[0m`);
+        this._writeln(`\x1b[33m 已选择会话: ${sessionInfo}\x1b[0m`);
         
         // 如果已连接，提示用户重新连接
         if (this.isConnected) {
-            this.terminal.writeln(`\x1b[90m 点击"连接"按钮切换到此会话\x1b[0m`);
+            this._writeln(`\x1b[90m 点击"连接"按钮切换到此会话\x1b[0m`);
         } else {
-            this.terminal.writeln(`\x1b[90m 点击"连接"按钮开始会话\x1b[0m`);
+            this._writeln(`\x1b[90m 点击"连接"按钮开始会话\x1b[0m`);
         }
     }
 
@@ -671,6 +671,45 @@ class Terminal {
         });
 
         console.log(' [XTERM DEBUG] event listeners added');
+    }
+
+    /**
+     * 判定当前视图是否仍在底部，底部时允许自动跟随
+     */
+    _isViewportAtBottom() {
+        const buffer = this.terminal?.buffer?.active;
+        if (!buffer) {
+            return true;
+        }
+        return buffer.viewportY === buffer.baseY;
+    }
+
+    /**
+     * 写入终端时保持用户滚动位置，只有在已位于底部时才自动滚动
+     */
+    _withAutoScroll(writeFn) {
+        if (!this.terminal || typeof writeFn !== 'function') {
+            return;
+        }
+        const shouldStickToBottom = this._isViewportAtBottom();
+        writeFn(this.terminal);
+        if (shouldStickToBottom) {
+            this._scrollToBottom();
+        }
+    }
+
+    _write(content) {
+        this._withAutoScroll((terminal) => terminal.write(content));
+    }
+
+    _writeln(content = '') {
+        this._withAutoScroll((terminal) => terminal.writeln(content));
+    }
+
+    _scrollToBottom() {
+        if (this.terminal && typeof this.terminal.scrollToBottom === 'function') {
+            this.terminal.scrollToBottom();
+        }
     }
 
     /**
@@ -841,7 +880,7 @@ class Terminal {
             // 5. 清理终端内容（可选）
             if (this.terminal) {
                 this.terminal.clear();
-                this.terminal.writeln('\x1b[90m终端连接已清理\x1b[0m');
+                this._writeln('\x1b[90m终端连接已清理\x1b[0m');
             }
             
             console.log(' [TERMINAL CLEANUP] 终端资源清理完成');
