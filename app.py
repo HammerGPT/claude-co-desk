@@ -1261,7 +1261,7 @@ class PTYShellHandler:
                             except:
                                 raw_output = data.decode('utf-8', errors='replace')
                         
-                        # 启用简化的输出处理，保留ANSI颜色序列
+                        # 直接传递原始输出，交由前端xterm完整渲染
                         processed_output = self._simple_output_filter(raw_output)
 
                         # SessionId检测 - 对所有PTY输出进行检测
@@ -1476,47 +1476,8 @@ class PTYShellHandler:
         return text
     
     def _simple_output_filter(self, raw_output: str) -> str:
-        """简化的输出过滤器，只处理关键重复问题，保留所有ANSI颜色序列"""
-        import re
-        
-        # 改进的行级过滤，处理重复行和空行
-        lines = raw_output.split('\n')
-        filtered_lines = []
-        last_clean_line = ""
-        consecutive_count = 0
-        consecutive_empty_count = 0
-        
-        for line in lines:
-            # 移除ANSI序列后的纯文本用于比较重复
-            clean_line = re.sub(r'\x1b\[[0-9;]*[a-zA-Z]', '', line).strip()
-            
-            # 处理空行
-            if clean_line == "":
-                consecutive_empty_count += 1
-                # 限制连续空行数量（任务执行过程中经常产生多余空行）
-                if consecutive_empty_count > 2:
-                    continue
-            else:
-                consecutive_empty_count = 0
-            
-            # 检测连续重复的相同内容行
-            if clean_line == last_clean_line and clean_line:
-                consecutive_count += 1
-                # 允许重复2次，超过则跳过（针对Claude CLI的重复状态行）
-                if consecutive_count > 2 and any(marker in clean_line for marker in ['', '', '', 'Computing', 'Thinking']):
-                    continue
-            else:
-                consecutive_count = 0
-                last_clean_line = clean_line
-            
-            filtered_lines.append(line)
-        
-        result = '\n'.join(filtered_lines)
-        
-        # 最终的连续空行清理（处理可能遗漏的空行）
-        result = re.sub(r'\n{3,}', '\n\n', result)
-        
-        return result
+        """保留Claude CLI的原始输出，不做任何过滤或裁剪"""
+        return raw_output
     
     def _process_terminal_output(self, raw_output: str) -> str:
         """处理终端输出，去除重复和优化ANSI序列"""
