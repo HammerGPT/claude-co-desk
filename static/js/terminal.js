@@ -16,6 +16,7 @@ class Terminal {
         this.isInitialized = false;
         this.selectedProject = null;
         this.selectedSession = null;
+        this.shouldAutoScroll = true;
         
         this.initElements();
         this.initEventListeners();
@@ -653,10 +654,13 @@ class Terminal {
 
         // 监听缓冲区变化
         this.terminal.onScroll((yDisp) => {
+            const baseY = this.terminal?.buffer?.active?.baseY || 0;
+            this.shouldAutoScroll = yDisp >= baseY;
             console.log(` [XTERM DEBUG] scroll event:`, {
                 yDisp,
+                baseY,
+                autoScroll: this.shouldAutoScroll,
                 bufferLength: this.terminal?.buffer?.active?.length || 0,
-                viewportY: this.terminal?.buffer?.active?.viewportY || 0,
                 timestamp: new Date().toISOString()
             });
         });
@@ -674,24 +678,13 @@ class Terminal {
     }
 
     /**
-     * 判定当前视图是否仍在底部，底部时允许自动跟随
-     */
-    _isViewportAtBottom() {
-        const buffer = this.terminal?.buffer?.active;
-        if (!buffer) {
-            return true;
-        }
-        return buffer.viewportY === buffer.baseY;
-    }
-
-    /**
      * 写入终端时保持用户滚动位置，只有在已位于底部时才自动滚动
      */
     _withAutoScroll(writeFn) {
         if (!this.terminal || typeof writeFn !== 'function') {
             return;
         }
-        const shouldStickToBottom = this._isViewportAtBottom();
+        const shouldStickToBottom = this.shouldAutoScroll;
         writeFn(this.terminal);
         if (shouldStickToBottom) {
             this._scrollToBottom();
@@ -709,6 +702,7 @@ class Terminal {
     _scrollToBottom() {
         if (this.terminal && typeof this.terminal.scrollToBottom === 'function') {
             this.terminal.scrollToBottom();
+            this.shouldAutoScroll = true;
         }
     }
 

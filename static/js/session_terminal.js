@@ -193,15 +193,23 @@ class SessionTerminal {
         this.terminalWrapper.appendChild(terminalContainer);
         terminal.open(terminalContainer);
 
+        const terminalData = {
+            terminal,
+            fitAddon,
+            container: terminalContainer,
+            project,
+            sessionName,
+            originalSession,
+            autoScroll: true
+        };
+
         // 处理终端输入 - 添加连接状态检查
         terminal.onData((data) => {
             const connection = this.connections.get(sessionId);
             if (connection && connection.readyState === WebSocket.OPEN) {
-                // 直接传输所有输入，不做过度过滤
-                // 之前的焦点检查会导致终端内容被意外清除
                 connection.send(JSON.stringify({
                     type: 'input',
-                    data: data
+                    data
                 }));
             }
         });
@@ -218,20 +226,25 @@ class SessionTerminal {
             console.log(`Terminal resize ignored: ${cols}x${rows}, keeping fixed 120x30`, sessionId);
         });
 
-        // 保存终端实例和相关信息
-        this.terminals.set(sessionId, {
-            terminal: terminal,
-            fitAddon: fitAddon,
-            container: terminalContainer,
-            project: project,
-            sessionName: sessionName,
-            originalSession: originalSession // 保存原始会话信息
+        // 跟踪滚动状态以决定是否自动滚动
+        terminal.onScroll((yDisp) => {
+            const baseY = terminal?.buffer?.active?.baseY || 0;
+            terminalData.autoScroll = yDisp >= baseY;
+            console.log('Debug [XTERM] scroll state update:', {
+                sessionId,
+                yDisp,
+                baseY,
+                autoScroll: terminalData.autoScroll
+            });
         });
 
+        // 保存终端实例和相关信息
+        this.terminals.set(sessionId, terminalData);
+
         // 显示欢迎信息
-        this._withAutoScroll(terminal, (term) => term.writeln(`\x1b[36m欢迎使用 ${project.name} - ${sessionName}\x1b[0m`));
-        this._withAutoScroll(terminal, (term) => term.writeln('\x1b[90m正在连接到 Claude CLI...\x1b[0m'));
-        this._withAutoScroll(terminal, (term) => term.writeln(''));
+        this._withAutoScroll(terminalData, (term) => term.writeln(`\x1b[36m欢迎使用 ${project.name} - ${sessionName}\x1b[0m`));
+        this._withAutoScroll(terminalData, (term) => term.writeln('\x1b[90m正在连接到 Claude CLI...\x1b[0m'));
+        this._withAutoScroll(terminalData, (term) => term.writeln(''));
 
         console.log('创建终端成功:', sessionId);
     }
@@ -744,27 +757,16 @@ class SessionTerminal {
     }
 
     /**
-     * 判定终端视图是否位于底部
-     */
-    _isTerminalAtBottom(terminal) {
-        const buffer = terminal?.buffer?.active;
-        if (!buffer) {
-            return true;
-        }
-        return buffer.viewportY === buffer.baseY;
-    }
-
-    /**
      * 在保持用户滚动位置的前提下写入终端
      */
-    _withAutoScroll(terminal, writeFn) {
-        if (!terminal || typeof writeFn !== 'function') {
+    _withAutoScroll(terminalData, writeFn) {
+        if (!terminalData?.terminal || typeof writeFn !== 'function') {
             return;
         }
-        const shouldStickToBottom = this._isTerminalAtBottom(terminal);
-        writeFn(terminal);
+        const shouldStickToBottom = terminalData.autoScroll !== false;
+        writeFn(terminalData.terminal);
         if (shouldStickToBottom) {
-            this._scrollTerminalToBottom(terminal);
+            this._scrollTerminalToBottom(terminalData);
         }
     }
 
@@ -773,7 +775,7 @@ class SessionTerminal {
         if (!terminalData?.terminal) {
             return;
         }
-        this._withAutoScroll(terminalData.terminal, (terminal) => terminal.write(content));
+        this._withAutoScroll(terminalData, (terminal) => terminal.write(content));
     }
 
     _writelnToSession(sessionId, content = '') {
@@ -781,12 +783,14 @@ class SessionTerminal {
         if (!terminalData?.terminal) {
             return;
         }
-        this._withAutoScroll(terminalData.terminal, (terminal) => terminal.writeln(content));
+        this._withAutoScroll(terminalData, (terminal) => terminal.writeln(content));
     }
 
-    _scrollTerminalToBottom(terminal) {
+    _scrollTerminalToBottom(terminalData) {
+        const terminal = terminalData?.terminal;
         if (terminal && typeof terminal.scrollToBottom === 'function') {
             terminal.scrollToBottom();
+            terminalData.autoScroll = true;
         }
     }
 
